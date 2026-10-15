@@ -545,7 +545,20 @@ async function playGame(game) {
   } catch (e) { if(activePlay!==session)return;stopPlayer();$('#playerStatus').textContent='ゲームを開けませんでした。接続・作品のファイルを確認して再試行してください：'+e.message;$('#retryPlaying').hidden=false;throw new Error($('#playerStatus').textContent); }
 }
 
-$('#retryPlaying').onclick=()=>action(async()=>{const game=openedGame;if(!game)return;await refresh();const latest=games.find(g=>g.id===game.id&&g.path===game.path);if(!latest)throw new Error('作品が移動・削除されています。ゲーム一覧を確認してください。');await playGame(latest);});
+$('#retryPlaying').onclick=()=>action(async()=>{
+  const game=openedGame,revision=playRevision;if(!game)return;let launching=false;
+  const cancelled=()=>!$('#player').open||openedGame?.id!==game.id||openedGame?.path!==game.path;
+  try{
+    await refresh();if(playRevision!==revision||cancelled())return;
+    const latest=games.find(g=>g.id===game.id&&g.path===game.path);
+    if(!latest)throw new Error('作品が移動・削除されています。ゲーム一覧を確認してください。');
+    launching=true;await playGame(latest);
+  }catch(error){
+    if(cancelled()||!launching&&playRevision!==revision)return;
+    $('#playerStatus').textContent='起動を再試行できませんでした。接続と作品のファイルを確認してください：'+error.message;
+    $('#retryPlaying').hidden=false;throw error;
+  }
+},false,true);
 $('#nativeLaunch').onclick=()=>action(async()=>{
   await requireLibraryConnection();if(openedGame?.kind!=='exe'||openedGame.settingsError)throw new Error('ゲームの設定を確認してください。');
   try{await nativeTools.launchNative(nativeBridge,localLibrary,openedGame,compatibilityTools.LAUNCHER_VERSION);$('#playerStatus').textContent='Windowsの別ウィンドウで起動しました。';}
