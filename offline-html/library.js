@@ -6,6 +6,23 @@ export function safePath(value) {
   if (typeof value !== 'string' || !value || value.length > 1000 || value.split('/').some(p => !p || p === '.' || p === '..' || /[\\:\x00-\x1f<>"|?*]/.test(p) || /[. ]$/.test(p) || /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i.test(p))) throw new Error('安全に扱えないファイル名です。');
   return value.split('/');
 }
+// Validate the whole destination tree, not just each filename. Windows folds
+// case for directories too; portal records must never come from game uploads.
+export function uploadPaths(input) {
+  const files=[...input],relative=files.some(file=>!!file.webkitRelativePath);
+  if(relative&&files.some(file=>!file.webkitRelativePath||file.webkitRelativePath.split('/')[0]!==files[0].webkitRelativePath.split('/')[0]))throw new Error('同じフォルダーのファイルをまとめて選び直してください。');
+  const paths=files.map(file=>relative?file.webkitRelativePath.split('/').slice(1).join('/'):file.name),nodes=new Map();
+  for(const path of paths){
+    const parts=safePath(path);
+    if(parts.some(part=>/^\.gameportal(?:$|[-.])/i.test(part)||/\.gameportal\.json$/i.test(part)))throw new Error('管理用ファイルが含まれています。ゲームの書き出しフォルダーだけを選んでください。');
+    for(let i=1;i<=parts.length;i++){
+      const name=parts.slice(0,i).join('/'),key=name.toLowerCase(),kind=i===parts.length?'file':'directory',previous=nodes.get(key);
+      if(previous&&(previous.name!==name||previous.kind!==kind||kind==='file'))throw new Error('同じ名前または保存先が重なるファイル・フォルダーがあります。大文字・小文字も確認してください。');
+      nodes.set(key,{name,kind});
+    }
+  }
+  return paths;
+}
 export async function getFile(root, path) {
   const parts = safePath(path); let folder = root;
   for (const part of parts.slice(0, -1)) folder = await folder.getDirectoryHandle(part);
@@ -228,12 +245,14 @@ export async function scan(root, metadata, {signal} = {}) {
   return games.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
 }
 export async function readTree(folder, preloaded = new Map(), {fileBacked = false} = {}) {
-  const entries = []; let bytes = 0;
-  async function walk(dir, prefix = '') {
+  const entries = []; let bytes = 0, visited = 0;
+  async function walk(dir, prefix = '', depth = 0) {
+    if(depth>20)throw new Error('ゲームのフォルダー階層が深すぎます。書き出したゲームだけを選んでください。');
     for await (const entry of dir.values()) {
+      if(++visited>10000)throw new Error('フォルダー内の項目が多すぎます。書き出したゲームだけを選んでください。');
       if (entry.name.startsWith('.') || entry.name === '__MACOSX') continue;
       const path = prefix + entry.name; safePath(path);
-      if (entry.kind === 'directory') await walk(entry, path + '/');
+      if (entry.kind === 'directory') await walk(entry, path + '/', depth + 1);
       else {
         if (/\.(zip|pyxapp|exe)$/i.test(path) || /\.gameportal\.json$/i.test(path) || /^GAME-PORTAL\.html$/i.test(entry.name)) continue;
         if (entries.length >= MAX_FILES) throw new Error('ゲームは500ファイル・展開後200MB以内にしてください。');
@@ -268,8 +287,7 @@ export async function postGame(root, files, packageTools, onProgress = () => {})
   const single = files.length === 1 && !files[0].webkitRelativePath;
   if(single&&!/\.exe$/i.test(files[0].name)&&files[0].size>50*1024*1024)throw new Error('単体ファイルは50MB以内にしてください。');
   if (single && !/\.(html?|zip|pyxapp|exe)$/i.test(files[0].name)) throw new Error('HTML・ZIP・PYXAPP・EXEを選択してください。');
-  const paths = files.map(f => f.webkitRelativePath ? f.webkitRelativePath.split('/').slice(1).join('/') : f.name);
-  paths.forEach(safePath);
+  const paths = uploadPaths(files);
   const native=single?/\.exe$/i.test(files[0].name)?{entry:paths[0],root:''}:null:nativeLayout(paths);
   if(native)await validateExe(files[paths.indexOf(native.entry)]);
   if (!single && !native && !packageTools.webArchiveLayout(paths)) throw new Error('起動用HTML、またはEXEと素材をまとめたフォルダーを選んでください。');

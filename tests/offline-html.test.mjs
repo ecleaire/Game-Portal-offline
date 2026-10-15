@@ -52,6 +52,38 @@ test('image crop stays inside the source for wide/tall images, endpoints and zoo
   assert.equal(cropRect(1200,540,1,0,50).x,0);assert.equal(cropRect(1200,540,1,100,50).x,240);
 });
 
+test('folder uploads reject portal records and conflicting paths before reading or writing',async()=>{
+  const selections=[
+    ['release/index.html','release/.gameportal-content.json'],
+    ['release/index.html','release/index.html.gameportal.json'],
+    ['release/index.html','release/.gameportal-versions/old/data'],
+    ['release/index.html','release/assets','release/assets/data.bin'],
+    ['release/index.html','release/Assets/a.bin','release/assets/b.bin'],
+    ['release/index.html','release/IMAGE.png','release/image.png'],
+    ['first/index.html','second/data.bin'],
+    ['release/index.html','loose.bin']
+  ];
+  for(const paths of selections){
+    let reads=0;const files=paths.map(path=>{const f=new File(['<h1>Game</h1>'],path.split('/').at(-1));if(path.includes('/'))Object.defineProperty(f,'webkitRelativePath',{value:path});f.arrayBuffer=async()=>{reads++;throw Error('must not read');};return f;});
+    await assert.rejects(checkUpload(files,library,preview,localResources),/保存先|管理用|同じ名前|フォルダー/);
+    const m=memoryFolder();await assert.rejects(postGame(m.root,files,preview),/保存先|管理用|同じ名前|フォルダー/);
+    assert.equal(reads,0);assert.equal(m.folders.size,0);assert.equal(m.files.size,0);
+  }
+  const m=await postedFixture(),files=['index.html','.gameportal-content.json'].map(name=>{const f=new File(['{}'],name);Object.defineProperty(f,'webkitRelativePath',{value:'release/'+name});return f;});
+  await assert.rejects(replaceGameContent(m.root,m.game,files,m.id,library,preview,updateCheck),/管理用/);
+  assert.equal(m.owner.folders.has('.gameportal-versions'),false);assert.equal(m.owner.files.has('.gameportal-content.json'),false);
+});
+
+test('game folder traversal bounds empty directories and depth before reading game bytes',async()=>{
+  let visited=0,reads=0;
+  const empty={name:'empty',kind:'directory',async *values(){}};
+  const many={async *values(){for(let i=0;i<10001;i++){visited++;yield {...empty,name:'d'+i};}yield {name:'index.html',kind:'file',getFile:async()=>{reads++;return new File(['game'],'index.html');}};}};
+  await assert.rejects(readTree(many),/フォルダー|項目/);assert.equal(visited,10001);assert.equal(reads,0);
+  const deep=depth=>({name:'d',kind:'directory',async *values(){if(depth)yield deep(depth-1);else yield {name:'index.html',kind:'file',getFile:async()=>{reads++;return new File(['game'],'index.html');}};}});
+  await assert.rejects(readTree(deep(21)),/階層/);assert.equal(reads,0);
+  assert.equal(new TextDecoder().decode((await readTree(deep(20))).get('d/'.repeat(20)+'index.html')),'game');
+});
+
 test('portable paths reject traversal, alternate streams and Windows aliases', () => {
   for(const path of ['../secret','/secret','x/../secret','C:/secret','x\\y','a:stream','con.txt','x/COM1','x.','x ','a//b','a/\u0000b']) assert.throws(()=>safePath(path));
   assert.deepEqual(safePath('日本語ゲーム/assets/my-file.png'),['日本語ゲーム','assets','my-file.png']);
