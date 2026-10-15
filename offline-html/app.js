@@ -531,8 +531,21 @@ $('#nativeLaunch').onclick=()=>action(async()=>{
   try{await nativeTools.launchNative(nativeBridge,localLibrary,openedGame,compatibilityTools.LAUNCHER_VERSION);$('#playerStatus').textContent='Windowsの別ウィンドウで起動しました。';}
   catch(error){$('#playerStatus').textContent='EXEを起動できませんでした。起動補助とWindowsのアクセス許可を確認してください：'+error.message;throw new Error($('#playerStatus').textContent);}
 },false,true);
-for(const id of ['helpButton','playerHelpButton'])$('#'+id).onclick=()=>{if(!$('#help').open){$('#help').scrollTop=0;$('#help').showModal();$('#helpTitle').focus();}};
-for(const button of document.querySelectorAll('[data-help-topic]'))button.onclick=()=>{const section=$('#'+button.dataset.helpTopic);if(section.id==='helpTitle')$('#help').scrollTop=0;else section.scrollIntoView({block:'start'});section.focus({preventScroll:true});};
+const helpTopics=[...document.querySelectorAll('.help-index [data-help-topic]')];
+function markHelpTopic(id){for(const button of helpTopics){if(button.dataset.helpTopic===id)button.setAttribute('aria-current','location');else button.removeAttribute('aria-current');}}
+function resetHelp(){ $('#helpContent').scrollTop=0;$('.help-index').scrollTop=0;markHelpTopic('helpSetup'); }
+for(const id of ['helpButton','playerHelpButton'])$('#'+id).onclick=()=>{if(!$('#help').open){$('#help').showModal();resetHelp();$('#helpTitle').focus({preventScroll:true});}};
+for(const button of document.querySelectorAll('[data-help-topic]'))button.onclick=()=>{
+  const section=$('#'+button.dataset.helpTopic),content=$('#helpContent');
+  if(section.id==='helpTitle')resetHelp();else{content.scrollTop+=section.getBoundingClientRect().top-content.getBoundingClientRect().top;markHelpTopic(section.id);}
+  section.focus({preventScroll:true});
+};
+$('#helpContent').addEventListener('scroll',()=>{
+  const content=$('#helpContent'),top=content.getBoundingClientRect().top;let current='helpSetup';
+  for(const section of content.querySelectorAll('.help-section')){if(section.getBoundingClientRect().top>top+32)break;current=section.id;}
+  if(content.scrollTop>0&&content.scrollHeight-content.clientHeight-content.scrollTop<=2)current='helpTrouble';
+  markHelpTopic(current);
+},{passive:true});
 $('#settingsButton').onclick = () => $('#settings').showModal();
 $('#setupFolder').onclick = () => $('#chooseFolder').onclick();
 function resetSearch(){clearTimeout(searchTimer);renderLimit=60;$('#search').value='';$('#tagSearch').value='';$('#tagCategory').value='';selectedTags.clear();$('#searchScope').value='all';$('#kindFilter').value='';$('#environmentFilter').value='';$('#tagMatch').value='all';$('#sortGames').value='name-asc'; }

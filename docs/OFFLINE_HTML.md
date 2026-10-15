@@ -1,10 +1,12 @@
 # 完全オフライン HTML版 GAME PORTAL
 
-現在のバージョンは **0.19.0**。画面上部のロゴ横に表示します。
+現在のバージョンは **0.19.1**。画面上部のロゴ横に表示します。
 
 PC版Google Chrome（Windows / macOS）推奨です。配布ZIPを展開し、`GAME-PORTAL.html` をChromeで開きます。画面・Pyxel・Pyodide・Python標準ライブラリーをHTMLに同梱しています。使用中のCDN・Supabase・Google Drive接続、アカウント登録は不要です。
 
 ## 使用手順
+
+HTML内の「ヘルプ」は、左の目次を表示したまま本文を読めます。Scratch（sb3）のHTML出力は「Scratch → HTML」に、TurboWarp Packagerでの変換から追加までを案内しています。[TurboWarp Packager](https://packager.turbowarp.org/?import_from=https://turbowarp.org)でsb3を読み込み、HTML（Plain HTML）として出力したものを追加してください。sb3の拡張子変更だけでは変換できません。変換にはネット接続が必要です。ネットなしで変換する場合は、事前に[公式のオフライン版](https://docs.turbowarp.org/packager/offline)を用意してください。
 
 1. ホームの「ゲームのフォルダーを選ぶ」で、ゲーム専用のローカルフォルダー、またはOSからアクセスできるNAS共有フォルダーを選び、読み取りを許可します。未接続のホームへフォルダーをドラッグしても接続できます。別PCの初回アクセス許可は必要です。「次もこのフォルダーを使う」は初期状態でオンです。次回は権限が残っていれば自動接続し、許可が必要な場合は「再接続する」を押します。初回のID設定は保存を許可すると自動で作成します。ゲーム本体は変更しません。
 2. 投稿・編集する人は、設定の「編集モード」をオンにして書き込みを許可します。初回のID設定はフォルダー選択時に自動で済みます。このオン・オフ設定はこのPCのChrome内に保存します。
