@@ -27,5 +27,19 @@ try{
  await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#settings')).toBeHidden();assert.equal(await page.evaluate(()=>window.chosenMode),'read');assert.equal(await page.evaluate(()=>root.name),'restored-grant');
  await page.evaluate(()=>window.showDirectoryPicker=async()=>{throw new DOMException('Simulated picker refusal','AbortError');});await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#status')).toContainText('フォルダー選択が完了しませんでした');assert.equal(await page.evaluate(()=>root.name),'restored-grant');
  await page.evaluate(()=>{window.showDirectoryPicker=async()=>savedPickerRoot;window.oldLoadMetadata=library.loadMetadata;library.loadMetadata=async()=>{throw new DOMException('Simulated disconnected share','AbortError');};});await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#status')).toContainText('フォルダーは選択されましたが');assert.equal(await page.evaluate(()=>root.name),'restored-grant');await page.evaluate(()=>{library.loadMetadata=window.oldLoadMetadata;FileSystemFileHandle.prototype.createWritable=window.oldWritable;});
+ // Recover from picker refusal using a dropped directory; never consume the store after awaits.
+ await expect(page.locator('#folderSelectionHelp')).toHaveAttribute('open','');
+ await page.evaluate(()=>{
+   window.dropFolderForTest=(handles)=>{const event=new Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(event,'dataTransfer',{value:{items:handles.map(handle=>({kind:'file',getAsFileSystemHandle:()=>{window.dropAcquired=true;return Promise.resolve(handle);}}))}});document.querySelector('#folderDrop').dispatchEvent(event);return window.dropAcquired;};
+   window.oldSyncAbort=new DOMException('Previous folder disconnected','AbortError');
+   syncPromise=Promise.reject(oldSyncAbort);syncPromise.catch(()=>{});
+ });
+ assert.equal(await page.evaluate(()=>dropFolderForTest([savedPickerRoot])),true);
+ await page.waitForFunction(()=>!busy);await expect(page.locator('#settings')).toBeHidden();assert.equal(await page.evaluate(()=>root.name),'restored-grant');await page.evaluate(()=>syncPromise=null);
+ await page.locator('#settingsButton').click();await page.locator('#folderSelectionHelp').locator('summary').click();
+ await page.evaluate(()=>dropFolderForTest([{kind:'file',name:'game.html'}]));await page.waitForFunction(()=>!busy);await expect(page.locator('#status')).toContainText('ファイルではなく');assert.equal(await page.evaluate(()=>root.name),'restored-grant');
+ await page.evaluate(()=>dropFolderForTest([savedPickerRoot,savedPickerRoot]));await page.waitForFunction(()=>!busy);await expect(page.locator('#status')).toContainText('フォルダーを1つ');
+ // A native selection also recovers after a previous sync abort instead of being reported as cancelled.
+ await page.evaluate(()=>{syncPromise=Promise.reject(oldSyncAbort);syncPromise.catch(()=>{});});await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#settings')).toBeHidden();await page.evaluate(()=>syncPromise=null);
  assert.deepEqual(errors,[]);console.log('First play passed: automatic setup on folder selection, editing stays off, direct play/save/reopen, original file unchanged, readonly legacy grant auto-repair, denial/retry no startup permission prompt, picker user activation before sync, read-only destination and stage-specific abort handling.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

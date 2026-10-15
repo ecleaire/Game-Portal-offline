@@ -191,14 +191,17 @@ function writeControls() {
   if(syncPaused){for(const id of ['restoreContent','confirmContentUpdate','verifyContentUpdate','verifySettingsSaves','postButton','confirmPost','saveGameSettings','restoreHistory','captureButton','editPlaying'])$('#'+id).disabled=true;document.querySelectorAll('[data-play]').forEach(b=>b.disabled=true);$('#postReason').textContent=compatibilityProblem||'共有フォルダーへの接続を確認し、再読み込みまたは再接続してください。';}
   $('#updatePlaying').disabled=syncPaused||!root||!openedGame||!updateTools.canUpdateGame(openedGame)||!!openedGame.settingsError&&!(openedGame.contentError&&openedGame.contentPending)||pendingSettings(openedGame.path);
 }
-async function action(fn) {
+async function action(fn, reconnecting = false) {
   if (busy) return; busy = true;
   document.body.setAttribute('aria-busy','true');document.body.classList.add('working');
   document.querySelectorAll('button:not([data-close]):not(#closePlayer):not(#cancelUsage)').forEach(b => b.disabled = true);
   document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=true);
   document.querySelectorAll('#edit input,#edit textarea,#enableEditing').forEach(input=>input.disabled=true);
   status('処理しています…');
-  try { if(syncPromise)await syncPromise;const result=await fn();status(typeof result==='string'?result:''); }
+  try {
+    if(syncPromise){try{await syncPromise;}catch(error){if(!reconnecting)throw error;}}
+    const result=await fn();status(typeof result==='string'?result:'');
+  }
   catch (e) { compatibilityFailure(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;status(e.name === 'AbortError' ? '選択をキャンセルしました。' : e.message || '操作できませんでした。');if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
   finally { busy = false;document.body.setAttribute('aria-busy','false');document.body.classList.remove('working'); document.querySelectorAll('button').forEach(b => b.disabled = false);document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=false); writeControls(); }
 }
@@ -529,6 +532,26 @@ function renderActiveFilters(){
   for(const [label,clear]of filters){const b=document.createElement('button');b.className='filter-chip';b.textContent=label+' ×';b.setAttribute('aria-label',label+'を解除');b.onclick=()=>{clear();render().catch(e=>status(e.message));$('#search').focus();};$('#activeFilters').append(b);}
 }
 for(const id of ['searchScope','kindFilter','environmentFilter','tagMatch','sortGames'])$('#'+id).onchange=()=>render().catch(e=>status(e.message));
+function openFolderSelection(selection, dropped = false) {
+  return action(async()=>{
+    const {handle,error}=await selection;
+    if(error){
+      $('#folderSelectionHelp').open=true;
+      const detail='（v'+compatibilityTools.LAUNCHER_VERSION+' / '+(error.name||'Error')+'）'+(error.message||'');
+      if(error.name==='AbortError')throw new Error('フォルダー選択が完了しませんでした。選択後にChromeのアクセス確認を許可してください。中断が続く場合は、下の枠へフォルダーをドラッグしてください。'+detail);
+      if(error.name==='SecurityError'||error.name==='NotAllowedError')throw new Error('Chromeがフォルダーへのアクセスを許可しませんでした。ChromeでHTMLを直接開き、ゲーム専用フォルダーを選んでください。'+detail);
+      throw error;
+    }
+    if(!handle||handle.kind!=='directory')throw new Error('ファイルではなく、ゲームを保管しているフォルダーを1つドラッグしてください。');
+    if(dropped&&editingEnabled&&await handle.queryPermission({mode:'readwrite'})!=='granted')throw new Error('まず編集モードをオフにして、フォルダーをドラッグしてください。接続後に編集モードをオンにすると保存を許可できます。');
+    try{await connect(handle);}catch(error){
+      $('#folderSelectionHelp').open=true;
+      if(error.name==='AbortError')throw new Error('フォルダーは選択されましたが、接続処理が中断しました。保存先への接続とアクセス権を確認してください。詳細：'+error.message);
+      throw error;
+    }
+    $('#folderSelectionHelp').open=false;
+  },true);
+}
 $('#chooseFolder').onclick = () => {
   if(busy||starting)return;
   // Open the picker in the click itself; waiting for sync can lose user activation.
@@ -537,19 +560,23 @@ $('#chooseFolder').onclick = () => {
     if(!window.showDirectoryPicker)throw new Error('フォルダー選択に対応したPC版Chromeを使用してください。');
     selection=Promise.resolve(window.showDirectoryPicker({mode:editingEnabled?'readwrite':'read',id:'game-portal-library'})).then(handle=>({handle}),error=>({error}));
   }catch(error){selection=Promise.resolve({error});}
-  return action(async()=>{
-    const {handle,error}=await selection;
-    if(error){
-      if(error.name==='AbortError')throw new Error('フォルダー選択が完了しませんでした。キャンセルしていない場合は、編集モードをオフにしてゲーム専用フォルダーを選び直してください。詳細：'+error.message);
-      throw error;
-    }
-    try{await connect(handle);}catch(error){
-      if(error.name==='AbortError')throw new Error('フォルダーは選択されましたが、接続処理が中断しました。保存先への接続とアクセス権を確認してください。詳細：'+error.message);
-      throw error;
-    }
-  });
+  return openFolderSelection(selection);
 };
-$('#reconnect').onclick = () => action(() => connect(remembered, true));
+const folderDrop=$('#folderDrop');
+folderDrop.ondragover=event=>{event.preventDefault();if(event.dataTransfer)event.dataTransfer.dropEffect=busy||starting?'none':'link';};
+folderDrop.ondrop=event=>{
+  event.preventDefault();event.stopPropagation();if(busy||starting)return;
+  let selection;
+  try{
+    const items=[...(event.dataTransfer?.items||[])].filter(item=>item.kind==='file');
+    if(items.length!==1)throw new Error('ゲームを保管しているフォルダーを1つドラッグしてください。');
+    if(!items[0].getAsFileSystemHandle)throw new Error('このChromeではドラッグ接続を利用できません。「フォルダーを選ぶ」を使ってください。');
+    // The data store is only available in this drop event; acquire before awaits.
+    selection=Promise.resolve(items[0].getAsFileSystemHandle()).then(handle=>({handle}),error=>({error}));
+  }catch(error){selection=Promise.resolve({error});}
+  return openFolderSelection(selection,true);
+};
+$('#reconnect').onclick = () => action(() => connect(remembered, true),true);
 $('#refresh').onclick = () => action(async()=>{await refresh();return '一覧を更新しました。';});
 $('#search').oninput = () => {clearTimeout(searchTimer);renderLimit=60;searchTimer=setTimeout(()=>render().catch(e=>status(e.message)),100);};
 $('#tagSearch').oninput=()=>render().catch(e=>status(e.message));$('#tagCategory').onchange=()=>render().catch(e=>status(e.message));
