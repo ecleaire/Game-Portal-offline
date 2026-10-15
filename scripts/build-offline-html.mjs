@@ -45,7 +45,7 @@ const script = [
   wrap('localState', await source('offline-html/local-state.js'), 'cacheHandle,forgetHandle,loadSettingsReceipts,trackSettingsReceipt,loadLocalSave,writeLocalSave,acquirePlaySession,validSave,validSaveBackups,loadSaveBackups,backupLocalSave,restoreLocalSaveBackup'),
   wrap('usageTools', await source('offline-html/usage.js'), 'measureLibraryUsage'),
   wrap('syncTools', await source('offline-html/sync.js'), 'libraryViewKey'),
-  wrap('player', await source('offline-html/player.js'), 'startPlayer'),
+  wrap('player', await source('offline-html/player.js'), 'startPlayer,decodeBase64,encodeBase64'),
   await source('offline-html/app.js'),
 ].join('\n').replaceAll('</script', '<\\/script');
 const html = (await source('offline-html/index.html')).replace('/*__HELP__*/',await source('offline-html/help.html')).replace('__VERSION__', version).replace('/*__STYLE__*/', await source('offline-html/style.css')).replace('__RUNTIME__', JSON.stringify(runtime)).replace('/*__SCRIPT__*/', script);

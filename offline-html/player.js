@@ -1,3 +1,15 @@
+export function decodeBase64(value) {
+  if(typeof Uint8Array.fromBase64==='function')return Uint8Array.fromBase64(value);
+  const binary=atob(value),bytes=new Uint8Array(binary.length);
+  for(let index=0;index<binary.length;index++)bytes[index]=binary.charCodeAt(index);
+  return bytes;
+}
+export function encodeBase64(bytes) {
+  if(typeof bytes.toBase64==='function')return bytes.toBase64();
+  let binary='';
+  for(let index=0;index<bytes.length;index+=0x8000)binary+=String.fromCharCode(...bytes.subarray(index,index+0x8000));
+  return btoa(binary);
+}
 // Executed inside an opaque sandbox. Only game bytes, runtime bytes and its own
 // localStorage snapshot cross the message port; directory handles never do.
 async function captureGameCanvas() {
@@ -64,7 +76,7 @@ function pyxelBootstrap(nonce) {
     };
     const read = name => {
       if (!Object.hasOwn(assets, name)) throw new Error('同梱ランタイムがありません：' + name);
-      if (!bytes.has(name)) bytes.set(name, Uint8Array.from(atob(assets[name]), c => c.charCodeAt(0)));
+      if (!bytes.has(name)) bytes.set(name, decodeBase64(assets[name]));
       return bytes.get(name);
     };
     window.offlineURL = raw => {
@@ -113,7 +125,7 @@ export function startPlayer(frame, options, preview, onMessage) {
   };
   const mimeTypes = { html:'text/html',htm:'text/html',js:'text/javascript',mjs:'text/javascript',css:'text/css',wasm:'application/wasm',json:'application/json',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',svg:'image/svg+xml',gif:'image/gif',ogg:'audio/ogg',mp3:'audio/mpeg',wav:'audio/wav',woff:'font/woff',woff2:'font/woff2' };
   // privatePreviewDocument is pure apart from these two browser helpers.
-  const helpers = `const decoder=new TextDecoder();const mimeTypes=${JSON.stringify(mimeTypes)};const mime=n=>mimeTypes[n.split('.').pop().toLowerCase()]||'application/octet-stream';window.captureGameCanvas=${captureGameCanvas.toString()};window.offlinePreview=${preview.privatePreviewDocument.toString()};`;
+  const helpers = `const decoder=new TextDecoder();const decodeBase64=${decodeBase64.toString()};const mimeTypes=${JSON.stringify(mimeTypes)};const mime=n=>mimeTypes[n.split('.').pop().toLowerCase()]||'application/octet-stream';window.captureGameCanvas=${captureGameCanvas.toString()};window.offlinePreview=${preview.privatePreviewDocument.toString()};`;
   const boot = options.kind === 'pyxapp' ? pyxelBootstrap : webBootstrap;
   const csp = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data:; style-src 'unsafe-inline' blob:; img-src blob: data:; connect-src blob: data:; worker-src blob:; font-src blob: data:; media-src blob: data:; base-uri 'none'";
   const nonce = crypto.randomUUID();

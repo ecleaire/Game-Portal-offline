@@ -178,12 +178,13 @@ export function embeddedPyxel(html) {
 export async function gameId(path) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(path)))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
 }
-export async function scan(root, metadata) {
+export async function scan(root, metadata, {signal} = {}) {
   const games = [], candidates = []; let visited = 0;
   async function add(path, title, kind, handle, folder, entry) {
     let settings, settingsError = '';
     try { settings = await loadGameSettings(root, path); }
     catch (error) { settings = { data: null, text: null }; settingsError = error.message; }
+    signal?.throwIfAborted();
     const saved = settings.data || (Object.hasOwn(metadata.games, path) ? metadata.games[path] : {});
     const replacement=await resolveGameContent(root,path,{safePath,getFile}),id=settings.data?.id||await gameId(path);
     if(replacement.contentError)settingsError= replacement.contentError;
@@ -197,8 +198,9 @@ export async function scan(root, metadata) {
       thumbnail: settings.data ? saved.thumbnail : saved?.thumbnail === true,...replacement,settingsError };
   }
   async function walk(folder, prefix = '', depth = 0) {
+    signal?.throwIfAborted();
     try { await folder.getFileHandle('.gameportal-uploading'); return; } catch (error) { if (error.name !== 'NotFoundError') throw error; }
-    const entries = []; for await (const entry of folder.values()) { if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.')) entries.push(entry); }
+    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.')) entries.push(entry); }
     const html = entries.filter(e => e.kind === 'file' && /\.html?$/i.test(e.name));
     const entry = html.find(e => /^index\.html?$/i.test(e.name)) || (html.length === 1 ? html[0] : null);
     if (depth > 0 && entry) { candidates.push([prefix + entry.name, folder.name, 'html', entry, folder, entry.name]); return; }
@@ -214,10 +216,11 @@ export async function scan(root, metadata) {
   await Promise.all(Array.from({length: Math.min(4,candidates.length)},async()=>{
     while(!failure&&next<candidates.length){
       const index=next++;
-      try{games[index]=await add(...candidates[index]);}catch(error){failure ||= error;}
+      try{signal?.throwIfAborted();games[index]=await add(...candidates[index]);signal?.throwIfAborted();}catch(error){failure ||= error;}
     }
   }));
   if(failure)throw failure;
+  signal?.throwIfAborted();
   const ids = new Map(); for (const game of games) ids.set(game.id, (ids.get(game.id) || 0) + 1);
   for (const game of games) if (ids.get(game.id) > 1) { game.identityConflict = true; game.settingsError = '同じ作品IDのゲームが複数あります。別作品として追加する場合は「投稿」を使用してください。'; }
   return games.sort((a, b) => a.title.localeCompare(b.title, 'ja'));

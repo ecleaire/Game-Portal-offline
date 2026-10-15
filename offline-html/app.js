@@ -30,7 +30,8 @@ function contentControls(){
   $('#verifyContentUpdate').hidden=!contentTarget?.contentPending;
   for(const input of document.querySelectorAll('#updateContent input'))input.disabled=!!contentTarget?.contentPending;
 }
-let syncPromise=null, syncPaused=false, compatibilityProblem='';
+let syncPromise=null, syncController=null, syncPaused=false, compatibilityProblem='';
+let pyxelRuntime=null;
 function compatibilityFailure(error){
   if(error.code!=='LIBRARY_INCOMPATIBLE')return;
   compatibilityProblem=error.message;syncPaused=true;
@@ -191,8 +192,9 @@ function writeControls() {
   if(syncPaused){for(const id of ['restoreContent','confirmContentUpdate','verifyContentUpdate','verifySettingsSaves','postButton','confirmPost','saveGameSettings','restoreHistory','captureButton','editPlaying'])$('#'+id).disabled=true;document.querySelectorAll('[data-play]').forEach(b=>b.disabled=true);$('#postReason').textContent=compatibilityProblem||'共有フォルダーへの接続を確認し、再読み込みまたは再接続してください。';}
   $('#updatePlaying').disabled=syncPaused||!root||!openedGame||!updateTools.canUpdateGame(openedGame)||!!openedGame.settingsError&&!(openedGame.contentError&&openedGame.contentPending)||pendingSettings(openedGame.path);
 }
-async function action(fn, reconnecting = false) {
+async function action(fn, reconnecting = false, prioritizePlay = false) {
   if (busy) return; busy = true;
+  if(prioritizePlay)syncController?.abort();
   document.body.setAttribute('aria-busy','true');document.body.classList.add('working');
   document.querySelectorAll('button:not([data-close]):not(#closePlayer):not(#cancelUsage)').forEach(b => b.disabled = true);
   document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=true);
@@ -220,22 +222,24 @@ async function refresh() {
 }
 async function syncLibrary(){
   if(!root||starting||busy||syncPaused||syncPromise||closingPlayer||document.hidden||!$('#autoSync').checked||document.querySelector('dialog[open]:not(#player)'))return;
-  const folder=root,libraryId=localLibrary;
+  const folder=root,libraryId=localLibrary,controller=new AbortController();syncController=controller;
   syncPromise=(async()=>{
     try{
       await checkLibraryCompatibility(folder);
+      controller.signal.throwIfAborted();
       const nextId=await library.loadLibraryId(folder);
       if(libraryId&&nextId!==libraryId)throw new Error('保管フォルダーのIDが変わりました。フォルダーを指定し直してください。');
-      const nextMetadata=await library.loadMetadata(folder),nextGames=await library.scan(folder,nextMetadata);
+      const nextMetadata=await library.loadMetadata(folder),nextGames=await library.scan(folder,nextMetadata,{signal:controller.signal});
+      controller.signal.throwIfAborted();
       if(await library.loadLibraryId(folder)!==nextId)throw new Error('読み込み中に保管フォルダーが変わりました。');
       if(root!==folder||busy||document.hidden||!$('#autoSync').checked||document.querySelector('dialog[open]:not(#player)'))return;
       const changed=syncTools.libraryViewKey(games)!==syncTools.libraryViewKey(nextGames)||localLibrary!==nextId;
       metadata=nextMetadata;games=nextGames;localLibrary=nextId;
       if(changed){const limit=renderLimit;resetCards();renderLimit=limit;await render();updatePlayerInfo();writeControls();}
       syncStatus('共有フォルダー確認済み：'+new Date().toLocaleTimeString('ja-JP')+(changed?'（変更を反映しました）':''));
-    }catch(error){if(root!==folder)return;compatibilityFailure(error);syncPaused=true;$('#reconnect').hidden=false;syncStatus('自動確認を停止しました。再読み込み・再接続で再開：'+error.message);if(!busy)writeControls();}
+    }catch(error){if(root!==folder||controller.signal.aborted&&error===controller.signal.reason)return;compatibilityFailure(error);syncPaused=true;$('#reconnect').hidden=false;syncStatus('自動確認を停止しました。再読み込み・再接続で再開：'+error.message);if(!busy)writeControls();}
   })();
-  try{await syncPromise;}finally{syncPromise=null;}
+  try{await syncPromise;}finally{syncPromise=null;if(syncController===controller)syncController=null;}
 }
 setInterval(()=>{void syncLibrary();},15000);
 async function savedResult(message){
@@ -336,7 +340,7 @@ async function render() {
     const type = document.createElement('p'); type.className = 'type'; type.textContent = game.developmentEnvironment || (game.kind === 'pyxapp' ? 'Pyxel' : 'Webゲーム');
     const tags = document.createElement('div'); tags.className = 'tags';
     for (const tag of game.tags) { const span = document.createElement('span'); span.className = 'tag'; span.textContent = tag; tags.append(span); }
-    const open=document.createElement('a');open.href='#player';open.className='game-title-link';open.textContent=game.title;open.onclick=event=>{event.preventDefault();action(()=>playGame(game));};title.replaceChildren(open);
+    const open=document.createElement('a');open.href='#player';open.className='game-title-link';open.textContent=game.title;open.onclick=event=>{event.preventDefault();action(()=>playGame(game),false,true);};title.replaceChildren(open);
     const thumb=document.createElement('a');thumb.href='#player';thumb.className='game-thumb-link';thumb.tabIndex=-1;thumb.setAttribute('aria-label',game.title+'の画面を開く');thumb.onclick=open.onclick;thumb.append(cover);
     for(const img of cover.querySelectorAll('img')){img.loading='lazy';img.decoding='async';}
     body.append(type,title,tags);
@@ -492,9 +496,9 @@ async function playGame(game) {
     $('#saveTools').hidden = game.kind === 'pyxapp' || !!embedded;
     if (game.kind === 'pyxapp' || embedded) {
       if (file.size > 50 * 1024 * 1024) throw new Error('PYXAPPは50MB以内にしてください。');
-      const bytes = embedded ? Uint8Array.from(atob(embedded), c=>c.charCodeAt(0)) : new Uint8Array(await file.arrayBuffer()); library.validatePyxapp(bytes); let binary = '';
-      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-      options = { kind: 'pyxapp', app: btoa(binary), runtime: JSON.parse($('#runtime').textContent) };
+      const bytes = embedded ? player.decodeBase64(embedded) : new Uint8Array(await file.arrayBuffer()); library.validatePyxapp(bytes);
+      pyxelRuntime ||= JSON.parse($('#runtime').textContent);
+      options = { kind: 'pyxapp', app: player.encodeBase64(bytes), runtime: pyxelRuntime };
     } else {
       let files = game.kind === 'zip' ? await preview.unpackPrivateZip(await file.arrayBuffer()) : await library.readTree(game.folder, new Map([[game.entry, htmlBytes]]), {fileBacked:true});
       if (game.kind === 'html') files.set('index.html', files.get(game.entry));

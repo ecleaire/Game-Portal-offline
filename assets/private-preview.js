@@ -54,18 +54,15 @@ export async function checkWebGameZip(file) {
 async function inflate(raw, expected) {
   if (typeof DecompressionStream !== 'function') throw new Error('preview_unsupported');
   const reader = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
-  const chunks = []; let size = 0;
+  const result = new Uint8Array(expected); let size = 0;
   try {
     while (true) {
       const { value, done } = await reader.read(); if (done) break;
-      size += value.length; if (size > expected || size > MAX_UNPACKED) throw new Error('invalid_preview');
-      chunks.push(value);
+      if (size + value.length > expected || size + value.length > MAX_UNPACKED) throw new Error('invalid_preview');
+      result.set(value,size);size += value.length;
     }
   } finally { reader.releaseLock(); }
   if (size !== expected) throw new Error('invalid_preview');
-  if (chunks.length === 1) return chunks[0];
-  const result = new Uint8Array(size); let at = 0;
-  for (const chunk of chunks) { result.set(chunk, at); at += chunk.length; }
   return result;
 }
 

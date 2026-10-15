@@ -538,3 +538,35 @@ test('file-backed loading avoids binary reads, rewrites HTML/CSS, enforces size 
   const oversized={async *values(){yield {name:'game.pck',kind:'file',getFile:async()=>({size:201*1024*1024,arrayBuffer:async()=>{throw Error('Must not read oversized data');}})};}};
   await assert.rejects(readTree(oversized,new Map(),{fileBacked:true}),/200MB/);
 });
+test('cancelled background scans stop queued reads, drain active reads and never publish a partial list',async()=>{
+  const controller=new AbortController();let armed=true,active=0,reads=0;const release=[];
+  const m=memoryFolder({read:async name=>{if(armed&&name.endsWith('.gameportal.json')){reads++;active++;await new Promise(resolve=>release.push(resolve));active--;}}});
+  for(let n=0;n<20;n++){const path=`game-${n}.html`;m.files.set(path,'Game');m.files.set(path+'.gameportal.json',JSON.stringify({schema:1,id:await gameId(path),title:path,tags:[],developmentEnvironment:'',thumbnail:null}));}
+  const pending=scan(m.root,{games:{}},{signal:controller.signal});pending.catch(()=>{});
+  while(release.length<4)await new Promise(setImmediate);controller.abort();for(const resolve of release)resolve();
+  await assert.rejects(pending,error=>error===controller.signal.reason);assert.equal(active,0);assert.equal(reads,4);
+  armed=false;assert.equal((await scan(m.root,{games:{}})).length,20);
+  await assert.rejects(scan(m.root,{games:{}},{signal:controller.signal}),error=>error===controller.signal.reason);
+});
+
+test('binary codecs preserve full byte values, subarray offsets and old-browser fallbacks',async()=>{
+  const {decodeBase64,encodeBase64}=await import('../offline-html/player.js');
+  const from=Object.getOwnPropertyDescriptor(Uint8Array,'fromBase64'),to=Object.getOwnPropertyDescriptor(Uint8Array.prototype,'toBase64');
+  const vectors=[new Uint8Array(),new Uint8Array([0]),new Uint8Array([255,128]),Uint8Array.from({length:70003},(_,i)=>i%256).subarray(1,70002)];
+  try{
+    Object.defineProperty(Uint8Array,'fromBase64',{configurable:true,writable:true,value:undefined});Object.defineProperty(Uint8Array.prototype,'toBase64',{configurable:true,writable:true,value:undefined});
+    for(const bytes of vectors){const base64=Buffer.from(bytes).toString('base64');assert.equal(encodeBase64(bytes),base64);assert.deepEqual(decodeBase64(base64),bytes);}
+    assert.throws(()=>decodeBase64('!!!'));
+    let calls=0;Uint8Array.fromBase64=value=>{calls++;return new Uint8Array(Buffer.from(value,'base64'));};Uint8Array.prototype.toBase64=function(){calls++;return Buffer.from(this).toString('base64');};
+    for(const bytes of vectors)assert.deepEqual(decodeBase64(encodeBase64(bytes)),bytes);assert.equal(calls,vectors.length*2);
+  }finally{if(from)Object.defineProperty(Uint8Array,'fromBase64',from);else delete Uint8Array.fromBase64;if(to)Object.defineProperty(Uint8Array.prototype,'toBase64',to);else delete Uint8Array.prototype.toBase64;}
+});
+
+test('deflated ZIP output is exact across chunks and refuses declared size mismatches',async()=>{
+  const {deflateRawSync}=await import('node:zlib');const text='<body>'+Array.from({length:90000},(_,n)=>String(n%1000)).join(',')+'</body>';
+  const original=Buffer.from(await(await packageWebFiles([new File([text],'index.html')])).arrayBuffer());
+  const endAt=original.length-22,centralAt=original.readUInt32LE(endAt+16),start=30+original.readUInt16LE(26)+original.readUInt16LE(28),raw=new TextEncoder().encode(text),packed=deflateRawSync(raw);
+  function archive(delta){const header=Buffer.from(original.subarray(0,start)),central=Buffer.from(original.subarray(centralAt,endAt)),end=Buffer.from(original.subarray(endAt));header.writeUInt16LE(8,8);header.writeUInt32LE(packed.length,18);header.writeUInt32LE(raw.length+delta,22);central.writeUInt16LE(8,10);central.writeUInt32LE(packed.length,20);central.writeUInt32LE(raw.length+delta,24);end.writeUInt32LE(start+packed.length,16);return Buffer.concat([header,packed,central,end]);}
+  assert.equal(new TextDecoder().decode((await unpackPrivateZip(archive(0))).get('index.html')),text);
+  await assert.rejects(unpackPrivateZip(archive(-1)),/invalid_preview/);await assert.rejects(unpackPrivateZip(archive(1)),/invalid_preview/);
+});
