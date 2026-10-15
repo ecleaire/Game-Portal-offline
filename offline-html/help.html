@@ -1,0 +1,42 @@
+<dialog id="help" class="wide-dialog" aria-labelledby="helpTitle">
+  <div class="help-heading"><div><p class="eyebrow">GUIDE</p><h2 id="helpTitle" tabindex="-1">ヘルプ</h2></div><button class="secondary" data-close>閉じる</button></div>
+  <p class="help-intro">保存先を選ぶ → ゲームを投稿 → 情報を設定 → カードからプレイ</p>
+  <nav class="help-index" aria-label="基本操作の目次">
+    <button class="secondary" data-help-topic="helpSetup">最初の設定</button><button class="secondary" data-help-topic="helpPost">投稿</button><button class="secondary" data-help-topic="helpPlay">プレイ・編集</button><button class="secondary" data-help-topic="helpUpdate">本体更新</button><button class="secondary" data-help-topic="helpShare">共有・持ち運び</button><button class="secondary" data-help-topic="helpSave">セーブ</button><button class="secondary" data-help-topic="helpRemove">削除</button><button class="secondary" data-help-topic="helpTrouble">困ったとき</button>
+  </nav>
+  <section id="helpSetup" class="help-section" tabindex="-1"><h3>1. 最初に保存先を選ぶ</h3>
+    <ol><li><strong>GAME-PORTAL.html</strong>をPC版Chromeで開きます。</li><li>「設定」→「フォルダーを選ぶ」で、ゲームを保存するフォルダーを選び、アクセスを許可します。</li><li>オンのときだけホームに「編集モード オン」と表示します。投稿・編集する人は「編集モード」をオンにし、書き込みを許可します。プレイだけなら閲覧モードのままで使えます。</li></ol>
+    <p>「次もこのフォルダーを使う」がオンなら、次回は許可が残っている場合に自動接続します。許可が切れたら、設定の「再接続する」を押してください。フォルダーを選ぶと初回設定も自動で済みます。最初に保存の許可が出たら許可してください。</p>
+  </section>
+  <section id="helpPost" class="help-section" tabindex="-1"><h3>2. ゲームを投稿する</h3>
+    <ol><li>「＋ ゲームを追加」からゲームのHTML・WebゲームZIP・PYXAPP、またはWeb書き出しフォルダーを選びます。</li><li>投稿前チェック・追加先・件数・サイズを確認し、「追加する」を押します。</li><li>名前・タグ・画像・開発環境・概要・操作方法を設定して「保存」を押します。サムネイルはJPG・PNGの指定を推奨します。</li></ol>
+    <p>アップロードは、選んだゲームを保存先フォルダーへコピーする操作です。投稿元は変更しません。選択だけでは保存せず、追加前にキャンセルできます。「あとで設定」で閉じても、追加済みのゲームは残ります。GodotなどはHTMLと素材・JS・WASM・PCKを一式で選んでください。</p>
+  </section>
+  <section id="helpPlay" class="help-section" tabindex="-1"><h3>3. プレイ・情報編集・検索</h3>
+    <p>ゲームカードの画像または名前をクリックすると起動します。Pyxelは準備後にゲーム画面をクリックして開始します。「全画面」で画面を広げ、Escキーで戻れます。「← ゲーム一覧」で一覧に戻ります。概要・操作方法はゲーム画面の下に表示します。</p>
+    <p>名前・タグ・サムネイルなどを変更する場合は、編集モードでゲームを開き「編集」→内容を変更→「保存」。ゲーム名・作ったソフトは必須です。作ったソフトはタグにも自動で加わります。ゲーム情報は作品ごとに保存します。「設定履歴」から以前の情報へ戻せます。プレイ画面を使う「プレイ画面を撮影」と切り抜きは、サムネイル指定の補助として利用できます。</p>
+    <p>検索欄と「検索オプション・フィルター」で、キーワード・形式・開発環境・タグを組み合わせて探せます。「絞り込みを解除」で条件を戻します。</p>
+  </section>
+  <section id="helpUpdate" class="help-section" tabindex="-1"><h3>4. 投稿済みゲームの中身を更新する</h3>
+    <ol><li>編集モードで対象ゲームを開き、「本体を更新」を押します。</li><li>新しいファイル・フォルダー一式を選び、更新前チェックを確認します。</li><li>「確認して本体を更新」で入れ替えます。「起動を再試行」で更新後のゲームを開きます。</li></ol>
+    <p>名前・タグ・画像・概要・操作方法・作品ID・セーブは引き継ぎます。「前の本体に戻す」で本体だけを前の版へ戻せます。旧版は残るため、更新を重ねると使用容量が増えます。セーブが新版で使えるかはゲーム側の互換性に依存します。</p>
+    <p>対象は「ゲームを追加」で追加した作品です。直接置いたゲームは、投稿で専用フォルダーへ追加してから更新してください。</p>
+  </section>
+  <section id="helpShare" class="help-section" tabindex="-1"><h3>5. 他の人・別PCと共有する</h3><p><strong>全PCのHTMLを先に v0.14.0 以降の対応版へ交換してください。</strong>設定に、このHTMLの版と保管フォルダーの必要版を表示します。非対応の場合は投稿・編集・新規起動を止めます。v0.13.1以前はこのチェックがないため自動停止できず、更新前の本体を起動する可能性があります。互換性情報を削除して制限を解除しないでください。</p>
+    <p>各PCで<strong>同じNAS・共有フォルダー</strong>を選びます。「ほかのPCの変更を自動で表示」がオンなら、原則15秒ごとにゲームと情報の変更を一覧へ反映します。投稿・編集中や画面が非表示の間は待ちます。すぐ確認するには「再読み込み」を押してください。プレイ中のゲームは自動終了せず、本体更新後は開き直すと新版を読み込みます。</p>
+    <p>別PCへ持ち運ぶ場合は、HTMLとゲーム保管フォルダー全体をコピーします。作品の情報・履歴・更新版・旧版も含め、内部のファイルを個別に改名しないでください。相手PCでも最初に保存先を指定します。</p>
+    <p>HTMLだけを渡した場合、ゲームは含まれません。別々にコピーしたローカルフォルダー同士は自動同期しません。同じ作品の同時編集・同時更新は避けてください。</p>
+  <p>同じPC・同じChromeで同じHTMLを開くと、保存先の選択・変更も共有します。プレイや編集が終わってから切り替えます。別PCへは「設定」→「共有・バージョン」→「共有用HTMLを保存」。案内用パスも入れられます。別PCでは初回だけ同じ共有フォルダーを選んで許可してください。ゲームとセーブ、アクセス許可はHTMLに含めません。</p></section>
+  <section id="helpSave" class="help-section" tabindex="-1"><h3>6. セーブを持ち運ぶ</h3><p>本体の更新・旧版復元前に、このPCのセーブを自動退避します。ゲーム画面の「セーブ履歴」で日時・退避理由を確認し、「このセーブに戻す」で復元します。復元直前のセーブも残るため、戻し直せます。「JSONに書き出す」で退避データを外へ保存できます。</p><p>履歴は作品ごとに直近10件を、このPCのChrome内に保持します。本体の版はセーブ復元では変わりません。Pyxel独自ファイル・ゲーム独自のIndexedDBは対象外です。ブラウザーの保存データを消すと履歴も失われます。</p>
+    <p>対応ゲームのセーブは<strong>各PCのChrome内</strong>に保存します。NASで共有・自動同期しません。ゲームを開いて「セーブ書き出し」、相手PCで同じゲームを開いて「セーブ読み込み」を使います。</p>
+    <p>対象はHTML・ZIPのlocalStorage相当の保存です。ゲーム独自のIndexedDBやPyxel独自ファイルは対象外です。ブラウザーの保存データを削除する前に、必要なセーブを書き出してください。</p>
+  </section>
+  <section id="helpRemove" class="help-section" tabindex="-1"><h3>7. ゲームを一覧から外す・削除する</h3>
+    <p>現在、HTML内に削除ボタンはありません。対象の保存先は、編集モードでゲームを開き、「編集」→「保存先を確認」で確認できます。確認後にゲームを閉じ、保存先フォルダーで操作します。「ゲームを追加」で追加した作品を削除する場合は、その作品のフォルダーごと削除します。元から直接配置したゲームは、本体・対応する情報JSON・その作品専用の素材を削除します。他作品と共用している素材は削除しないでください。</p>
+    <p>戻せるようにするなら、<strong>ゲーム保管フォルダーの外へ作品フォルダーを丸ごと移動</strong>します。同じ共有先を使う他のPCでも、自動確認後に一覧から消えます。開いているゲーム・設定履歴・各PCのセーブは自動削除されません。</p>
+  </section>
+  <section id="helpTrouble" class="help-section" tabindex="-1"><h3>8. 操作できない・保存結果がわからないとき</h3>
+    <dl><dt>投稿・編集できない</dt><dd>保存先の指定、編集モード、書き込み権限を確認します。ボタン付近の案内に従ってください。</dd><dt>ファイル不足・壊れた設定・投稿途中</dt><dd>「設定」→「ゲームを点検」で問題の作品と対処方法を確認します。</dd><dt>切断・一覧に反映されない</dt><dd>接続を戻し、設定の「再接続する」または「再読み込み」。切断時は自動確認を停止するので、復帰操作が必要です。</dd><dt>「保存結果未確認」</dt><dd>再保存・再投稿せず「保存結果を確認」で照合します。本体更新の「更新結果未確認」は、「本体を更新」→「更新状態を確認」で照合してください。</dd><dt>ゲームが起動しない</dt><dd>必要なファイルと接続を確認し、「起動を再試行」を押します。外部サーバーが必須の作品や、スレッド必須のGodot書き出しは対象外です。</dd></dl>
+  </section>
+  <div class="dialog-actions buttons"><button class="secondary" data-help-topic="helpTitle">目次に戻る</button><button class="secondary" data-close>閉じる</button></div>
+</dialog>

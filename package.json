@@ -1,0 +1,22 @@
+{
+  "name": "game-portal-offline-html",
+  "version": "0.18.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "prepare:runtime": "node scripts/build-offline-html.mjs --prepare",
+    "build": "node scripts/build-offline-html.mjs",
+    "test:browser": "node tests/offline-html/browser.mjs && node tests/offline-html/maintenance-browser.mjs && node tests/offline-html/improvements-browser.mjs && node tests/offline-html/recovery-browser.mjs && node tests/offline-html/basic-flow-browser.mjs && node tests/offline-html/sync-browser.mjs && node tests/offline-html/portable-browser.mjs && node tests/offline-html/update-browser.mjs && node tests/offline-html/compatibility-browser.mjs && node tests/offline-html/save-backup-browser.mjs && node tests/offline-html/usage-browser.mjs && node tests/offline-html/first-play-browser.mjs && node tests/offline-html/resource-browser.mjs && node tests/offline-html/editor-ui-browser.mjs && node tests/offline-html/folder-sharing-browser.mjs",
+    "offline:prepare": "npm run prepare:runtime",
+    "offline:build": "npm run build",
+    "offline:test": "npm run test:browser",
+    "source:package": "node scripts/package-source.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

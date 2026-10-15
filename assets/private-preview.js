@@ -1,0 +1,215 @@
+// A private ZIP is unpacked in the owner's browser. Supabase Edge Functions
+// deliberately serve HTML as text/plain, so they cannot host the preview.
+const MAX_ZIP = 50 * 1024 * 1024;
+const MAX_UNPACKED = 200 * 1024 * 1024;
+const MAX_ENTRIES = 500;
+const decoder = new TextDecoder();
+const mimeTypes = { html: 'text/html', htm: 'text/html', js: 'text/javascript', mjs: 'text/javascript', css: 'text/css',
+  wasm: 'application/wasm', pck: 'application/octet-stream', json: 'application/json', png: 'image/png', jpg: 'image/jpeg',
+  jpeg: 'image/jpeg', webp: 'image/webp', svg: 'image/svg+xml', gif: 'image/gif', mp3: 'audio/mpeg', ogg: 'audio/ogg',
+  wav: 'audio/wav', mp4: 'video/mp4', woff: 'font/woff', woff2: 'font/woff2' };
+const mime = name => mimeTypes[name.split('.').pop().toLowerCase()] ?? 'application/octet-stream';
+
+// A Web export may use any HTML basename and may be wrapped in one folder.
+// Keep that basename intact: Godot expects the matching .js/.wasm/.pck names.
+export function webArchiveLayout(names) {
+  const files = names.filter(name => !name.endsWith('/'));
+  const root = files.length && files.every(name => name.includes('/') && name.startsWith(files[0].split('/')[0] + '/'))
+    ? files[0].split('/')[0] + '/' : '';
+  const paths = files.map(name => root ? name.slice(root.length) : name);
+  const html = paths.filter(name => !name.includes('/') && /\.html?$/i.test(name));
+  const entry = html.find(name => name.toLowerCase() === 'index.html') ?? (html.length === 1 ? html[0] : null);
+  return entry ? { root, entry } : null;
+}
+
+// Validate the Web export before creating a database submission.
+export async function checkWebGameZip(file) {
+  if (!file || !/\.zip$/i.test(file.name) || file.size < 22 || file.size > MAX_ZIP) throw new Error('invalid_upload');
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const view = new DataView(bytes.buffer);
+  const u16 = at => view.getUint16(at, true);
+  const u32 = at => view.getUint32(at, true);
+  let end = -1;
+  for (let at = bytes.length - 22; at >= Math.max(0, bytes.length - 65557); at--) {
+    if (u32(at) === 0x06054b50) { end = at; break; }
+  }
+  if (end < 0 || u16(end + 4) || u16(end + 6)) throw new Error('invalid_upload');
+  const count = u16(end + 10), size = u32(end + 12), start = u32(end + 16);
+  if (!count || count > MAX_ENTRIES || start + size > end) throw new Error('invalid_upload');
+  let at = start; const names = [];
+  for (let n = 0; n < count; n++) {
+    if (at + 46 > end || u32(at) !== 0x02014b50) throw new Error('invalid_upload');
+    const nameLength = u16(at + 28), extraLength = u16(at + 30), commentLength = u16(at + 32);
+    const next = at + 46 + nameLength + extraLength + commentLength;
+    if (next > end) throw new Error('invalid_upload');
+    const name = decoder.decode(bytes.subarray(at + 46, at + 46 + nameLength));
+    if (!name || name.startsWith('/') || name.includes('\\') || name.split('/').includes('..') || name.includes(':')) throw new Error('invalid_upload');
+    names.push(name);
+    at = next;
+  }
+  if (at !== start + size) throw new Error('invalid_upload');
+  if (!webArchiveLayout(names)) throw new Error('web_export_required');
+}
+
+async function inflate(raw, expected) {
+  if (typeof DecompressionStream !== 'function') throw new Error('preview_unsupported');
+  const reader = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const chunks = []; let size = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      size += value.length; if (size > expected || size > MAX_UNPACKED) throw new Error('invalid_preview');
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  if (size !== expected) throw new Error('invalid_preview');
+  if (chunks.length === 1) return chunks[0];
+  const result = new Uint8Array(size); let at = 0;
+  for (const chunk of chunks) { result.set(chunk, at); at += chunk.length; }
+  return result;
+}
+
+export async function unpackPrivateZip(buffer, onProgress = () => {}) {
+  const data = new Uint8Array(buffer);
+  if (data.length > MAX_ZIP || data.length < 22) throw new Error('invalid_preview');
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const u16 = at => view.getUint16(at, true);
+  const u32 = at => view.getUint32(at, true);
+  let end = -1;
+  for (let at = data.length - 22; at >= Math.max(0, data.length - 65557); at--) {
+    if (u32(at) === 0x06054b50) { end = at; break; }
+  }
+  if (end < 0) throw new Error('invalid_preview');
+  const count = u16(end + 10), centralSize = u32(end + 12), centralOffset = u32(end + 16);
+  if (count > MAX_ENTRIES || centralOffset + centralSize > end) throw new Error('invalid_preview');
+  const entries = []; const names = new Set(); let at = centralOffset, total = 0;
+  for (let n = 0; n < count; n++) {
+    if (at + 46 > end || u32(at) !== 0x02014b50) throw new Error('invalid_preview');
+    const flags = u16(at + 8), method = u16(at + 10), packed = u32(at + 20), size = u32(at + 24);
+    const nameLength = u16(at + 28), extraLength = u16(at + 30), commentLength = u16(at + 32), local = u32(at + 42);
+    const next = at + 46 + nameLength + extraLength + commentLength;
+    if (next > end || flags & 1 || ![0, 8].includes(method)) throw new Error('invalid_preview');
+    const name = decoder.decode(data.subarray(at + 46, at + 46 + nameLength));
+    at = next;
+    if (name.endsWith('/')) continue;
+    if (!name || name.startsWith('/') || name.includes('\\') || name.split('/').includes('..') || name.includes(':') || names.has(name)) throw new Error('invalid_preview');
+    names.add(name);
+    total += size; if (total > MAX_UNPACKED || local + 30 > centralOffset || u32(local) !== 0x04034b50) throw new Error('invalid_preview');
+    const start = local + 30 + u16(local + 26) + u16(local + 28);
+    if (start + packed > centralOffset) throw new Error('invalid_preview');
+    if (method === 0 && packed !== size) throw new Error('invalid_preview');
+    entries.push({ name, method, size, start, packed });
+  }
+  const layout = webArchiveLayout(entries.map(entry => entry.name));
+  if (!layout) throw new Error('web_export_required');
+  // Validate the entire directory and size budget before starting any work.
+  // Bound concurrent inflation so large exports do not open hundreds of streams.
+  const contents = new Array(entries.length); let cursor = 0, completed = 0;
+  onProgress(0,entries.length);
+  await Promise.all(Array.from({ length: Math.min(4, entries.length) }, async () => {
+    while (cursor < entries.length) {
+      const index = cursor++, entry = entries[index];
+      const raw = data.subarray(entry.start, entry.start + entry.packed);
+      contents[index] = entry.method === 0 ? raw : await inflate(raw, entry.size);
+      onProgress(++completed,entries.length);
+    }
+  }));
+  const normalized = new Map(entries.map((entry, index) => [entry.name.slice(layout.root.length), contents[index]]));
+  normalized.set('index.html', normalized.get(layout.entry));
+  return normalized;
+}
+
+function dataUrl(bytes, type) {
+  const parts = [];
+  for (let at = 0; at < bytes.length; at += 0x8000) parts.push(String.fromCharCode(...bytes.subarray(at, at + 0x8000)));
+  return `data:${type};base64,${btoa(parts.join(''))}`;
+}
+
+export function privatePreviewDocument(files, resourceUrl = dataUrl, readyScript = '') {
+  const resource = new Map();
+  for (const [name, bytes] of files) if (!name.endsWith('.css') && name !== 'index.html') resource.set(name, resourceUrl(bytes, mime(name)));
+  const local = (value, base = '') => {
+    if (!value || /^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(value)) return null;
+    const path = `${base}${value.split(/[?#]/)[0]}`;
+    const parts = [];
+    for (const part of path.split('/')) {
+      if (part === '..') parts.pop(); else if (part && part !== '.') parts.push(part);
+    }
+    const name=parts.join('/');
+    if(files.has(name))return name;
+    try{const decoded=decodeURIComponent(name);return files.has(decoded)?decoded:name;}catch{return name;}
+  };
+  for (const [name, bytes] of files) if (name.endsWith('.css')) {
+    const base = name.includes('/') ? name.slice(0, name.lastIndexOf('/') + 1) : '';
+    const css = decoder.decode(bytes).replace(/url\(\s*(['"]?)([^)'"\s]+)\1\s*\)/gi,
+      (match, _quote, value) => resource.get(local(value, base)) ? `url("${resource.get(local(value, base))}")` : match);
+    resource.set(name, resourceUrl(new TextEncoder().encode(css), 'text/css'));
+  }
+  const doc = new DOMParser().parseFromString(decoder.decode(files.get('index.html')), 'text/html');
+  doc.querySelectorAll('meta[http-equiv="Content-Security-Policy"],base').forEach(node => node.remove());
+  for (const node of doc.querySelectorAll('[src],[href],[poster],[data]')) {
+    for (const attr of ['src', 'href', 'poster', 'data']) {
+      const value = node.getAttribute(attr), replacement = resource.get(local(value));
+      if (replacement) node.setAttribute(attr, replacement);
+    }
+  }
+  const csp = doc.createElement('meta'); csp.httpEquiv = 'Content-Security-Policy';
+  csp.content = "default-src 'none'; script-src 'unsafe-inline' data: blob: 'wasm-unsafe-eval'; connect-src data: blob:; img-src data: blob:; style-src 'unsafe-inline' data: blob:; font-src data: blob:; media-src data: blob:; worker-src blob:";
+  const shim = doc.createElement('script');
+  const manifest = JSON.stringify(Object.fromEntries(resource)).replaceAll('<', '\\u003c');
+  shim.textContent = `const portalFiles=${manifest}; const portalFetch=window.fetch.bind(window); const portalResource=input=>{const raw=typeof input==='string'?input:input instanceof URL?input.href:input.url; if(/^(data:|blob:)/.test(raw))return raw; try{const base=new URL(document.baseURI),url=new URL(raw,base); if(url.origin!==base.origin)return null; const directory=base.pathname.endsWith('/')?base.pathname:base.pathname.slice(0,base.pathname.lastIndexOf('/')+1); let path=url.pathname; path=path.startsWith(directory)?path.slice(directory.length):path.replace(/^\\/+/, ''); const rawPath=path;try{path=decodeURIComponent(path);}catch{} return Object.hasOwn(portalFiles,path)?portalFiles[path]:Object.hasOwn(portalFiles,rawPath)?portalFiles[rawPath]:null;}catch{return null;}}; window.fetch=(input,init)=>{const resource=portalResource(input); return resource?portalFetch(resource,init):Promise.reject(new TypeError('ゲームのファイルが見つかりません：'+String(typeof input==='string'?input:input instanceof URL?input.href:input?.url||input).slice(0,300)));}; if(typeof Worklet!=='undefined'){const addModule=Worklet.prototype.addModule; Worklet.prototype.addModule=function(input,options){const resource=portalResource(input);return resource?addModule.call(this,resource,options):Promise.reject(new TypeError('ゲームのファイルが見つかりません：'+String(typeof input==='string'?input:input instanceof URL?input.href:input?.url||input).slice(0,300)));};}`;
+  doc.head.prepend(csp, shim);
+  shim.textContent += readyScript;
+  return '<!doctype html>\n' + doc.documentElement.outerHTML;
+}
+
+// Transfer bytes into the opaque sandbox and create its Blob URLs there.
+// Parent-origin Blob URLs cannot safely be fetched from an opaque game frame.
+// No credentials, parent DOM access, or external network access are provided.
+export function mountPrivatePreview(frame, files, shellUrl) {
+  const permissions = new Set((frame.getAttribute('sandbox') ?? '').split(/\s+/).filter(Boolean));
+  if (!permissions.has('allow-scripts') || [...permissions].some(value => !['allow-scripts','allow-pointer-lock'].includes(value))) throw new Error('invalid_preview');
+  // Mouse capture enables FPS/3D camera controls without granting same-origin,
+  // navigation, popups, downloads, or access to the portal's credentials.
+  frame.setAttribute('sandbox', 'allow-scripts allow-pointer-lock');
+  const channel = new MessageChannel();
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => finish(new Error('preview_timeout')), 90000);
+    function finish(error) {
+      clearTimeout(timeout); channel.port1.close(); channel.port2.close();
+      error ? reject(error) : resolve();
+    }
+    channel.port1.onmessage = event => {
+      if (event.data === 'ready') finish();
+      else if (event.data === 'error') finish(new Error('invalid_preview'));
+    };
+    const sendResources = () => {
+      // All views of a stored ZIP share a buffer. Transfer each buffer once.
+      const buffers = [...new Set([...files.values()].map(bytes => bytes.buffer))];
+      frame.contentWindow.postMessage({ type: 'portal-resources', files }, '*', [channel.port2, ...buffers]);
+    };
+    const script = `const decoder=new TextDecoder();const mimeTypes=${JSON.stringify(mimeTypes)};
+      const mime=${mime.toString()};const privatePreviewDocument=${privatePreviewDocument.toString()};
+      window.addEventListener('message',event=>{
+        if(event.source!==parent||event.data?.type!=='portal-resources'||!event.ports[0])return;
+        const port=event.ports[0];
+        try{
+          window.__portalReady=()=>{port.postMessage('ready');port.close();delete window.__portalReady;};
+          const html=privatePreviewDocument(event.data.files,(bytes,type)=>URL.createObjectURL(new Blob([bytes],{type})),
+            ";window.addEventListener('load',()=>window.__portalReady?.(),{once:true});");
+          document.open();document.write(html);document.close();
+        }catch{port.postMessage('error');port.close();}
+      },{once:true});`;
+    const html = `<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' data: blob: 'wasm-unsafe-eval'; connect-src data: blob:; img-src data: blob:; style-src 'unsafe-inline' data: blob:; font-src data: blob:; media-src data: blob:; worker-src blob:"><script>${script.replaceAll('</script', '<\\/script')}<\/script>`;
+    if (shellUrl) {
+      frame.addEventListener('load', () => {
+        frame.addEventListener('load', sendResources, { once: true });
+        frame.contentWindow.postMessage({ type: 'portal-bootstrap', html }, '*');
+      }, { once: true });
+      frame.src = shellUrl;
+    } else {
+      frame.addEventListener('load', sendResources, { once: true });
+      frame.srcdoc = html;
+    }
+  });
+}

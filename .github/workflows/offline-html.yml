@@ -1,0 +1,42 @@
+name: Build and test offline HTML launcher
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    timeout-minutes: 20
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: .tools/offline-runtime
+          key: pyxel-runtime-${{ hashFiles('offline-html/runtime-lock.json') }}
+      - run: npm run prepare:runtime
+      - run: npm test
+      - run: npx playwright install chromium
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'windows-latest'
+        with:
+          name: GAME-PORTAL-HTML
+          path: |
+            offline-release/GAME-PORTAL.html
+            offline-release/README.txt
+            offline-release/START-HERE.txt
+            offline-release/NAS-VALIDATION.txt
+            offline-release/THIRD-PARTY-LICENSES.txt
+            offline-release/GAME-PORTAL-HTML.zip
+          if-no-files-found: error

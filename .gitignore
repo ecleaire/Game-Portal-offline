@@ -1,0 +1,12 @@
+node_modules/
+.tools/
+offline-release/
+source-release/
+test-results/
+playwright-report/
+*.log
+.env
+.env.*
+
+.private/
+AGENTS.md
