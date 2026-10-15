@@ -25,6 +25,4 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-生成先：offline-release/GAME-PORTAL.html
-
 [詳しい使い方](docs/OFFLINE_HTML.md) · [別PCへの受け渡し](docs/TRANSFER_GUIDE.md) · [変更履歴](CHANGELOG.md)
