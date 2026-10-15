@@ -5,10 +5,10 @@
 ## 使い方
 
 1. 配布ZIPを展開し、GAME-PORTAL.htmlをPC版Chromeで開きます。
-2. ホームの「ゲームのフォルダーを選ぶ」から保存先を選びます。
+2. ホームの「ゲームのフォルダーを選ぶ」から作成したゲームの出力保存先フォルダーを選びます。
 3. ゲームを追加・変更するときは「編集モード」をオンにします。
 
-操作手順はHTML内の「ヘルプ」で確認できます。
+詳細な操作手順はHTML内の「ヘルプ」で確認できます。
 WindowsのEXEゲームは[起動補助](docs/WINDOWS_EXE.md)を併用します。メイン画面はHTMLのままです。
 配布ZIPは[Actions](https://github.com/ecleaire/Game-Portal-offline-html/actions)の成功した実行からダウンロードできます。
 
