@@ -1,0 +1,44 @@
+import {chromium,expect} from '@playwright/test';
+import {readFile,mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {createServer} from 'node:http';
+import assert from 'node:assert/strict';
+const html=await readFile('offline-release/GAME-PORTAL.html'),server=createServer((q,r)=>r.end(html));await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const temp=await mkdtemp(join(tmpdir(),'portal-shared-saves-')),contexts=[];
+try{
+  const pages=[],errors=[];
+  for(const name of ['A','B']){
+    const context=await chromium.launchPersistentContext(join(temp,name),{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});contexts.push(context);
+    await context.addInitScript(()=>{FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
+    const page=await context.newPage();pages.push(page);page.on('pageerror',e=>errors.push(e.message));await page.clock.install();await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+    await page.evaluate(async()=>{window.fixtureRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('shared-library',{create:true});window.showDirectoryPicker=async()=>fixtureRoot;});
+  }
+  const [a,b]=pages;
+  const files=page=>page.evaluate(async()=>{const result=[];async function walk(dir,prefix=''){for await(const entry of dir.values()){if(entry.kind==='directory')await walk(entry,prefix+entry.name+'/');else result.push([prefix+entry.name,await(await entry.getFile()).text()]);}}await walk(window.fixtureRoot||root);return result;});
+  const copy=async(from,to)=>to.evaluate(async entries=>{for(const [path,text]of entries)await library.writeFile(fixtureRoot,path,text);},await files(from));
+  const connect=async page=>{await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);};
+  await a.evaluate(async()=>{await library.writeFile(fixtureRoot,'game.html','<body><script>document.body.dataset.level=localStorage.getItem("level")||"none";</script>Game');});await connect(a);await copy(a,b);await connect(b);
+  const ids=await a.evaluate(()=>({library:localLibrary,game:games[0].id}));assert.deepEqual(await b.evaluate(()=>({library:localLibrary,game:games[0].id})),ids);
+  const sync=async page=>{if(!await page.locator('#settings').isVisible())await page.locator('#settingsButton').click();await page.locator('#syncSaves').click();await page.waitForFunction(()=>!busy);};
+  const editSave=(page,level)=>page.evaluate(async level=>localState.writeLocalSave(localLibrary,games[0].id,{level}),level);
+  const data=page=>page.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id));
+  await editSave(a,'1');await sync(a);await expect(a.locator('#sharedSaveStatus')).toContainText('変更 1件');await copy(a,b);
+  // Closing during an in-flight IDB import retains the play lock until it drains.
+  await b.evaluate(()=>{window.originalCommit=localState.commitSaveSync;localState.commitSaveSync=async(...args)=>{await new Promise(r=>window.finishImport=r);return originalCommit(...args);};});
+  await b.locator('.game-title-link').click();await b.waitForFunction(()=>!!window.finishImport);await b.locator('#closePlayer').click();await b.waitForFunction(()=>!closingPlayer);
+  assert.equal(await b.evaluate(async()=>{try{const release=await localState.acquirePlaySession(localLibrary,games[0].id);release();return false;}catch{return true;}}),true);
+  await b.evaluate(()=>{localState.commitSaveSync=originalCommit;window.finishImport();});await b.waitForFunction(()=>!busy);
+  await b.locator('.game-title-link').click();await b.waitForFunction(()=>!busy);await expect(b.frameLocator('#frame').locator('body')).toHaveAttribute('data-level','1');await b.locator('#closePlayer').click();await b.waitForFunction(()=>!closingPlayer);assert.deepEqual(await data(b),{level:'1'});
+  await editSave(a,'2');await editSave(b,'B');await sync(a);await copy(a,b);await sync(b);await expect(b.locator('#sharedSaveResults')).toContainText('別々のPC');assert.deepEqual(await data(b),{level:'B'});
+  b.once('dialog',dialog=>dialog.accept());await b.getByRole('button',{name:/共有セーブ 1 を使う/}).click();await b.waitForFunction(()=>!busy);assert.deepEqual(await data(b),{level:'2'});
+  assert.deepEqual(await b.evaluate(async()=>{const backups=await localState.loadSaveBackups(localLibrary,games[0].id);return backups[0].data;}),{level:'B'});await copy(b,a);await sync(a);
+  // Actual IDB transaction aborts and stale snapshots cannot half-apply a download.
+  assert.equal(await a.evaluate(async()=>{const before=await localState.loadSaveSync(localLibrary,games[0].id),history=await localState.loadSaveBackups(localLibrary,games[0].id),original=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(value,key){if(Array.isArray(key)&&key[0]==='save-sync')throw new DOMException('No room','QuotaExceededError');return original.call(this,value,key);};let rejected=false;try{await localState.commitSaveSync(localLibrary,games[0].id,before,before.state,{level:'must not commit'});}catch{rejected=true;}finally{IDBObjectStore.prototype.put=original;}return rejected&&JSON.stringify(await localState.loadSaveSync(localLibrary,games[0].id))===JSON.stringify(before)&&JSON.stringify(await localState.loadSaveBackups(localLibrary,games[0].id))===JSON.stringify(history);}),true);
+  assert.equal(await a.evaluate(async()=>{const before=await localState.loadSaveSync(localLibrary,games[0].id);await localState.writeLocalSave(localLibrary,games[0].id,{level:'3'});try{await localState.commitSaveSync(localLibrary,games[0].id,before,before.state,{level:'bad'});return false;}catch{return (await localState.loadLocalSave(localLibrary,games[0].id)).level==='3';}}),true);
+  await a.evaluate(()=>{window.originalWritable=FileSystemFileHandle.prototype.createWritable;FileSystemFileHandle.prototype.createWritable=function(...args){const result=originalWritable.apply(this,args);return /^[a-f0-9]{32}\.json$/.test(this.name)?result.then(w=>({write:v=>w.write(v),abort:()=>w.abort(),close:async()=>{await w.close();throw new DOMException('Lost close result','NetworkError');}})):result;};});
+  await sync(a);await expect(a.locator('#sharedSaveResults')).toContainText('共有結果');const pending=await a.evaluate(async()=>{const value=await localState.loadSaveSync(localLibrary,games[0].id);return value.state.pending.revision;});assert(pending);assert.deepEqual(await data(a),{level:'3'});
+  await a.reload();await expect(a.locator('html')).toHaveAttribute('data-ready','true');await expect(a.locator('#folderName')).toHaveText('shared-library');await sync(a);assert.equal(await a.evaluate(async()=>(await localState.loadSaveSync(localLibrary,games[0].id)).state.pending),null);assert.equal((await files(a)).filter(([path])=>path.endsWith('/'+pending+'.json')).length,1);
+  await a.locator('#settings [data-close]').click();await editSave(a,'4');await a.locator('body').dispatchEvent('pointermove');await a.clock.fastForward(179000);assert.equal(await a.evaluate(async()=>(await localState.loadSaveSync(localLibrary,games[0].id)).state.base),'{"level":"3"}');await a.clock.fastForward(10000);await a.waitForFunction(()=>!syncPromise);await expect(a.locator('#sharedSaveStatus')).toContainText('変更 1件');assert.equal(await a.evaluate(async()=>(await localState.loadSaveSync(localLibrary,games[0].id)).state.base),'{"level":"4"}');
+  assert.deepEqual(errors,[]);console.log('Shared saves passed: independent profiles with simulated folder transfer, pre-play download, conflict choice and backups, atomic IDB abort/stale rejection, uncertain close/reload confirmation and three-minute idle publication. Physical NAS remains untested.');
+}finally{await Promise.all(contexts.map(context=>context.close()));await new Promise(r=>server.close(r));await rm(temp,{recursive:true,force:true});}

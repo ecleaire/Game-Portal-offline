@@ -121,3 +121,38 @@ export async function acquirePlaySession(libraryId, gameId) {
     }).catch(reject);
   });
 }
+export async function saveDeviceId(){
+  const db=await openDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),store=tx.objectStore('settings'),request=store.get('save-sync-device');let value;
+    request.onsuccess=()=>{value=request.result;if(value===undefined){value=crypto.randomUUID().replaceAll('-','');store.put(value,'save-sync-device');}else if(!/^[a-f0-9]{32}$/.test(value))tx.abort();};
+    tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(tx.error||new Error('このPCの同期IDを確認してください。'));tx.onerror=()=>{};
+  });
+}
+const canonicalSave=data=>JSON.stringify(Object.fromEntries(Object.keys(data).sort().map(key=>[key,data[key]])));
+const emptySync=()=>({schema:1,base:null,clock:{},pending:null});
+function validSync(value,libraryId,gameId){
+  const clock=v=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length<=128&&Object.entries(v).every(([k,n])=>/^[a-f0-9]{32}$/.test(k)&&Number.isSafeInteger(n)&&n>0);
+  if(!value||value.schema!==1||!clock(value.clock)||value.base!==null&&(typeof value.base!=='string'||value.base.length>500000))return false;
+  if(value.base!==null)try{if(!validSave(JSON.parse(value.base)))return false;}catch{return false;}
+  const p=value.pending;return p===null||p&&p.schema===1&&p.libraryId===libraryId&&p.gameId===gameId&&/^[a-f0-9]{32}$/.test(p.revision)&&/^[a-f0-9]{32}$/.test(p.deviceId)&&clock(p.clock)&&p.clock[p.deviceId]>0&&typeof p.createdAt==='string'&&Number.isFinite(Date.parse(p.createdAt))&&validSave(p.data);
+}
+export async function loadSaveSync(libraryId,gameId){
+  backupKey(libraryId,gameId);const db=await openDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction(['settings','saves'],'readonly'),a=tx.objectStore('saves').get([libraryId,gameId]),b=tx.objectStore('settings').get(['save-sync',libraryId,gameId]);
+    tx.oncomplete=()=>{const data=a.result===undefined?{}:a.result,state=b.result===undefined?emptySync():b.result;if(!validSave(data)||!validSync(state,libraryId,gameId)){reject(new Error('このPCのセーブ同期記録を確認してください。'));return;}resolve({data,state});};tx.onabort=()=>reject(tx.error);tx.onerror=()=>{};
+  });
+}
+export async function commitSaveSync(libraryId,gameId,expected,state,data=expected.data){
+  const historyKey=backupKey(libraryId,gameId);if(!validSync(state,libraryId,gameId)||!validSave(data))throw new Error('セーブ同期の形式を確認してください。');
+  const db=await openDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction(['settings','saves'],'readwrite'),settings=tx.objectStore('settings'),saves=tx.objectStore('saves'),a=saves.get([libraryId,gameId]),b=settings.get(['save-sync',libraryId,gameId]),c=settings.get(historyKey);let ready=0,failure;
+    const apply=()=>{if(++ready!==3)return;try{
+      const current=a.result===undefined?{}:a.result,previous=b.result===undefined?emptySync():b.result,history=c.result===undefined?[]:c.result;
+      if(!validSave(current)||!validSync(previous,libraryId,gameId)||!validSaveBackups(history))throw new Error('セーブまたは退避履歴を確認してください。');
+      if(canonicalSave(current)!==canonicalSave(expected.data)||JSON.stringify(previous)!==JSON.stringify(expected.state))throw new Error('このPCのセーブが変わりました。同期を再試行してください。');
+      if(canonicalSave(current)!==canonicalSave(data)){
+        settings.put([{schema:1,id:crypto.randomUUID(),createdAt:new Date().toISOString(),reason:'before-save-restore',contentRevision:'shared-save',data:current},...history].slice(0,BACKUP_LIMIT),historyKey);
+        saves.put(data,[libraryId,gameId]);
+      }
+      settings.put(state,['save-sync',libraryId,gameId]);
+    }catch(error){failure=error;tx.abort();}};
+    a.onsuccess=apply;b.onsuccess=apply;c.onsuccess=apply;tx.oncomplete=()=>resolve();tx.onabort=()=>reject(failure||tx.error||new Error('セーブ同期をこのPCへ記録できません。'));tx.onerror=()=>{};
+  });
+}

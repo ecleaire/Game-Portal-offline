@@ -231,13 +231,55 @@ async function refresh() {
   if(localLibrary&&nextLibrary!==localLibrary){syncPaused=true;writeControls();throw new Error('保管フォルダーのIDが変わりました。設定からフォルダーを指定し直してください。');}
   const nextMetadata=await library.loadMetadata(root),nextGames=await library.scan(root,nextMetadata);
   if(await library.loadLibraryId(root)!==nextLibrary)throw new Error('読み込み中に保管フォルダーのIDが変わりました。再接続してください。');
-  localLibrary=nextLibrary;syncPaused=false;syncStatus($('#autoSync').checked?'共有フォルダーの自動確認：有効（ホームで30秒操作がないとき）':'共有フォルダーの自動確認：停止中');
+  localLibrary=nextLibrary;syncPaused=false;syncStatus($('#autoSync').checked?'共有フォルダーの自動確認：有効（ホームで3分操作がないとき）':'共有フォルダーの自動確認：停止中');
   metadata=nextMetadata;games=nextGames;resetCards();
   $('#folderName').textContent = root.name; $('#settingFolder').textContent = root.name;
   selectedTags = new Set([...selectedTags].filter(t => games.some(g => g.tags.includes(t))));
   await render();updatePlayerInfo();
 }
-const HOME_IDLE_MS=30000;
+const HOME_IDLE_MS=180000;
+const sharedSaveIssues=new Map();
+function saveSyncRows(){
+  $('#sharedSaveNotice').hidden=!sharedSaveIssues.size;
+  $('#sharedSaveResults').replaceChildren(...[...sharedSaveIssues.values()].map(({game,result,error})=>{
+    const row=document.createElement('article');row.className='maintenance-item';
+    const title=document.createElement('strong');title.textContent=game.title;
+    const note=document.createElement('p');note.textContent=error||result?.reason||'別々のPCでセーブが進みました。自動では上書きしません。使うセーブを選んでください。';row.append(title,note);
+    if(result){
+      const options=[{revision:'local',label:'このPCのセーブを使う'},...result.heads.map((head,i)=>({revision:head.revision,label:`共有セーブ ${i+1} を使う（${new Date(head.createdAt).toLocaleString('ja-JP')}）`}))];
+      for(const option of options){const button=document.createElement('button');button.className='secondary';button.textContent=option.label;
+        button.onclick=()=>{if(!confirm('選んだセーブを共有します。変更前のこのPCのセーブは履歴に退避します。よろしいですか？'))return;requestSaveSync(async()=>{
+          const release=await localState.acquirePlaySession(localLibrary,game.id);try{await sharedSaves.syncSave(root,localLibrary,game.id,library,localState,{resolution:{fingerprint:result.fingerprint,revision:option.revision}});}finally{release();}
+          sharedSaveIssues.delete(game.id);saveSyncRows();return '使うセーブを共有しました。';
+        });};row.append(button);
+      }
+    }
+    return row;
+  }));
+}
+function requestSaveSync(operation){
+  if(busy)return;const folder=root,permission=folder?.requestPermission({mode:'readwrite'}).catch(error=>({error}));
+  void action(async()=>{const granted=await permission;if(granted?.error)throw granted.error;if(!folder||granted!=='granted')throw Error('セーブ共有にはフォルダーへの保存許可が必要です。');await requireLibraryConnection();if(root!==folder)throw Error('フォルダーが変わりました。');return operation();},false,true);
+}
+async function syncAllSaves(signal){
+  if(activePlay||openedGame||pendingSave||flushing)throw Error('ゲームを終了してホームに戻ってからセーブを同期してください。');
+  const folder=root,libraryId=localLibrary;let count=0;
+  for(const game of games){
+    signal?.throwIfAborted();if(root!==folder||localLibrary!==libraryId)return;
+    if(game.settingsError||game.kind==='exe'||game.kind==='pyxapp')continue;
+    let release;
+    try{
+      release=await localState.acquirePlaySession(libraryId,game.id);signal?.throwIfAborted();
+      const result=await sharedSaves.syncSave(folder,libraryId,game.id,library,localState,{signal});
+      if(result.state==='conflict')sharedSaveIssues.set(game.id,{game,result});else{sharedSaveIssues.delete(game.id);if(['uploaded','downloaded'].includes(result.state))count++;}
+    }catch(error){if(signal?.aborted)throw signal.reason;sharedSaveIssues.set(game.id,{game,error:error.message});}
+    finally{release?.();}
+  }
+  saveSyncRows();$('#sharedSaveStatus').textContent=sharedSaveIssues.size?`${sharedSaveIssues.size}件の確認が必要です。同期できた作品：${count}件`:`セーブ同期を確認しました（変更 ${count}件）。`;
+  return $('#sharedSaveStatus').textContent;
+}
+$('#syncSaves').onclick=()=>requestSaveSync(()=>syncAllSaves());
+$('#openSharedSaves').onclick=()=>{$('#settings').showModal();$('#sharedSavePanel').scrollIntoView({block:'start'});};
 let lastHomeActivity=performance.now(),lastHomeSync=0,idleSyncController=null;
 function homeIsIdle(){return performance.now()-lastHomeActivity>=HOME_IDLE_MS&&!activePlay&&!stopGame&&!openedGame&&!pendingSave&&!flushing&&!settingsReceipts.length&&!document.querySelector('dialog[open]');}
 function noteHomeActivity(){lastHomeActivity=performance.now();idleSyncController?.abort();}
@@ -260,6 +302,7 @@ async function syncLibrary({idle=false}={}){
       const changed=syncTools.libraryViewKey(games)!==syncTools.libraryViewKey(nextGames)||localLibrary!==nextId;
       metadata=nextMetadata;games=nextGames;localLibrary=nextId;
       if(changed){const limit=renderLimit;resetCards();renderLimit=limit;await render();updatePlayerInfo();writeControls();}
+      if(idle){controller.signal.throwIfAborted();await syncAllSaves(controller.signal);}
       syncStatus('共有フォルダー確認済み：'+new Date().toLocaleTimeString('ja-JP')+(changed?'（変更を反映しました）':''));
     }catch(error){if(root!==folder||controller.signal.aborted&&error===controller.signal.reason)return;compatibilityFailure(error);syncPaused=true;$('#reconnect').hidden=false;syncStatus('自動確認を停止しました。再読み込み・再接続で再開：'+error.message);if(!busy)writeControls();}
   })();
@@ -311,12 +354,12 @@ async function connect(handle, request = false, restoring = false, shared = fals
   const initialize=(editingEnabled&&!restoring)||(!scannedLibrary&&await handle.queryPermission({mode:'readwrite'})==='granted');
   const nextLocalLibrary = initialize ? await library.ensureLibraryId(handle) : scannedLibrary;
   await checkLibraryCompatibility(handle);
-  resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; resetSearch();
+  resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; resetSearch();sharedSaveIssues.clear();saveSyncRows();
   let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){cacheError=' 投稿先をこのPCに記憶できませんでした。次回はフォルダーを選び直してください：'+error.message;}
   syncPaused=false;$('#reconnect').hidden = true;
   $('#sharedFolderPath').value=portableConnection?.path||'';try{$('#sharedFolderPath').value=localStorage.getItem('game-portal.folder-path.'+localLibrary)||$('#sharedFolderPath').value;}catch{}
   metadata = next; games = nextGames; $('#folderName').textContent = handle.name; $('#settingFolder').textContent = handle.name;
-  await render(); $('#settings').close();syncStatus(($('#autoSync').checked?'共有フォルダーの自動確認：有効（ホームで30秒操作がないとき）':'共有フォルダーの自動確認：停止中')+cacheError);
+  await render(); $('#settings').close();syncStatus(($('#autoSync').checked?'共有フォルダーの自動確認：有効（ホームで3分操作がないとき）':'共有フォルダーの自動確認：停止中')+cacheError);
 }
 async function render() {
   const revision = ++renderRevision, folder = root;
@@ -528,6 +571,8 @@ async function playGame(game) {
   if(playRevision!==launch){session.release();return;}
   activePlay = session;openedGame=game;$('#frame').hidden=false;updatePlayerInfo();
   $('#playerTitle').textContent = game.title; $('#playerStatus').textContent = '読み込んでいます…'; $('#player').showModal();
+  const unlock=session.release,loadController=new AbortController();let loading=true,releaseRequested=false;
+  session.release=()=>{loadController.abort();if(loading)releaseRequested=true;else unlock();};
   try {
     const file = await game.handle.getFile(); let options;
     const entryLimit=game.kind==='html'?200:50;
@@ -543,6 +588,8 @@ async function playGame(game) {
     } else {
       let files = game.kind === 'zip' ? await preview.unpackPrivateZip(await file.arrayBuffer()) : await library.readTree(game.folder, new Map([[game.entry, htmlBytes]]), {fileBacked:true});
       if (game.kind === 'html') files.set('index.html', files.get(game.entry));
+      const shared=await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal:loadController.signal});
+      if(shared.state==='conflict'){sharedSaveIssues.set(game.id,{game,result:shared});saveSyncRows();throw Error('セーブが別々のPCで進んでいます。ホームに戻り「設定」→「セーブの共有」で使うセーブを選んでください。');}
       const saved = await localState.loadLocalSave(session.libraryId, game.id);
       options = { kind: game.kind, files, saved };
     }
@@ -554,6 +601,7 @@ async function playGame(game) {
       if (message?.type === 'save') receiveSave(session, message.data);
     });
   } catch (e) { if(activePlay!==session)return;stopPlayer();$('#playerStatus').textContent='ゲームを開けませんでした。接続・作品のファイルを確認して再試行してください：'+e.message;$('#retryPlaying').hidden=false;throw new Error($('#playerStatus').textContent); }
+  finally{loading=false;if(releaseRequested)unlock();}
 }
 
 $('#retryPlaying').onclick=()=>action(async()=>{
@@ -923,7 +971,7 @@ $('#capture').addEventListener('close',()=>{capturedImage=null;$('#capturePrevie
 $('#editPlaying').onclick=()=>{if(editingEnabled&&openedGame&&!openedGame.settingsError)editGame(openedGame);};
 
 let saveBackupTarget=null;
-const saveBackupReasons={'before-update':'本体更新の前','before-content-restore':'前の本体に戻す前','before-save-restore':'セーブ復元の前',manual:'手動退避'};
+const saveBackupReasons={'before-update':'本体更新の前','before-content-restore':'前の本体に戻す前','before-save-restore':'セーブ復元の前','before-save-sync':'共有セーブに切り替える前',manual:'手動退避'};
 function downloadSaveBackup(gameId,backup){
   const blob=new Blob([JSON.stringify({schema:1,gameId,data:backup.data},null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='game-save-'+gameId+'-backup-'+backup.id+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
