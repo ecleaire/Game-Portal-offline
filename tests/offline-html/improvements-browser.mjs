@@ -1,3 +1,6 @@
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {chromium,expect} from '@playwright/test';
 import {readFile,mkdir} from 'node:fs/promises';
 import {createServer} from 'node:http';
@@ -5,7 +8,8 @@ import assert from 'node:assert/strict';
 const html=await readFile('offline-release/GAME-PORTAL.html');
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(html);});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
+const profile=await mkdtemp(join(tmpdir(),'portal-improvements-'));
+const browser=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,viewport:{width:1280,height:960}});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');await mkdir('offline-release/ui-checks',{recursive:true});
@@ -69,4 +73,4 @@ try{
  await notificationPage.evaluate(()=>status('一覧を更新しました。'));await notificationPage.clock.fastForward(19000);await expect(notificationPage.locator('#status')).toHaveText('一覧を更新しました。');await notificationPage.clock.fastForward(1001);await expect(notificationPage.locator('#status')).toHaveText('');
  await notificationPage.evaluate(()=>status('一覧を更新しました。'));await notificationPage.clock.fastForward(10000);await notificationPage.evaluate(()=>status('保存結果未確認です。確認してください。'));await notificationPage.clock.fastForward(30000);await expect(notificationPage.locator('#status')).toHaveText('保存結果未確認です。確認してください。');await notificationPage.close();
  assert.deepEqual(errors,[]);console.log('Improvements UI passed: 130-game paging/card reuse, tag search/category/counts, read-only upload checks, editor tabs/keyboard, JPG/PNG crop saved pixels, simulated NAS write/read disconnect and same-ID reconnect.');
-}finally{await browser.close();await new Promise(r=>server.close(r));}
+}finally{await browser.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true});}

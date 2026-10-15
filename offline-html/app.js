@@ -113,9 +113,17 @@ function editValues() {
   return JSON.stringify(['editTitle','editEnvironment','editTags','editDescription','editInstructions','cropZoom','cropX','cropY'].map(id=>$('#'+id).value).concat($('#clearImage').checked,$('#enableCrop').checked,[...$('#editImage').files].map(f=>[f.name,f.size,f.lastModified])));
 }
 function hasEditChanges(){return $('#edit').open && editValues()!==editBaseline;}
+function updateEditDirty(){
+  $('#editDirty').hidden=!hasEditChanges();
+  const current=JSON.parse(editValues()),before=JSON.parse(editBaseline||'[]');
+  for(const [name,indexes] of Object.entries({Basic:[0,1,2],Description:[3,4],Image:[5,6,7,8,9,10]})){
+    const dirty=!!editBaseline&&indexes.some(i=>JSON.stringify(current[i])!==JSON.stringify(before[i]));
+    const tab=$('#tab'+name);tab.dataset.dirty=String(dirty);tab.setAttribute('aria-description',dirty?'未保存の変更があります':'');
+  }
+}
 function confirmEditClose(){return !hasEditChanges()||confirm('未保存の変更を破棄して閉じますか？ ゲーム本体と保存済みの設定は残ります。');}
-$('#editForm').addEventListener('input',()=>{$('#editDirty').hidden=!hasEditChanges();});
-$('#editForm').addEventListener('change',()=>{$('#editDirty').hidden=!hasEditChanges();});
+$('#editForm').addEventListener('input',updateEditDirty);
+$('#editForm').addEventListener('change',updateEditDirty);
 try { editingEnabled = localStorage.getItem('game-portal.offline-editing') === 'true'; } catch { /* A new session starts read-only. */ }
 let imageURLs = [], selectedTags = new Set(), renderRevision = 0;
 let statusTimer;
@@ -267,7 +275,7 @@ function drawThumbnail(ctx,bitmap,crop,adjustment=null){
 }
 function renderCropPreview(){
   if(!cropBitmap)return;const canvas=document.createElement('canvas');canvas.width=960;canvas.height=540;
-  drawThumbnail(canvas.getContext('2d'),cropBitmap,$('#enableCrop').checked);$('#editImagePreview').src=canvas.toDataURL('image/webp',.85);$('#editImagePreview').hidden=false;$('#cropZoomValue').textContent=Number($('#cropZoom').value).toFixed(2)+'倍';$('#editDirty').hidden=!hasEditChanges();
+  drawThumbnail(canvas.getContext('2d'),cropBitmap,$('#enableCrop').checked);$('#editImagePreview').src=canvas.toDataURL('image/webp',.85);$('#editImagePreview').hidden=false;$('#cropZoomValue').textContent=Number($('#cropZoom').value).toFixed(2)+'倍';updateEditDirty();
 }
 $('#enableCrop').onchange=()=>{$('#cropFields').disabled=!$('#enableCrop').checked;renderCropPreview();};
 for(const id of ['cropZoom','cropX','cropY'])$('#'+id).oninput=renderCropPreview;
@@ -366,8 +374,10 @@ function editGame(game) {
   updateFormCounters();
   $('#postEditNotice').hidden=true;
   $('#editHeading').textContent='ゲームを編集';$('#cancelEdit').textContent='キャンセル';
+  $('#editTarget').textContent=game.title;$('#editTarget').title=game.title;
   editImageRevision++;$('#editImagePreview').hidden=typeof game.thumbnail!=='string';if(typeof game.thumbnail==='string')$('#editImagePreview').src=game.thumbnail;else $('#editImagePreview').removeAttribute('src');
   resetCropState();selectEditTab('Basic');editBaseline=editValues();$('#editDirty').hidden=true;$('#edit').scrollTop=0;$('#editTitle').focus({preventScroll:true});
+  updateEditDirty();
   imageProcessing=false;imageError='';$('#editImage').setCustomValidity('');$('#imageStatus').textContent='';
   if(!busy)writeControls();
 }
@@ -397,7 +407,7 @@ function addEnvironmentTag(){
   if(!tags.includes(environment))tags.push(environment);
   $('#editTags').value=tags.join(', ');autoEnvironmentTag=environment;updateTagChoices();updateFormCounters();
 }
-$('#editEnvironment').addEventListener('change',()=>{addEnvironmentTag();renderTagChoices();$('#editDirty').hidden=!hasEditChanges();});
+$('#editEnvironment').addEventListener('change',()=>{addEnvironmentTag();renderTagChoices();updateEditDirty();});
 function updateTagChoices() {
   const raw=[...new Set($('#editTags').value.split(/[,、\n]/).map(s=>s.trim()).filter(Boolean))];
   $('#editTags').setCustomValidity(raw.length>12?'タグは12件までにしてください。':raw.some(t=>t.length>32)?'タグは1件32文字以内にしてください。':'');
@@ -425,7 +435,7 @@ function renderTagChoices() {
         const picked = new Set(library.tagsFrom($('#editTags').value));
         if (picked.has(name)) picked.delete(name); else if (picked.size < 12) picked.add(name);
         $('#editTags').value = [...picked].join(', '); updateTagChoices();
-        $('#editDirty').hidden=!hasEditChanges();
+        updateEditDirty();
       };
       tagControls.push([button, name]); chips.append(button);
     }
@@ -731,6 +741,8 @@ $('#editImage').onchange=async()=>{
 $('#clearImage').onchange=()=>{
   editImageRevision++;imageProcessing=false;imageError='';$('#editImage').setCustomValidity('');$('#imageStatus').textContent='';if($('#clearImage').checked){$('#editImage').value='';$('#editImagePreview').hidden=true;resetCropState();}
   else {$('#editImagePreview').hidden=typeof editing?.thumbnail!=='string';if(typeof editing?.thumbnail==='string')$('#editImagePreview').src=editing.thumbnail;}
+  $('#imageStatus').textContent=$('#clearImage').checked?'保存するとサムネイルを外します。チェックを外すと元の画像に戻ります。':'';
+  updateEditDirty();
   if(!busy)writeControls();
 };
 $('#editForm').noValidate=true;
