@@ -200,7 +200,7 @@ export async function scan(root, metadata, {signal} = {}) {
   async function walk(folder, prefix = '', depth = 0) {
     signal?.throwIfAborted();
     try { await folder.getFileHandle('.gameportal-uploading'); return; } catch (error) { if (error.name !== 'NotFoundError') throw error; }
-    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.')) entries.push(entry); }
+    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX') entries.push(entry); }
     const html = entries.filter(e => e.kind === 'file' && /\.html?$/i.test(e.name));
     const entry = html.find(e => /^index\.html?$/i.test(e.name)) || (html.length === 1 ? html[0] : null);
     if (depth > 0 && entry) { candidates.push([prefix + entry.name, folder.name, 'html', entry, folder, entry.name]); return; }
@@ -208,7 +208,7 @@ export async function scan(root, metadata, {signal} = {}) {
       const ext = file.name.split('.').at(-1).toLowerCase();
       if (['html', 'htm', 'zip', 'pyxapp'].includes(ext) && !/^GAME-PORTAL\.html$/i.test(file.name)) candidates.push([prefix + file.name, file.name.replace(/\.[^.]+$/, ''), ext === 'htm' ? 'html' : ext, file, folder, file.name]);
     }
-    if (depth < 3) for (const dir of entries.filter(e => e.kind === 'directory')) await walk(dir, prefix + dir.name + '/', depth + 1);
+    if (depth < 8) for (const dir of entries.filter(e => e.kind === 'directory')) await walk(dir, prefix + dir.name + '/', depth + 1);
   }
   await walk(root);
   // Overlap metadata I/O on shared folders, with a small fixed concurrency.
@@ -229,7 +229,7 @@ export async function readTree(folder, preloaded = new Map(), {fileBacked = fals
   const entries = []; let bytes = 0;
   async function walk(dir, prefix = '') {
     for await (const entry of dir.values()) {
-      if (entry.name.startsWith('.')) continue;
+      if (entry.name.startsWith('.') || entry.name === '__MACOSX') continue;
       const path = prefix + entry.name; safePath(path);
       if (entry.kind === 'directory') await walk(entry, path + '/');
       else {

@@ -37,7 +37,7 @@ export async function inspectLibrary(root, library, preview) {
         add('upload', prefix + '.gameportal-uploading', '投稿途中のマーカーが残っています。この作品は一覧に表示されません。', '投稿中でないことと元のゲームを確認してから再投稿してください。'); return;
       }
       for (const entry of entries) {
-        if (entry.name.startsWith('.')) continue;
+        if (entry.name.startsWith('.') || entry.name === '__MACOSX') continue;
         const path = prefix + entry.name;
         try { library.safePath(path); } catch(error) { add('unreadable', path, error.message, 'ファイル名を確認してください。'); continue; }
         if (entry.kind === 'directory') { await walk(entry, path + '/', depth + 1); if (visited > 10000) return; }

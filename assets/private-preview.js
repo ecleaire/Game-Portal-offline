@@ -10,15 +10,20 @@ const mimeTypes = { html: 'text/html', htm: 'text/html', js: 'text/javascript', 
   wav: 'audio/wav', mp4: 'video/mp4', woff: 'font/woff', woff2: 'font/woff2' };
 const mime = name => mimeTypes[name.split('.').pop().toLowerCase()] ?? 'application/octet-stream';
 
-// A Web export may use any HTML basename and may be wrapped in one folder.
+function archiveMetadata(name) {
+  return name.split('/').some(part => part === '__MACOSX' || part === '.DS_Store' || part.startsWith('._'));
+}
+// A Web export may use any HTML basename and common wrapper folders.
 // Keep that basename intact: Godot expects the matching .js/.wasm/.pck names.
 export function webArchiveLayout(names) {
-  const files = names.filter(name => !name.endsWith('/'));
-  const root = files.length && files.every(name => name.includes('/') && name.startsWith(files[0].split('/')[0] + '/'))
-    ? files[0].split('/')[0] + '/' : '';
-  const paths = files.map(name => root ? name.slice(root.length) : name);
+  let paths = names.filter(name => !name.endsWith('/') && !archiveMetadata(name)), root = '', depth = 0;
+  while(paths.length && paths.every(name => name.includes('/') && name.startsWith(paths[0].split('/')[0] + '/'))){
+    // Posted folders live one level below the library's eight-level scan limit.
+    if(++depth>7)return null;
+    const prefix=paths[0].split('/')[0]+'/';root+=prefix;paths=paths.map(name=>name.slice(prefix.length));
+  }
   const html = paths.filter(name => !name.includes('/') && /\.html?$/i.test(name));
-  const entry = html.find(name => name.toLowerCase() === 'index.html') ?? (html.length === 1 ? html[0] : null);
+  const entry = html.find(name => /^index\.html?$/i.test(name)) ?? (html.length === 1 ? html[0] : null);
   return entry ? { root, entry } : null;
 }
 
@@ -111,7 +116,7 @@ export async function unpackPrivateZip(buffer, onProgress = () => {}) {
       onProgress(++completed,entries.length);
     }
   }));
-  const normalized = new Map(entries.map((entry, index) => [entry.name.slice(layout.root.length), contents[index]]));
+  const normalized = new Map(entries.flatMap((entry, index) => archiveMetadata(entry.name) ? [] : [[entry.name.slice(layout.root.length), contents[index]]]));
   normalized.set('index.html', normalized.get(layout.entry));
   return normalized;
 }

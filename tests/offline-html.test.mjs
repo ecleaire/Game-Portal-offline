@@ -570,3 +570,16 @@ test('deflated ZIP output is exact across chunks and refuses declared size misma
   assert.equal(new TextDecoder().decode((await unpackPrivateZip(archive(0))).get('index.html')),text);
   await assert.rejects(unpackPrivateZip(archive(-1)),/invalid_preview/);await assert.rejects(unpackPrivateZip(archive(1)),/invalid_preview/);
 });
+test('ZIP and extracted folders share nested wrapper detection without treating macOS metadata as games',async()=>{
+  const paths=['Outer/Build/jump.html','Outer/Build/jump.js','Outer/Build/assets/data.bin','.DS_Store','__MACOSX/Outer/._jump.html'];
+  assert.deepEqual(preview.webArchiveLayout(paths),{root:'Outer/Build/',entry:'jump.html'});
+  assert.deepEqual(preview.webArchiveLayout(['Outer/Build/index.htm','Outer/Build/help.html','Outer/Build/game.js']),{root:'Outer/Build/',entry:'index.htm'});
+  assert.equal(preview.webArchiveLayout(['one/index.html','two/index.html']),null);
+  assert.equal(preview.webArchiveLayout(['a/'.repeat(8)+'index.html']),null);
+  const texts=['<body><script src="jump.js"></script>','fetch("assets/data.bin")','data','metadata','metadata'];
+  const input=paths.map((path,i)=>{const file=new File([texts[i]],path.split('/').at(-1));Object.defineProperty(file,'webkitRelativePath',{value:'Extracted/'+path});return file;});
+  const zip=await packageWebFiles(input),contents=await unpackPrivateZip(await zip.arrayBuffer());assert.equal(new TextDecoder().decode(contents.get('assets/data.bin')),'data');assert.equal(contents.has('__MACOSX/Outer/._jump.html'),false);assert.equal(contents.has('.DS_Store'),false);
+  const check=await checkUpload(input,library,preview,localResources);assert.equal(check.entry,'Outer/Build/jump.html');assert.deepEqual(check.missing,[]);
+  const root=memoryFolder();const posted=await postGame(root.root,input,{webArchiveLayout:preview.webArchiveLayout,unpackPrivateZip});const games=await scan(root.root,{games:{}});assert.equal(games.length,1);assert.equal(games[0].path,posted);assert.equal(games[0].entry,'jump.html');assert.equal(games[0].settingsError,'');assert.equal((await readTree(games[0].folder)).has('assets/data.bin'),true);
+  const inspection=await inspectLibrary(root.root,library,preview);assert.equal(inspection.issues.some(issue=>issue.path.includes('__MACOSX')),false);
+});
