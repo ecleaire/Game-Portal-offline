@@ -1,8 +1,12 @@
 # 完全オフライン HTML版 GAME PORTAL
 
-現在のバージョンは **0.20.0**。画面上部のロゴ横に表示します。
+現在のバージョンは **0.20.1**。画面上部のロゴ横に表示します。
 
 PC版Google Chrome（Windows / macOS）推奨です。配布ZIPを展開し、`GAME-PORTAL.html` をChromeで開きます。画面・Pyxel・Pyodide・Python標準ライブラリーをHTMLに同梱しています。使用中のCDN・Supabase・Google Drive接続、アカウント登録は不要です。
+
+[実行用ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline-html/releases/latest/download/GAME-PORTAL-HTML.zip)して展開すると、直下に `GAME-PORTAL.html` があります。「Code → Download ZIP」は開発用ソースです。
+
+保管先のフォルダー名を決められた名前へ変更する必要はありません。日本語・空白・記号など、OSとChromeで選択できる名前をそのまま使えます。名前は案内表示にだけ使い、ライブラリIDで保存先を識別します。ブラウザーがアクセスを許可しない場所や、読み取り・保存の権限がない場所は、名前を変えても利用できません。
 
 ## 使用手順
 

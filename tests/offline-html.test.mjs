@@ -526,7 +526,11 @@ test('portable folder hints retain only bounded public connection fields',()=>{
  const value={schema:1,libraryId:'a'.repeat(32),name:'Games',path:'//NAS/Games',handle:{secret:1},saves:{secret:1}};
  assert.deepEqual(connectionInfo(value),{schema:1,libraryId:value.libraryId,name:'Games',path:'//NAS/Games'});
  assert.equal(connectionInfo(null),null);
- for(const changes of [{schema:2},{libraryId:'bad'},{name:''},{path:'x'.repeat(1001)},{path:'bad'+String.fromCharCode(0)}])assert.throws(()=>connectionInfo({...value,...changes}));
+ for(const changes of [{schema:2},{libraryId:'bad'},{name:null},{path:null},{name:'x'.repeat(128*1024)},{path:'x'.repeat(128*1024)}])assert.throws(()=>connectionInfo({...value,...changes}));
+ for(const name of ['', '   ', '.gameportal', '__MACOSX', '日本語 🕹️ # % & + [ゲーム]', '名'.repeat(300)]){
+   const hint={schema:1,libraryId:value.libraryId,name,path:'\\\\NAS\\日本語 [共有] # % & +\\'+'a'.repeat(1500)};
+   assert.deepEqual(connectionInfo(hint),hint);
+ }
 });
 test('portable launcher escapes script-breaking hints and updates its unique marker only',()=>{
  const source='<html><head><script id="folderConnection" type="application/json">null</script></head><body>UNCHANGED</body></html>';

@@ -31,7 +31,7 @@
   </section>
   <section class="settings-tools" aria-label="点検と詳細設定">
     <button id="inspectButton" class="secondary">ゲームを点検</button>
-    <details id="sharingDetails" class="settings-detail"><summary>共有・バージョン</summary><label>保存先のパス（ほかのPCへの案内・任意）<input id="sharedFolderPath" maxlength="1000" placeholder="例：\\NAS\Games"></label><p class="hint">別PCでは初回だけフォルダーを選びます。ゲーム・セーブ・アクセス許可はHTMLに含めません。</p><button id="exportSharedLauncher" class="secondary" disabled>共有用HTMLを保存</button><p id="sharedConnectionHint" class="hint"></p><div class="settings-version"><p id="compatibilityStatus" class="hint">HTMLの互換性は、保管フォルダーを接続すると確認します。</p><p class="hint">共有する全PCで v0.14.0 以降の対応HTMLを使ってください。v0.13.1以前は互換性チェック非対応のため、自動では停止できません。</p></div></details>
+    <details id="sharingDetails" class="settings-detail"><summary>共有・バージョン</summary><label>保存先のパス（ほかのPCへの案内・任意）<input id="sharedFolderPath" placeholder="例：\\NAS\Games"></label><p class="hint">別PCでは初回だけフォルダーを選びます。ゲーム・セーブ・アクセス許可はHTMLに含めません。</p><button id="exportSharedLauncher" class="secondary" disabled>共有用HTMLを保存</button><p id="sharedConnectionHint" class="hint"></p><div class="settings-version"><p id="compatibilityStatus" class="hint">HTMLの互換性は、保管フォルダーを接続すると確認します。</p><p class="hint">共有する全PCで v0.14.0 以降の対応HTMLを使ってください。v0.13.1以前は互換性チェック非対応のため、自動では停止できません。</p></div></details>
     <details id="folderMemoryDetails" class="settings-detail"><summary>このPCのフォルダーの記憶</summary><p class="hint">次回の自動接続に使う記憶を消します。現在の接続・ゲーム・セーブは残ります。</p><button id="forgetFolder" class="secondary" disabled>フォルダーの記憶を消す</button></details>
   </section>
   <p class="settings-footnote">ゲームは保管フォルダー、WebゲームのセーブはこのPCに保存します。</p>

@@ -1050,7 +1050,7 @@ $('#exportUsage').onclick=()=>{if(!usageReport)return;const blob=new Blob([JSON.
 
 $('#exportSharedLauncher').onclick=()=>action(async()=>{
   await requireLibraryConnection();if(!root||!localLibrary)throw new Error('共有する保存先を選んでください。');
-  const path=$('#sharedFolderPath').value.trim(),info=folderSharing.connectionInfo({schema:1,libraryId:localLibrary,name:root.name,path});
+  const path=$('#sharedFolderPath').value,info=folderSharing.connectionInfo({schema:1,libraryId:localLibrary,name:root.name,path});
   const html=folderSharing.portableLauncher(launcherSource(),info);
   try{localStorage.setItem('game-portal.folder-path.'+localLibrary,path);}catch{}
   const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='GAME-PORTAL-SHARED.html';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);

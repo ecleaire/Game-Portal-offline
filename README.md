@@ -1,6 +1,12 @@
 # GAME PORTAL
 
+バージョン：**0.20.1**
+
 ゲームをフォルダーにまとめて、追加・編集・プレイできる単体HTMLランチャーです。
+
+[**使うためのZIPをダウンロード**](https://github.com/ecleaire/Game-Portal-offline-html/releases/latest/download/GAME-PORTAL-HTML.zip)
+
+ZIPを展開すると、直下に `GAME-PORTAL.html` があります。GitHubの「Code → Download ZIP」は開発用ソースです。
 
 ## 使い方
 
@@ -10,7 +16,7 @@
 
 詳細な操作手順はHTML内の「ヘルプ」で確認できます。
 WindowsのEXEゲームは[起動補助](docs/WINDOWS_EXE.md)を併用します。メイン画面はHTMLのままです。
-配布ZIPは[Actions](https://github.com/ecleaire/Game-Portal-offline-html/actions)の成功した実行からダウンロードできます。
+EXEゲーム用の配布ZIPは[Releases](https://github.com/ecleaire/Game-Portal-offline-html/releases/latest)からダウンロードできます。
 
 ## 開発
 
