@@ -495,3 +495,27 @@ test('portable launcher escapes script-breaking hints and updates its unique mar
  const data=result.split('application/json">')[1].split('</script>')[0];assert.deepEqual(JSON.parse(data),info);
  assert.equal(portableLauncher(result,info),result);assert.throws(()=>portableLauncher('bad',info));assert.throws(()=>portableLauncher(source+source,info));
 });
+test('game loading overlaps at most four reads, preserves paths and reuses only this launch HTML', async () => {
+  let active=0, peak=0, reads=0;
+  const m=memoryFolder({read:async()=>{reads++;active++;peak=Math.max(peak,active);await new Promise(setImmediate);active--;}});
+  m.files.set('index.html','old');for(let n=0;n<12;n++)m.files.set(`data-${n}.bin`,String(n));
+  const child=memoryFolder();child.root.name='assets';child.files.set('image.png','image');m.folders.set('assets',child);
+  m.files.set('.hidden','skip');m.files.set('index.html.gameportal.json','skip');m.files.set('archive.zip','skip');
+  const html=new TextEncoder().encode('current');
+  const files=await readTree(m.root,new Map([['index.html',html]]));
+  assert.equal(peak,4);assert.equal(active,0);assert.equal(reads,12);
+  assert.deepEqual([...files.keys()],['index.html',...Array.from({length:12},(_,n)=>`data-${n}.bin`),'assets/image.png']);
+  assert.equal(files.get('index.html'),html);assert.equal(new TextDecoder().decode(files.get('assets/image.png')),'image');
+  m.files.set('index.html','updated');assert.equal(new TextDecoder().decode((await readTree(m.root)).get('index.html')),'updated');
+});
+
+test('parallel game loading drains in-flight reads on failure and returns no partial game',async()=>{
+  let active=0;
+  const m=memoryFolder({read:async name=>{active++;await new Promise(setImmediate);active--;if(name==='1.bin')throw new Error('Disconnected');}});
+  for(let n=0;n<12;n++)m.files.set(`${n}.bin`,'data');
+  await assert.rejects(readTree(m.root),/Disconnected/);assert.equal(active,0);
+  const oversized={async *values(){for(let n=0;n<4;n++)yield {name:`${n}.bin`,kind:'file',getFile:async()=>({size:110*1024*1024,arrayBuffer:async()=>new ArrayBuffer(0)})};}};
+  await assert.rejects(readTree(oversized),/200MB/);
+  const many=memoryFolder();for(let n=0;n<501;n++)many.files.set(`${n}.bin`,'');
+  await assert.rejects(readTree(many.root),/500ファイル/);
+});

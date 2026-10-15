@@ -213,8 +213,8 @@ export async function scan(root, metadata) {
   for (const game of games) if (ids.get(game.id) > 1) { game.identityConflict = true; game.settingsError = '同じ作品IDのゲームが複数あります。別作品として追加する場合は「投稿」を使用してください。'; }
   return games.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
 }
-export async function readTree(folder) {
-  const files = new Map(); let bytes = 0;
+export async function readTree(folder, preloaded = new Map()) {
+  const entries = []; let bytes = 0;
   async function walk(dir, prefix = '') {
     for await (const entry of dir.values()) {
       if (entry.name.startsWith('.')) continue;
@@ -222,13 +222,27 @@ export async function readTree(folder) {
       if (entry.kind === 'directory') await walk(entry, path + '/');
       else {
         if (/\.(zip|pyxapp|exe)$/i.test(path) || /\.gameportal\.json$/i.test(path) || /^GAME-PORTAL\.html$/i.test(entry.name)) continue;
-        const file = await entry.getFile(); bytes += file.size;
-        if (files.size >= MAX_FILES || bytes > MAX_BYTES) throw new Error('ゲームは500ファイル・展開後200MB以内にしてください。');
-        files.set(path, new Uint8Array(await file.arrayBuffer()));
+        if (entries.length >= MAX_FILES) throw new Error('ゲームは500ファイル・展開後200MB以内にしてください。');
+        entries.push({path, entry});
       }
     }
   }
-  await walk(folder); return files;
+  await walk(folder);
+  // Reserve bytes before allocating buffers; preserve traversal order.
+  const contents = new Array(entries.length); let next = 0, failure;
+  await Promise.all(Array.from({length: Math.min(4, entries.length)}, async () => {
+    while (!failure && next < entries.length) {
+      const index = next++, {path, entry} = entries[index];
+      try {
+        const ready = preloaded.get(path), file = ready ? null : await entry.getFile();
+        bytes += ready ? ready.byteLength : file.size;
+        if (bytes > MAX_BYTES) throw new Error('ゲームは500ファイル・展開後200MB以内にしてください。');
+        contents[index] = ready || new Uint8Array(await file.arrayBuffer());
+      } catch (error) { failure ||= error; }
+    }
+  }));
+  if (failure) throw failure;
+  return new Map(entries.map(({path}, index) => [path, contents[index]]));
 }
 export async function postGame(root, files, packageTools, onProgress = () => {}) {
   await checkCompatibility(root);

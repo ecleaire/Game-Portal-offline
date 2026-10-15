@@ -15,6 +15,9 @@ try{
      const game=simple?'<body><script>fetch("game.wasm").then(r=>r.arrayBuffer()).then(()=>document.body.dataset.loaded="yes").catch(e=>document.body.dataset.failure=e.message);</script>':
        '<body><script src="script%20name.js"></script><script>Promise.all([fetch("game.wasm").then(r=>r.arrayBuffer()),fetch("素材%20data.bin").then(r=>r.text()),fetch("100%.dat").then(r=>r.text()),fetch("https://example.invalid/blocked").then(()=>"allowed",()=>"blocked")]).then(async values=>{document.body.dataset.loaded="yes";document.body.dataset.size=values[0].byteLength;document.body.dataset.unicode=values[1];document.body.dataset.percent=values[2];document.body.dataset.network=values[3];if(typeof AudioContext!=="undefined"){const audio=new AudioContext();if(audio.audioWorklet){await audio.audioWorklet.addModule("worklet%20file.js");document.body.dataset.worklet="yes";}await audio.close();}}).catch(e=>document.body.dataset.failure=e.message);</script>';
      const files=new Map([['index.html',encode(game)],['game.wasm',new Uint8Array([0,97,115,109])],['素材 data.bin',encode('unicode')],['100%.dat',encode('percent')],['script name.js',encode('document.body.dataset.staticResource="yes";')],['worklet file.js',encode('class Quiet extends AudioWorkletProcessor{process(){return true;}}registerProcessor("quiet",Quiet);')]]);
+     // Two names share a buffer, as with a renamed HTML or stored ZIP entry.
+     files.set('same-wasm.bin',files.get('game.wasm'));
+     window.resourceTestFiles=files;
      document.querySelector('#player').showModal();window.resourceTestStop=player.startPlayer(document.querySelector('#frame'),{kind:'html',files,saved:{}},preview,()=>{});
    },expectBug);
    const body=page.frameLocator('#frame').locator('body');
@@ -23,6 +26,7 @@ try{
      await expect(body).toHaveAttribute('data-loaded','yes');
      if(!expectBug){await expect(body).toHaveAttribute('data-static-resource','yes');await expect(body).toHaveAttribute('data-unicode','unicode');await expect(body).toHaveAttribute('data-percent','percent');await expect(body).toHaveAttribute('data-network','blocked');await expect(body).toHaveAttribute('data-size','4');await expect(body).toHaveAttribute('data-worklet','yes');}
    }
+   assert.equal(await page.evaluate(()=>window.resourceTestFiles.get('game.wasm').byteLength),0,'game buffers are transferred without copying');
    assert.deepEqual(requests,[]);assert.deepEqual(errors,[]);await page.close();
  }
  if(!expectBug)console.log('Resource paths passed: ASCII and Japanese/space launcher directories, WASM bytes, encoded static scripts and Unicode names, literal percent names, AudioWorklet and external-network rejection.');

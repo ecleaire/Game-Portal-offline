@@ -484,7 +484,8 @@ async function playGame(game) {
   $('#playerTitle').textContent = game.title; $('#playerStatus').textContent = '読み込んでいます…'; $('#player').showModal();
   try {
     const file = await game.handle.getFile(); let options;
-    const embedded = game.kind === 'html' ? library.embeddedPyxel(await file.text()) : null;
+    const htmlBytes = game.kind === 'html' ? new Uint8Array(await file.arrayBuffer()) : null;
+    const embedded = htmlBytes ? library.embeddedPyxel(new TextDecoder().decode(htmlBytes)) : null;
     $('#saveTools').hidden = game.kind === 'pyxapp' || !!embedded;
     if (game.kind === 'pyxapp' || embedded) {
       if (file.size > 50 * 1024 * 1024) throw new Error('PYXAPPは50MB以内にしてください。');
@@ -492,7 +493,7 @@ async function playGame(game) {
       for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
       options = { kind: 'pyxapp', app: btoa(binary), runtime: JSON.parse($('#runtime').textContent) };
     } else {
-      let files = game.kind === 'zip' ? await preview.unpackPrivateZip(await file.arrayBuffer()) : await library.readTree(game.folder);
+      let files = game.kind === 'zip' ? await preview.unpackPrivateZip(await file.arrayBuffer()) : await library.readTree(game.folder, new Map([[game.entry, htmlBytes]]));
       if (game.kind === 'html') files.set('index.html', files.get(game.entry));
       const saved = await localState.loadLocalSave(session.libraryId, game.id);
       options = { kind: game.kind, files, saved };
