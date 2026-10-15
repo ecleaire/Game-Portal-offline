@@ -222,7 +222,7 @@ export async function scan(root, metadata) {
   for (const game of games) if (ids.get(game.id) > 1) { game.identityConflict = true; game.settingsError = '同じ作品IDのゲームが複数あります。別作品として追加する場合は「投稿」を使用してください。'; }
   return games.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
 }
-export async function readTree(folder, preloaded = new Map()) {
+export async function readTree(folder, preloaded = new Map(), {fileBacked = false} = {}) {
   const entries = []; let bytes = 0;
   async function walk(dir, prefix = '') {
     for await (const entry of dir.values()) {
@@ -246,7 +246,9 @@ export async function readTree(folder, preloaded = new Map()) {
         const ready = preloaded.get(path), file = ready ? null : await entry.getFile();
         bytes += ready ? ready.byteLength : file.size;
         if (bytes > MAX_BYTES) throw new Error('ゲームは500ファイル・展開後200MB以内にしてください。');
-        contents[index] = ready || new Uint8Array(await file.arrayBuffer());
+        // Keep large assets file-backed. Only HTML/CSS need rewriting as text.
+        // File snapshots are acquired anew for every launch, never cached.
+        contents[index] = ready || (fileBacked && !/\.(?:html?|css)$/i.test(path) ? file : new Uint8Array(await file.arrayBuffer()));
       } catch (error) { failure ||= error; }
     }
   }));

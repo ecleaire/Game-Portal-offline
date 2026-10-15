@@ -122,8 +122,9 @@ export function startPlayer(frame, options, preview, onMessage) {
     window.removeEventListener('message', ready);
     // Transfer each buffer once, including aliased entry HTML and ZIP views.
     // Large WASM/PCK files must not be cloned into a second parent-side copy.
-    const buffers = options.files ? [...new Set([...options.files.values()].map(bytes => bytes.buffer))] : [];
-    frame.contentWindow.postMessage({ type: 'offline-game', ...options }, '*', [channel.port2, ...buffers]);
+    const buffers = options.files ? [...new Set([...options.files.values()].map(bytes => bytes.buffer).filter(buffer => buffer instanceof ArrayBuffer))] : [];
+    try { frame.contentWindow.postMessage({ type: 'offline-game', ...options }, '*', [channel.port2, ...buffers]); }
+    catch(error) { onMessage({type:'error',message:'ゲームのファイルを渡せませんでした。接続を確認して起動を再試行してください：'+error.message}); }
   };
   window.addEventListener('message', ready);
   frame.srcdoc = `<!doctype html><meta http-equiv="Content-Security-Policy" content="${csp}"><style>body{margin:0;background:#080c0e;color:white}canvas{image-rendering:pixelated}</style><script>${(helpers + '(' + boot.toString() + ')(' + JSON.stringify(nonce) + ');').replaceAll('</script', '<\\/script')}<\/script>`;

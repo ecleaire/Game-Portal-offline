@@ -528,3 +528,13 @@ test('library scans overlap four settings reads while preserving duplicate IDs, 
   let games=await scan(m.root,{games:{}});assert.equal(peak,4);assert.equal(active,0);assert.equal(games.length,10);assert.equal(games.filter(g=>g.identityConflict).length,2);assert.match(games.find(g=>g.path==='game-9.html').settingsError,/JSON/);assert.equal(writes,0);
   const path='game-2.html.gameportal.json',data=JSON.parse(m.files.get(path));data.title='Updated';m.files.set(path,JSON.stringify(data));games=await scan(m.root,{games:{}});assert.equal(games.find(g=>g.path==='game-2.html').title,'Updated');assert.equal(writes,0);
 });
+test('file-backed loading avoids binary reads, rewrites HTML/CSS, enforces size limits and reacquires changed files',async()=>{
+  const reads=[];
+  const entries=new Map([['index.html','<body>Game'],['style.css','body{color:red}'],['game.wasm','wasm'],['game.pck','pck'],['image.png','image'],['script.js','script']]);
+  const folder={async *values(){for(const [name,data] of entries){const file=new File([data],name);file.arrayBuffer=async()=>{reads.push(name);return new TextEncoder().encode(data).buffer;};yield {name,kind:'file',getFile:async()=>file};}}};
+  const files=await readTree(folder,new Map(),{fileBacked:true});assert.deepEqual(reads.sort(),['index.html','style.css']);assert(files.get('index.html') instanceof Uint8Array);assert(files.get('style.css') instanceof Uint8Array);
+  for(const name of ['game.wasm','game.pck','image.png','script.js'])assert(files.get(name) instanceof File);
+  entries.set('game.pck','updated-pck');const latest=await readTree(folder,new Map(),{fileBacked:true});assert.equal(await latest.get('game.pck').text(),'updated-pck');assert.equal(await files.get('game.pck').text(),'pck');
+  const oversized={async *values(){yield {name:'game.pck',kind:'file',getFile:async()=>({size:201*1024*1024,arrayBuffer:async()=>{throw Error('Must not read oversized data');}})};}};
+  await assert.rejects(readTree(oversized,new Map(),{fileBacked:true}),/200MB/);
+});
