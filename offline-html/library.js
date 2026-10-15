@@ -266,6 +266,7 @@ export async function postGame(root, files, packageTools, onProgress = () => {})
   onProgress({phase:'validate',current:0,total:files.length});
   if (!files.length || files.length > MAX_FILES || files.reduce((n, f) => n + f.size, 0) > MAX_BYTES) throw new Error('投稿は500ファイル・200MB以内にしてください。');
   const single = files.length === 1 && !files[0].webkitRelativePath;
+  if(single&&!/\.exe$/i.test(files[0].name)&&files[0].size>50*1024*1024)throw new Error('単体ファイルは50MB以内にしてください。');
   if (single && !/\.(html?|zip|pyxapp|exe)$/i.test(files[0].name)) throw new Error('HTML・ZIP・PYXAPP・EXEを選択してください。');
   const paths = files.map(f => f.webkitRelativePath ? f.webkitRelativePath.split('/').slice(1).join('/') : f.name);
   paths.forEach(safePath);

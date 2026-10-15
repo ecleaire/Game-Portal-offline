@@ -1,9 +1,13 @@
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {chromium,expect} from '@playwright/test';
 import {readFile,mkdir} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 const html=await readFile('offline-release/GAME-PORTAL.html'),server=createServer((q,r)=>{r.setHeader('Content-Type','text/html');r.end(html);});await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
+const profile=await mkdtemp(join(tmpdir(),'portal-editor-ui-browser-'));
+const browser=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,viewport:{width:1280,height:960}});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
  await expect(page.locator('#editingIndicator')).toBeHidden();await expect(page.locator('#postButton')).toBeHidden();await expect(page.locator('header #inspectButton')).toHaveCount(0);const theme=()=>page.evaluate(()=>({accent:getComputedStyle(document.body).getPropertyValue('--accent').trim(),background:getComputedStyle(document.body).backgroundColor,header:getComputedStyle(document.querySelector('header')).backgroundColor,button:getComputedStyle(document.querySelector('#postButton')).backgroundColor}));const normalTheme=await theme();
@@ -25,4 +29,4 @@ try{
  await page.locator('#editTags').fill('Scratch, パズル, Scratch');await page.locator('#tabImage').click();await expect(page.locator('#tabImage')).toHaveText('サムネイル');await page.locator('#clearImage').check();await expect(page.locator('#tabImage')).toHaveAttribute('data-dirty','true');await expect(page.locator('#imageStatus')).toContainText('保存すると');await page.locator('#saveGameSettings').click();await expect(page.locator('#edit')).toBeHidden();await page.waitForFunction(()=>!busy);const settings=await saved();assert.equal(settings.title,'Edited');assert.equal(settings.developmentEnvironment,'Scratch');assert.deepEqual(settings.tags,['Scratch','パズル']);assert.equal(settings.thumbnail,null);await expect(page.locator('#captureButton')).toHaveText('プレイ画面を撮影');
  await page.locator('#closePlayer').click();await page.locator('#settingsButton').click();await page.locator('#enableEditing').uncheck();await page.waitForFunction(()=>!busy);await page.locator('#settings [data-close]').click();await expect(page.locator('#postButton')).toBeHidden();await expect(page.locator('#editingIndicator')).toBeHidden();await expect(page.locator('body')).not.toHaveClass(/editing-mode/);assert.deepEqual(await theme(),normalTheme);await page.screenshot({path:'offline-release/ui-checks/editing-off.png'});assert.deepEqual(errors,[]);
  console.log('Editor UI passed: fixed-on preferences and legacy-off migration, fixed editor tabs/actions, on-only mode indicator, focus-revealed search options, hidden add button, inspection in settings, folded tag filters, required fields, software tags/change/duplicates/overflow, thumbnail removal.');
-}finally{await browser.close();await new Promise(r=>server.close(r));}
+}finally{await browser.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true});}

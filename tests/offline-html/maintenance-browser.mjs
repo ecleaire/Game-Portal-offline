@@ -1,3 +1,6 @@
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {chromium,expect} from '@playwright/test';
 import {readFile,mkdir} from 'node:fs/promises';
 import {createServer} from 'node:http';
@@ -5,7 +8,8 @@ import assert from 'node:assert/strict';
 const html=await readFile('offline-release/GAME-PORTAL.html');
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
+const profile=await mkdtemp(join(tmpdir(),'portal-maintenance-browser-'));
+const browser=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,viewport:{width:1280,height:960}});
 try {
   const page=await browser.newPage({viewport:{width:1280,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
@@ -102,4 +106,4 @@ try {
   await page.setViewportSize({width:480,height:960});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'offline-release/ui-checks/inspection-480.png',fullPage:true});
   assert.deepEqual(errors,[]);
   console.log('Maintenance UI passed: embedded guide/navigation/Escape/focus/narrow layout and active-play preservation, read-only inspection, all four issue types, inaccessible library inspection, disabled reasons, real canvas capture, stale-image conflict rejection and history restore with IDs/images preserved.');
-} finally {await browser.close();await new Promise(resolve=>server.close(resolve));}
+} finally {await browser.close();await new Promise(resolve=>server.close(resolve));await rm(profile,{recursive:true,force:true});}

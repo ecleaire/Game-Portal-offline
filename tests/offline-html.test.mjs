@@ -37,6 +37,14 @@ test('upload preflight detects missing static/Godot resources and malformed arch
   await assert.rejects(checkUpload([{name:'big.zip',size:51*1024*1024}],library,preview,localResources),/50MB/);
   await assert.rejects(checkUpload([file('A.html','a'),file('a.html','b')],library,preview,localResources),/同じ名前/);
 });
+test('oversized single-file uploads fail before buffering or creating destination files',async()=>{
+  for(const name of ['large.html','large.zip','large.pyxapp']){
+    const memory=memoryFolder();let reads=0;
+    await assert.rejects(postGame(memory.root,[{name,size:51*1024*1024,arrayBuffer:async()=>{reads++;throw Error('must not buffer');}}],preview),/50MB/);
+    assert.equal(reads,0);assert.equal(memory.files.size,0);assert.equal(memory.folders.size,0);
+  }
+});
+
 test('image crop stays inside the source for wide/tall images, endpoints and zoom',()=>{
   for(const [w,h]of [[1200,300],[300,1200],[960,540]])for(const z of [1,2,3])for(const p of [0,50,100]){
     const r=cropRect(w,h,z,p,p);assert(r.x>=0&&r.y>=0&&r.x+r.width<=w+1e-8&&r.y+r.height<=h+1e-8);assert(Math.abs(r.width/r.height-16/9)<1e-8);

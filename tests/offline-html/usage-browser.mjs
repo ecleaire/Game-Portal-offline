@@ -1,9 +1,13 @@
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {chromium,expect} from '@playwright/test';
 import {readFile,mkdir} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 const html=await readFile('offline-release/GAME-PORTAL.html'),server=createServer((q,r)=>{r.setHeader('Content-Type','text/html');r.end(html);});await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
+const profile=await mkdtemp(join(tmpdir(),'portal-usage-browser-'));
+const browser=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,viewport:{width:1280,height:960}});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
@@ -36,4 +40,4 @@ try{
  // Changing the inspection folder clears stale capacity even when no launcher is connected.
  await page.evaluate(async()=>{const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('empty-library',{create:true});window.showDirectoryPicker=async()=>folder;});await page.locator('#inspectionFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#usagePanel')).toBeHidden();assert.equal(await page.evaluate(()=>usageReport),null);await page.locator('#measureUsage').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#usageSummary')).toContainText('0 B');
  assert.deepEqual(errors,[]);console.log('Capacity UI passed: readonly measurements include hidden versions/metadata, exact totals, grouped current/previous/other releases, filters/export, pending/upload uncertainty, cancellation retaining prior result, folder-switch reset, empty folder and 640px layout. No files changed.');
-}finally{await browser.close();await new Promise(r=>server.close(r));}
+}finally{await browser.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true});}

@@ -60,9 +60,11 @@ function fixedPreferences(){for(const id of ['rememberFolder','autoSync']){$('#'
 fixedPreferences();
 try{localStorage.setItem('game-portal.remember-folder','true');localStorage.setItem('game-portal.auto-sync','true');}catch{}
 const pendingSettings=path=>settingsReceipts.some(a=>a.libraryId===localLibrary&&a.gamePath===path);
+let retrySettingsReceipt=null;
 library.setSettingsSaveObserver(async(stage,attempt)=>{
   const receipt={...attempt,libraryId:localLibrary};
-  await localState.trackSettingsReceipt(receipt,stage!=='started');
+  if(stage==='cancelled'&&retrySettingsReceipt)await localState.trackSettingsReceipt(retrySettingsReceipt,false,receipt);
+  else await localState.trackSettingsReceipt(receipt,stage!=='started',stage==='started'?retrySettingsReceipt:null);
   settingsReceipts=await localState.loadSettingsReceipts();
 });
 function renderSaveVerification(rebuild=false){
@@ -93,7 +95,9 @@ $('#verifySettingsSaves').onclick=()=>action(async()=>{
         const retry=document.createElement('button');retry.className='secondary';retry.dataset.retrySettings='';retry.textContent='履歴の保存内容を再試行';retry.disabled=!editingEnabled;retry.onclick=()=>action(async()=>{
           await requireLibraryConnection(true);if(!editingEnabled)throw new Error('設定で編集を有効にしてください。');
           if((await library.verifySettingsSave(root,receipt)).state!=='not-saved')throw new Error('現在の設定が変わりました。保存結果をもう一度確認してください。');
-          await localState.trackSettingsReceipt(receipt,true);settingsReceipts=await localState.loadSettingsReceipts();await library.retrySettingsSave(root,receipt);
+          retrySettingsReceipt=receipt;
+          try{await library.retrySettingsSave(root,receipt);}finally{retrySettingsReceipt=null;}
+          settingsReceipts=await localState.loadSettingsReceipts();
           if(receipt.uploadFolder){const dir=await root.getDirectoryHandle(receipt.uploadFolder);try{await dir.removeEntry('.gameportal-uploading');}catch(error){if(error.name!=='NotFoundError')throw error;}$('#post').close();}
           if(editing?.path===receipt.gamePath){$('#history').close();$('#edit').close();}if(receipt.kind==='capture')$('#capture').close();text.textContent='履歴の保存内容を保存しました。';retry.remove();return savedResult('履歴の保存内容を保存しました。');
         });box.append(retry);
@@ -515,6 +519,8 @@ async function playGame(game) {
   $('#playerTitle').textContent = game.title; $('#playerStatus').textContent = '読み込んでいます…'; $('#player').showModal();
   try {
     const file = await game.handle.getFile(); let options;
+    const entryLimit=game.kind==='html'?200:50;
+    if(file.size>entryLimit*1024*1024)throw new Error('起動ファイルは'+entryLimit+'MB以内にしてください。ゲームのファイルを確認してください。');
     const htmlBytes = game.kind === 'html' ? new Uint8Array(await file.arrayBuffer()) : null;
     const embedded = htmlBytes ? library.embeddedPyxel(new TextDecoder().decode(htmlBytes)) : null;
     $('#saveTools').hidden = game.kind === 'pyxapp' || !!embedded;
