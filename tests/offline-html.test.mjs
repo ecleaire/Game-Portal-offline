@@ -519,3 +519,12 @@ test('parallel game loading drains in-flight reads on failure and returns no par
   const many=memoryFolder();for(let n=0;n<501;n++)many.files.set(`${n}.bin`,'');
   await assert.rejects(readTree(many.root),/500ファイル/);
 });
+test('library scans overlap four settings reads while preserving duplicate IDs, errors and fresh metadata',async()=>{
+  let active=0,peak=0,writes=0;
+  const m=memoryFolder({read:async name=>{if(name.endsWith('.gameportal.json')){active++;peak=Math.max(peak,active);await new Promise(setImmediate);active--;}},write:async()=>writes++});
+  const shared='a'.repeat(32);
+  for(let n=0;n<10;n++){const path=`game-${n}.html`;m.files.set(path,'<body>Game');m.files.set(path+'.gameportal.json',JSON.stringify({schema:1,id:n<2?shared:await gameId(path),title:'Game '+n,tags:[],developmentEnvironment:'Godot',thumbnail:null}));}
+  m.files.set('game-9.html.gameportal.json','broken');
+  let games=await scan(m.root,{games:{}});assert.equal(peak,4);assert.equal(active,0);assert.equal(games.length,10);assert.equal(games.filter(g=>g.identityConflict).length,2);assert.match(games.find(g=>g.path==='game-9.html').settingsError,/JSON/);assert.equal(writes,0);
+  const path='game-2.html.gameportal.json',data=JSON.parse(m.files.get(path));data.title='Updated';m.files.set(path,JSON.stringify(data));games=await scan(m.root,{games:{}});assert.equal(games.find(g=>g.path==='game-2.html').title,'Updated');assert.equal(writes,0);
+});

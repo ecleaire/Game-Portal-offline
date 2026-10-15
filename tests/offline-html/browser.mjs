@@ -44,9 +44,8 @@ try {
   });
   await expect(page.locator('#modeLabel')).toHaveText('あそぶ');
   await expect(page.locator('#refresh')).toBeDisabled();
-  await page.getByRole('button',{name:'フォルダーを選ぶ',exact:true}).click();
-  await expect(page.locator('#settings')).toBeVisible();
-  await page.locator('#chooseFolder').click();
+  await page.locator('#setupFolder').click();
+  await expect(page.locator('#settings')).toBeHidden();
   await expect(page.locator('#folderName')).toHaveText('games');
   await expect(page.locator('#setupFolder')).toBeHidden();
   assert.equal(await page.evaluate(()=>window.testPickerOptions.mode),'read');

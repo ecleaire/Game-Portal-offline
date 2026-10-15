@@ -515,7 +515,7 @@ $('#retryPlaying').onclick=()=>action(async()=>{const game=openedGame;if(!game)r
 for(const id of ['helpButton','playerHelpButton'])$('#'+id).onclick=()=>{if(!$('#help').open){$('#help').scrollTop=0;$('#help').showModal();$('#helpTitle').focus();}};
 for(const button of document.querySelectorAll('[data-help-topic]'))button.onclick=()=>{const section=$('#'+button.dataset.helpTopic);if(section.id==='helpTitle')$('#help').scrollTop=0;else section.scrollIntoView({block:'start'});section.focus({preventScroll:true});};
 $('#settingsButton').onclick = () => $('#settings').showModal();
-$('#setupFolder').onclick = () => $('#settings').showModal();
+$('#setupFolder').onclick = () => $('#chooseFolder').onclick();
 function resetSearch(){clearTimeout(searchTimer);renderLimit=60;$('#search').value='';$('#tagSearch').value='';$('#tagCategory').value='';selectedTags.clear();$('#searchScope').value='all';$('#kindFilter').value='';$('#environmentFilter').value='';$('#tagMatch').value='all';$('#sortGames').value='name-asc'; }
 $('#clearFilters').onclick = () => { resetSearch();render().catch(e => status(e.message));$('#search').focus(); };
 $('#emptyReset').onclick=()=>$('#clearFilters').click();
@@ -537,6 +537,7 @@ function openFolderSelection(selection, dropped = false) {
     const {handle,error}=await selection;
     if(error){
       $('#folderSelectionHelp').open=true;
+      if(!$('#settings').open)$('#settings').showModal();
       const detail='（v'+compatibilityTools.LAUNCHER_VERSION+' / '+(error.name||'Error')+'）'+(error.message||'');
       if(error.name==='AbortError')throw new Error('フォルダー選択が完了しませんでした。選択後にChromeのアクセス確認を許可してください。中断が続く場合は、下の枠へフォルダーをドラッグしてください。'+detail);
       if(error.name==='SecurityError'||error.name==='NotAllowedError')throw new Error('Chromeがフォルダーへのアクセスを許可しませんでした。ChromeでHTMLを直接開き、ゲーム専用フォルダーを選んでください。'+detail);
@@ -546,6 +547,7 @@ function openFolderSelection(selection, dropped = false) {
     if(dropped&&editingEnabled&&await handle.queryPermission({mode:'readwrite'})!=='granted')throw new Error('まず編集モードをオフにして、フォルダーをドラッグしてください。接続後に編集モードをオンにすると保存を許可できます。');
     try{await connect(handle);}catch(error){
       $('#folderSelectionHelp').open=true;
+      if(!$('#settings').open)$('#settings').showModal();
       if(error.name==='AbortError')throw new Error('フォルダーは選択されましたが、接続処理が中断しました。保存先への接続とアクセス権を確認してください。詳細：'+error.message);
       throw error;
     }
@@ -575,6 +577,15 @@ folderDrop.ondrop=event=>{
     selection=Promise.resolve(items[0].getAsFileSystemHandle()).then(handle=>({handle}),error=>({error}));
   }catch(error){selection=Promise.resolve({error});}
   return openFolderSelection(selection,true);
+};
+// A new PC can connect from the home screen without opening Settings.
+$('#emptyState').ondragover=event=>{
+  if(!root)return folderDrop.ondragover(event);
+  event.preventDefault();if(event.dataTransfer)event.dataTransfer.dropEffect='none';
+};
+$('#emptyState').ondrop=event=>{
+  if(!root)return folderDrop.ondrop(event);
+  event.preventDefault();
 };
 $('#reconnect').onclick = () => action(() => connect(remembered, true),true);
 $('#refresh').onclick = () => action(async()=>{await refresh();return '一覧を更新しました。';});

@@ -179,7 +179,7 @@ export async function gameId(path) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(path)))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
 }
 export async function scan(root, metadata) {
-  const games = []; let visited = 0;
+  const games = [], candidates = []; let visited = 0;
   async function add(path, title, kind, handle, folder, entry) {
     let settings, settingsError = '';
     try { settings = await loadGameSettings(root, path); }
@@ -188,27 +188,36 @@ export async function scan(root, metadata) {
     const replacement=await resolveGameContent(root,path,{safePath,getFile}),id=settings.data?.id||await gameId(path);
     if(replacement.contentError)settingsError= replacement.contentError;
     if(replacement.contentGameId&&replacement.contentGameId!==id)settingsError='ゲーム本体と作品情報のIDが一致しません。';
-    games.push({ id: settings.data?.id || await gameId(path), settingsText: settings.text, settingsError, path, kind, handle, folder, entry, title: typeof saved?.title === 'string' && saved.title.trim() ? saved.title.slice(0, 120) : title,
+    return { id, settingsText: settings.text, settingsError, path, kind, handle, folder, entry, title: typeof saved?.title === 'string' && saved.title.trim() ? saved.title.slice(0, 120) : title,
       tags: Array.isArray(saved?.tags) ? tagsFrom(saved.tags.filter(t => typeof t === 'string').join(',')) : [],
       developmentEnvironment: settings.data?.developmentEnvironment || (kind === 'pyxapp' ? 'Pyxel' : ''),
       description: typeof saved?.description === 'string' ? saved.description.slice(0,2000) : '',
       instructions: typeof saved?.instructions === 'string' ? saved.instructions.slice(0,4000) : '',
       updatedAt: settings.data?.updatedAt || '',
-      thumbnail: settings.data ? saved.thumbnail : saved?.thumbnail === true,...replacement,settingsError });
+      thumbnail: settings.data ? saved.thumbnail : saved?.thumbnail === true,...replacement,settingsError };
   }
   async function walk(folder, prefix = '', depth = 0) {
     try { await folder.getFileHandle('.gameportal-uploading'); return; } catch (error) { if (error.name !== 'NotFoundError') throw error; }
     const entries = []; for await (const entry of folder.values()) { if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.')) entries.push(entry); }
     const html = entries.filter(e => e.kind === 'file' && /\.html?$/i.test(e.name));
     const entry = html.find(e => /^index\.html?$/i.test(e.name)) || (html.length === 1 ? html[0] : null);
-    if (depth > 0 && entry) { await add(prefix + entry.name, folder.name, 'html', entry, folder, entry.name); return; }
+    if (depth > 0 && entry) { candidates.push([prefix + entry.name, folder.name, 'html', entry, folder, entry.name]); return; }
     for (const file of entries.filter(e => e.kind === 'file')) {
       const ext = file.name.split('.').at(-1).toLowerCase();
-      if (['html', 'htm', 'zip', 'pyxapp'].includes(ext) && !/^GAME-PORTAL\.html$/i.test(file.name)) await add(prefix + file.name, file.name.replace(/\.[^.]+$/, ''), ext === 'htm' ? 'html' : ext, file, folder, file.name);
+      if (['html', 'htm', 'zip', 'pyxapp'].includes(ext) && !/^GAME-PORTAL\.html$/i.test(file.name)) candidates.push([prefix + file.name, file.name.replace(/\.[^.]+$/, ''), ext === 'htm' ? 'html' : ext, file, folder, file.name]);
     }
     if (depth < 3) for (const dir of entries.filter(e => e.kind === 'directory')) await walk(dir, prefix + dir.name + '/', depth + 1);
   }
   await walk(root);
+  // Overlap metadata I/O on shared folders, with a small fixed concurrency.
+  let next = 0, failure;
+  await Promise.all(Array.from({length: Math.min(4,candidates.length)},async()=>{
+    while(!failure&&next<candidates.length){
+      const index=next++;
+      try{games[index]=await add(...candidates[index]);}catch(error){failure ||= error;}
+    }
+  }));
+  if(failure)throw failure;
   const ids = new Map(); for (const game of games) ids.set(game.id, (ids.get(game.id) || 0) + 1);
   for (const game of games) if (ids.get(game.id) > 1) { game.identityConflict = true; game.settingsError = '同じ作品IDのゲームが複数あります。別作品として追加する場合は「投稿」を使用してください。'; }
   return games.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
