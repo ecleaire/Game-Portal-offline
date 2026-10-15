@@ -1,5 +1,6 @@
 import { checkCompatibility, ensureCompatibility } from './compatibility.js';
 import { resolveGameContent } from './updates.js';
+import {nativeLayout,validateExe} from './native-tools.js';
 const MAX_FILES = 500, MAX_BYTES = 200 * 1024 * 1024;
 export function safePath(value) {
   if (typeof value !== 'string' || !value || value.length > 1000 || value.split('/').some(p => !p || p === '.' || p === '..' || /[\\:\x00-\x1f<>"|?*]/.test(p) || /[. ]$/.test(p) || /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i.test(p))) throw new Error('安全に扱えないファイル名です。');
@@ -202,11 +203,12 @@ export async function scan(root, metadata, {signal} = {}) {
     try { await folder.getFileHandle('.gameportal-uploading'); return; } catch (error) { if (error.name !== 'NotFoundError') throw error; }
     const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX') entries.push(entry); }
     const html = entries.filter(e => e.kind === 'file' && /\.html?$/i.test(e.name));
-    const entry = html.find(e => /^index\.html?$/i.test(e.name)) || (html.length === 1 ? html[0] : null);
-    if (depth > 0 && entry) { candidates.push([prefix + entry.name, folder.name, 'html', entry, folder, entry.name]); return; }
+    let native=null;try{native=nativeLayout(entries.filter(e=>e.kind==='file').map(e=>e.name));}catch{}
+    const entry = native ? entries.find(e=>e.name===native.entry) : html.find(e => /^index\.html?$/i.test(e.name)) || (html.length === 1 ? html[0] : null);
+    if (depth > 0 && entry) { candidates.push([prefix + entry.name, folder.name, native?'exe':'html', entry, folder, entry.name]); return; }
     for (const file of entries.filter(e => e.kind === 'file')) {
       const ext = file.name.split('.').at(-1).toLowerCase();
-      if (['html', 'htm', 'zip', 'pyxapp'].includes(ext) && !/^GAME-PORTAL\.html$/i.test(file.name)) candidates.push([prefix + file.name, file.name.replace(/\.[^.]+$/, ''), ext === 'htm' ? 'html' : ext, file, folder, file.name]);
+      if (['html', 'htm', 'zip', 'pyxapp','exe'].includes(ext) && !/^GAME-PORTAL(?:-WINDOWS\.exe|\.html)$/i.test(file.name)) candidates.push([prefix + file.name, file.name.replace(/\.[^.]+$/, ''), ext === 'htm' ? 'html' : ext, file, folder, file.name]);
     }
     if (depth < 8) for (const dir of entries.filter(e => e.kind === 'directory')) await walk(dir, prefix + dir.name + '/', depth + 1);
   }
@@ -264,10 +266,12 @@ export async function postGame(root, files, packageTools, onProgress = () => {})
   onProgress({phase:'validate',current:0,total:files.length});
   if (!files.length || files.length > MAX_FILES || files.reduce((n, f) => n + f.size, 0) > MAX_BYTES) throw new Error('投稿は500ファイル・200MB以内にしてください。');
   const single = files.length === 1 && !files[0].webkitRelativePath;
-  if (single && !/\.(html?|zip|pyxapp)$/i.test(files[0].name)) throw new Error('HTML・ZIP・PYXAPPを選択してください。');
+  if (single && !/\.(html?|zip|pyxapp|exe)$/i.test(files[0].name)) throw new Error('HTML・ZIP・PYXAPP・EXEを選択してください。');
   const paths = files.map(f => f.webkitRelativePath ? f.webkitRelativePath.split('/').slice(1).join('/') : f.name);
   paths.forEach(safePath);
-  if (!single && !packageTools.webArchiveLayout(paths)) throw new Error('index.html、またはHTMLが1件のWeb書き出しフォルダーを選んでください。');
+  const native=single?/\.exe$/i.test(files[0].name)?{entry:paths[0],root:''}:null:nativeLayout(paths);
+  if(native)await validateExe(files[paths.indexOf(native.entry)]);
+  if (!single && !native && !packageTools.webArchiveLayout(paths)) throw new Error('起動用HTML、またはEXEと素材をまとめたフォルダーを選んでください。');
   if (single && /\.zip$/i.test(files[0].name)) {
     try { await packageTools.unpackPrivateZip(await files[0].arrayBuffer()); }
     catch (error) {
@@ -284,7 +288,7 @@ export async function postGame(root, files, packageTools, onProgress = () => {})
     await writeFile(dir, '.gameportal-uploading', '投稿準備中');
     onProgress({phase:'copy',current:0,total:files.length});
     for (let i = 0; i < files.length; i++) { await writeFile(dir, paths[i], files[i]);onProgress({phase:'copy',current:i+1,total:files.length}); }
-    const layout = single ? null : packageTools.webArchiveLayout(paths);
+    const layout = single ? null : native || packageTools.webArchiveLayout(paths);
     const entry = single ? paths[0] : layout.root + layout.entry;
     const relative = name + '/' + entry;
     onProgress({phase:'settings',current:files.length,total:files.length});
@@ -294,3 +298,5 @@ export async function postGame(root, files, packageTools, onProgress = () => {})
     return relative;
   } catch (e) { if(e.code!=='SETTINGS_SAVE_UNCONFIRMED')try{await root.removeEntry(name,{recursive:true});}catch{const failure=new Error(e.message+' 追加途中のフォルダーが残っている可能性があります。接続を戻して「ライブラリ点検」で確認してください。',{cause:e});failure.name=e.name;throw failure;}throw e; }
 }
+
+export {validateExe};

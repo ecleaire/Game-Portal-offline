@@ -72,11 +72,12 @@ export async function inspectLibrary(root, library, preview) {
   const currentContent=new Set(scanned.filter(g=>g.contentRevision||g.contentError).map(g=>g.path));
   for(const game of scanned.filter(canUpdateGame))try{for(const message of await inspectGameContent(root,game,library))add('config',game.path,message,'ゲームを開き、「本体を更新」から結果を確認してください。');}catch(error){add('config',game.path,'更新版のファイル・設定を確認できません：'+error.message,'本体更新のバックアップと接続を確認してください。');}
   for (const [path, handle] of files) {
-    if (!/\.(html?|zip|pyxapp)$/i.test(path) || /(?:^|\/)GAME-PORTAL\.html$/i.test(path)) continue;
+    if (!/\.(html?|zip|pyxapp|exe)$/i.test(path) || /(?:^|\/)GAME-PORTAL(?:\.html|-WINDOWS\.exe)$/i.test(path)) continue;
     checked++;
     if(currentContent.has(path))continue;
     try {
       const file = await handle.getFile();
+      if (/\.exe$/i.test(path)) { await library.validateExe(file); continue; }
       if (file.size > 50 * 1024 * 1024) { add('limit', path, '50MBを超えているため内容点検を省略しました。', '作品のサイズを確認してください。'); complete = false; continue; }
       if (/\.pyxapp$/i.test(path)) { library.validatePyxapp(await file.arrayBuffer()); continue; }
       let html, entry = path, available = files;

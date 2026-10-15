@@ -1,5 +1,6 @@
 // Read-only upload checks and image geometry shared by UI and regression tests.
 import { inspectUploadDependencies } from './dependencies.js';
+import {nativeLayout,validateExe} from './native-tools.js';
 export async function checkUpload(input, library, preview, localResources) {
   const files=[...input], bytes=files.reduce((n,f)=>n+f.size,0);
   if(!files.length||files.length>500||bytes>200*1024*1024)throw Error('投稿は500ファイル・200MB以内にしてください。');
@@ -7,6 +8,8 @@ export async function checkUpload(input, library, preview, localResources) {
   const paths=files.map(f=>f.webkitRelativePath?f.webkitRelativePath.split('/').slice(1).join('/'):f.name);
   paths.forEach(library.safePath);
   if(new Set(paths.map(p=>p.toLowerCase())).size!==paths.length)throw Error('同じ名前のファイルがあります。大文字・小文字も確認してください。');
+  const native=single?/\.exe$/i.test(files[0].name)?{entry:paths[0]}:null:nativeLayout(paths);
+  if(native){await validateExe(files[paths.indexOf(native.entry)]);return {kind:'exe',entry:native.entry,bytes,expandedBytes:bytes,count:files.length,missing:[],external:[],unverified:['Windows版の起動補助で実行します。必要なDLL・素材はフォルダーごと追加してください。EXEのセーブはゲーム自身が管理します。'],checkedFiles:1};}
   let contents,entry,expandedBytes=bytes;
   if(single){
     const file=files[0];if(!/\.(html?|zip|pyxapp)$/i.test(file.name))throw Error('HTML・ZIP・PYXAPPを選択してください。');

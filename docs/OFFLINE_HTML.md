@@ -1,6 +1,6 @@
 # 完全オフライン HTML版 GAME PORTAL
 
-現在のバージョンは **0.18.7**。画面上部のロゴ横に表示します。
+現在のバージョンは **0.19.0**。画面上部のロゴ横に表示します。
 
 PC版Google Chrome（Windows / macOS）推奨です。配布ZIPを展開し、`GAME-PORTAL.html` をChromeで開きます。画面・Pyxel・Pyodide・Python標準ライブラリーをHTMLに同梱しています。使用中のCDN・Supabase・Google Drive接続、アカウント登録は不要です。
 
@@ -24,7 +24,7 @@ PC版Google Chrome（Windows / macOS）推奨です。配布ZIPを展開し、`G
 追加は完了して一覧更新だけ失敗した場合は、再投稿せず「再読み込み」を使ってください。
 画像の「サムネイルを解除」は選択中の画像も解除し、保存時に空の画像へ戻します。
 
-対応形式はHTML/HTM、HTMLを含むZIP、Pyxelの `.pyxapp`。EXE、ネイティブ用ZIP、Pythonの任意パッケージを後からネット取得する作品には対応しません。Pyxel 2.9.9 / Pyodide 314.0.4を同梱します。別バージョン固有の機能を使う作品は互換性を確認してください。
+対応形式はHTML/HTM、HTMLを含むZIP、Pyxelの `.pyxapp`。WindowsのEXEゲームは[起動補助](WINDOWS_EXE.md)を併用します。メイン画面はHTMLのままです。EXEを含むZIPは先に展開し、素材を含むフォルダーで追加してください。Pythonの任意パッケージを後からネット取得する作品には対応しません。Pyxel 2.9.9 / Pyodide 314.0.4を同梱します。別バージョン固有の機能を使う作品は互換性を確認してください。
 
 GodotはWeb書き出しの全ファイルをZIPまたはフォルダーで投稿してください。Scratch/TurboWarpは素材を含むHTMLまたはZIPを使用します。ZIPは50MB、展開後200MB・500ファイルまで。HTMLフォルダーも200MB・500ファイルまで。Webゲームの外部HTTP通信・ダウンロード・親画面へのアクセスは許可しません。スレッド必須のGodot書き出しや外部サーバー必須の作品は動作しません。
 

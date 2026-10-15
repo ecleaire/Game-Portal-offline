@@ -3,7 +3,7 @@
 const selector='.gameportal-content.json',pendingName='.gameportal-content-pending.json';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const digest=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
-export function canUpdateGame(game){return !!game&&/^game-[0-9a-f-]{36}\//.test(game.path)&&uuid.test(game.path.split('/')[0].slice(5));}
+export function canUpdateGame(game){return !!game&&game.kind!=='exe'&&/^game-[0-9a-f-]{36}\//.test(game.path)&&uuid.test(game.path.split('/')[0].slice(5));}
 async function ownerOf(root,path,tools){tools.safePath(path);if(!canUpdateGame({path}))throw new Error('本体更新は「投稿」で追加した作品に対応しています。');return root.getDirectoryHandle(path.split('/')[0]);}
 async function optionalText(dir,name,limit=name===pendingName?2500000:600000){try{const file=await(await dir.getFileHandle(name)).getFile();if(file.size>limit)throw new Error('本体更新の設定が大きすぎます。');return await file.text();}catch(error){if(error.name==='NotFoundError')return null;throw error;}}
 function record(value,path,tools){

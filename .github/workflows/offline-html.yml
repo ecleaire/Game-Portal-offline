@@ -28,6 +28,10 @@ jobs:
       - run: npm test
       - run: npx playwright install chromium
       - run: npm run test:browser
+      - run: npm run build:windows
+        if: matrix.os == 'windows-latest'
+      - run: npm run test:native
+        if: matrix.os == 'windows-latest'
       - uses: actions/upload-artifact@v4
         if: matrix.os == 'windows-latest'
         with:
@@ -39,4 +43,7 @@ jobs:
             offline-release/NAS-VALIDATION.txt
             offline-release/THIRD-PARTY-LICENSES.txt
             offline-release/GAME-PORTAL-HTML.zip
+            offline-release/GAME-PORTAL-WINDOWS.exe
+            offline-release/GAME-PORTAL-WINDOWS.zip
+            offline-release/README-WINDOWS.txt
           if-no-files-found: error

@@ -1,0 +1,35 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {nativeLayout,validateExe,nativeConnection,launchNative} from '../offline-html/native-tools.js';
+import {canUpdateGame} from '../offline-html/updates.js';
+
+function exe(flags=2){const bytes=new Uint8Array(128),view=new DataView(bytes.buffer);view.setUint16(0,0x5a4d,true);view.setUint32(60,64,true);view.setUint32(64,0x4550,true);view.setUint16(86,flags,true);return new File([bytes],'game.exe');}
+
+test('native entry selection keeps dependencies and recognizes Godot and Unity helpers',()=>{
+  assert.deepEqual(nativeLayout(['game.exe','assets/data.bin']),{kind:'exe',root:'',entry:'game.exe'});
+  assert.equal(nativeLayout(['game.exe','game.console.exe']).entry,'game.exe');
+  assert.equal(nativeLayout(['game.exe','UnityCrashHandler64.exe']).entry,'game.exe');
+  assert.equal(nativeLayout(['index.html','GAME-PORTAL-WINDOWS.exe']),null);
+  assert.equal(nativeLayout(['__MACOSX/game.exe','.cache/game.exe']),null);
+  assert.throws(()=>nativeLayout(['one.exe','two.exe']),/複数/);
+  assert.throws(()=>nativeLayout(['nested/game.exe']),/直接/);
+});
+
+test('EXE validation reads bounded headers and rejects corrupt executables and renamed DLLs',async()=>{
+  await validateExe(exe());
+  await assert.rejects(validateExe(exe(0x2002)),/EXE/);
+  await assert.rejects(validateExe(exe(0)),/EXE/);
+  await assert.rejects(validateExe(new File(['bad'],'broken.exe')),/EXE/);
+  await assert.rejects(validateExe({size:201*1024*1024,slice(){throw Error('must not read');}}),/200MB/);
+  const bytes=new Uint8Array(await exe().arrayBuffer());new DataView(bytes.buffer).setUint32(60,127,true);
+  await assert.rejects(validateExe(new File([bytes],'corrupt.exe')),/壊れ/);
+  let reads=0;const file=exe();await validateExe({size:file.size,slice(start,end){reads+=end-start;return file.slice(start,end);}});assert.equal(reads,88);
+});
+
+test('native bridge accepts only bounded file-page capabilities; absent helper cannot launch',async()=>{
+  const token='a'.repeat(64),url='file:///C:/portal.html#native=32123.'+token;
+  assert.deepEqual(nativeConnection(url),{origin:'http://127.0.0.1:32123',token});
+  for(const bad of [url.replace('file:///C:','https://example.com'),url.replace('32123','80'),url.replace('32123','65536'),url+'extra','file:///C:/portal.html'])assert.equal(nativeConnection(bad),null);
+  await assert.rejects(launchNative(null,'id',{},'0.19.0'),/GAME-PORTAL-WINDOWS/);
+  assert.equal(canUpdateGame({kind:'exe',path:'game-abc/game.exe'}),false);
+});

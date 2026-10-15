@@ -8,6 +8,8 @@ function initialLauncherShell(node){
   for(const child of node.childNodes)copy.append(initialLauncherShell(child));return copy;
 }
 const originalLauncher='<!doctype html>\n'+initialLauncherShell(document.documentElement).outerHTML;
+const nativeBridge=nativeTools.nativeConnection(location.href);
+if(nativeBridge)try{history.replaceState(null,'',location.href.split('#')[0]);}catch{}
 function launcherSource(){return originalLauncher.replace('__PORTAL_EXPORT_RUNTIME__',()=>exportRuntimeNode.textContent).replace('__PORTAL_EXPORT_APP__',()=>exportAppNode.textContent);}
 const folderScope=location.pathname;
 let portableConnection=null,connectionError='',lastFolderRevision='',folderWatchPromise=null,folderChannel=null;
@@ -337,7 +339,7 @@ async function render() {
     if (revision !== renderRevision) return;
     const body = document.createElement('div'); body.className = 'cardbody';
     const title = document.createElement('h2'); title.textContent = game.title;
-    const type = document.createElement('p'); type.className = 'type'; type.textContent = game.developmentEnvironment || (game.kind === 'pyxapp' ? 'Pyxel' : 'Webゲーム');
+    const type = document.createElement('p'); type.className = 'type'; type.textContent = game.developmentEnvironment || (game.kind === 'pyxapp' ? 'Pyxel' : game.kind === 'exe' ? 'Windowsゲーム' : 'Webゲーム');
     const tags = document.createElement('div'); tags.className = 'tags';
     for (const tag of game.tags) { const span = document.createElement('span'); span.className = 'tag'; span.textContent = tag; tags.append(span); }
     const open=document.createElement('a');open.href='#player';open.className='game-title-link';open.textContent=game.title;open.onclick=event=>{event.preventDefault();action(()=>playGame(game),false,true);};title.replaceChildren(open);
@@ -368,15 +370,19 @@ function editGame(game) {
 function updatePlayerInfo(){
   if(!openedGame)return;
   const latest=games.find(g=>g.path===openedGame.path&&g.id===openedGame.id);if(latest)openedGame=latest;
+  const native=openedGame.kind==='exe';
+  $('#nativeLaunch').hidden=!native;$('#nativeLaunch').disabled=busy||!nativeBridge||!!openedGame.settingsError||syncPaused;
+  $('#nativeReason').hidden=!native;$('#nativeReason').textContent=nativeBridge?'Windowsの別ウィンドウで起動します。信頼できるゲームだけ実行してください。セーブはゲーム自身が管理します。':'EXEを使うときは、同じフォルダーのGAME-PORTAL-WINDOWS.exeを開いてください。メイン画面はこのHTMLのままです。';
+  $('#saveBackupsButton').hidden=native;$('#fullscreen').hidden=native;
   if(activePlay&&activePlay.game.id===openedGame.id)activePlay.game=openedGame;
   $('#playerTitle').textContent=openedGame.title;$('#playerEnvironment').textContent=openedGame.developmentEnvironment||'';$('#playerEnvironment').hidden=!openedGame.developmentEnvironment;
   $('#playerDescription').textContent=openedGame.description||'';$('#playerInstructions').textContent=openedGame.instructions||'';
   $('#playerDescription').closest('section').hidden=!openedGame.description;$('#playerInstructions').closest('section').hidden=!openedGame.instructions;
   $('#playerTags').replaceChildren();for(const tag of openedGame.tags){const span=document.createElement('span');span.className='tag';span.textContent=tag;$('#playerTags').append(span);}
   $('#editPlaying').disabled=busy||!editingEnabled||!!openedGame.settingsError||pendingSettings(openedGame.path);
-  $('#editPlaying').hidden=!editingEnabled;$('#captureButton').hidden=!editingEnabled;$('#captureReason').hidden=!editingEnabled;$('#editPlayingReason').hidden=!editingEnabled;
+  $('#editPlaying').hidden=!editingEnabled;$('#captureButton').hidden=!editingEnabled||native;$('#captureReason').hidden=!editingEnabled||native;$('#editPlayingReason').hidden=!editingEnabled;
   $('#editPlayingReason').textContent=openedGame.settingsError?'設定の確認が必要です。「ライブラリ点検」を確認してください。':!editingEnabled?'編集するには「設定」で追加・編集を有効にしてください。':'';
-  $('#updatePlaying').hidden=!editingEnabled;$('#updatePlayingReason').hidden=!editingEnabled;
+  $('#updatePlaying').hidden=!editingEnabled||native;$('#updatePlayingReason').hidden=!editingEnabled||native;
   $('#updatePlayingReason').textContent=!updateTools.canUpdateGame(openedGame)?'本体更新は「投稿」で追加した作品に対応しています。':openedGame.contentPending?'前回の本体更新の結果が未確認です。「本体を更新」から確認してください。':openedGame.contentWarning||'';
 }
 let tagControls = [], autoEnvironmentTag='';
@@ -485,6 +491,10 @@ async function playGame(game) {
     $('#playerStatus').textContent=game.settingsError||'フォルダーに再接続してください。';return;
   }
   if (!await flushSave()||playRevision!==requested) return; stopPlayer();const launch=playRevision;
+  if(game.kind==='exe'){
+    openedGame=game;$('#frame').hidden=true;$('#saveTools').hidden=true;$('#playerStatus').textContent='';
+    if(!$('#player').open)$('#player').showModal();updatePlayerInfo();return;
+  }
   const session = { libraryId: localLibrary, game, release: await localState.acquirePlaySession(localLibrary, game.id) };
   if(playRevision!==launch){session.release();return;}
   activePlay = session;openedGame=game;$('#frame').hidden=false;updatePlayerInfo();
@@ -516,6 +526,11 @@ async function playGame(game) {
 }
 
 $('#retryPlaying').onclick=()=>action(async()=>{const game=openedGame;if(!game)return;await refresh();const latest=games.find(g=>g.id===game.id&&g.path===game.path);if(!latest)throw new Error('作品が移動・削除されています。ゲーム一覧を確認してください。');await playGame(latest);});
+$('#nativeLaunch').onclick=()=>action(async()=>{
+  await requireLibraryConnection();if(openedGame?.kind!=='exe'||openedGame.settingsError)throw new Error('ゲームの設定を確認してください。');
+  try{await nativeTools.launchNative(nativeBridge,localLibrary,openedGame,compatibilityTools.LAUNCHER_VERSION);$('#playerStatus').textContent='Windowsの別ウィンドウで起動しました。';}
+  catch(error){$('#playerStatus').textContent='EXEを起動できませんでした。起動補助とWindowsのアクセス許可を確認してください：'+error.message;throw new Error($('#playerStatus').textContent);}
+},false,true);
 for(const id of ['helpButton','playerHelpButton'])$('#'+id).onclick=()=>{if(!$('#help').open){$('#help').scrollTop=0;$('#help').showModal();$('#helpTitle').focus();}};
 for(const button of document.querySelectorAll('[data-help-topic]'))button.onclick=()=>{const section=$('#'+button.dataset.helpTopic);if(section.id==='helpTitle')$('#help').scrollTop=0;else section.scrollIntoView({block:'start'});section.focus({preventScroll:true});};
 $('#settingsButton').onclick = () => $('#settings').showModal();
@@ -655,7 +670,11 @@ async function stopForContentUpdate(reason='before-update'){
   try{await withStoppedSave(game,()=>localState.backupLocalSave(libraryId,game.id,reason,game.contentRevision||'original'));}
   catch(error){const recovery=stopGame?'ゲーム画面を閉じずに保存を再試行してください。':'「起動を再試行」で再開できます。';throw new Error('セーブを退避できなかったため、本体は変更していません。このPCの保存領域を確認してください。'+recovery+error.message,{cause:error});}
 }
-const contentPreflight=(files,tools,packageTools)=>improvements.checkUpload(files,tools,packageTools,maintenance.localResources);
+const contentPreflight=async(files,tools,packageTools)=>{
+  const check=await improvements.checkUpload(files,tools,packageTools,maintenance.localResources);
+  if(check.kind==='exe')throw new Error('EXEは「ゲームを追加」から追加してください。本体の入れ替えはゲームを終了してから保管フォルダーで行ってください。');
+  return check;
+};
 $('#confirmContentUpdate').onclick=()=>action(async()=>{
   if(!contentCheck?.valid||contentTarget?.contentPending)throw new Error('更新前チェックと前回の更新結果を確認してください。');
   const files=[...contentSelection],game=contentTarget;await stopForContentUpdate();
