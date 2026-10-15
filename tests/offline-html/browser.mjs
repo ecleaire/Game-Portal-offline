@@ -13,8 +13,8 @@ const expectedVersion = 'v' + JSON.parse(await readFile(new URL('../../package.j
 const server = createServer((req,res) => { res.setHeader('Content-Type','text/html'); res.end(html); });
 await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
 const origin = 'http://127.0.0.1:' + server.address().port;
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined, headless:true });
-const context = await browser.newContext({ viewport:{width:1200,height:850} });
+const browser = await chromium.launchPersistentContext(join(temp,'profile'),{ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined, headless:true,viewport:{width:1200,height:850} });
+const context = browser;
 let peer;
 const peerTrace = [];
 const page = await context.newPage(); const errors = [], requests = [];
@@ -227,7 +227,8 @@ try {
   await page.screenshot({path:join(temp,'offline-html.png'),fullPage:true});
   console.log('Offline HTML passed: read-only browsing, local saves, cross-tab play lock, save import/export and failed-save retry, real browser folder writes, posting HTML/ZIP/PYXAPP, metadata and thumbnail, tags/search, isolated play, save persistence, portable folder copy, real Pyxel canvas, no runtime HTTP.');
 } catch(e) {
-  console.log('Search diagnosis:',await page.evaluate(()=>({query:document.querySelector('#search').value,scope:document.querySelector('#searchScope').value,kind:document.querySelector('#kindFilter').value,environment:document.querySelector('#environmentFilter').value,tags:[...selectedTags],games:games.map(g=>({title:g.title,tags:g.tags}))})));
+  console.error('Original failure:',e);
+  console.log('Search diagnosis:',await page.evaluate(()=>({query:document.querySelector('#search').value,scope:document.querySelector('#searchScope').value,kind:document.querySelector('#kindFilter').value,environment:document.querySelector('#environmentFilter').value,tags:[...selectedTags],games:games.map(g=>({title:g.title,tags:g.tags}))})).catch(()=>null));
   const child=page.frames().find(f=>f!==page.mainFrame());
   if(child)console.error('Frame diagnosis:',await child.evaluate(()=>({body:document.body?.innerHTML.slice(0,1500),links:[...document.querySelectorAll('link')].map(x=>x.href),runtime:!!window.pyxelContext,resources:performance.getEntriesByType('resource').slice(-10).map(x=>x.name)})).catch(()=>null));
   console.error('Browser status:',await page.locator('#status').textContent().catch(()=>''),'Player:',await page.locator('#playerStatus').textContent().catch(()=>''));console.error('Browser errors:',errors);

@@ -1,3 +1,6 @@
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {chromium,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
@@ -11,9 +14,10 @@ assert(html.includes(token));
 // These are instrumented guard-aware readers, not pre-0.14 distributions.
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(req.url==='/older'?html.replace(token,"const LAUNCHER_VERSION = '0.13.9';"):req.url==='/patch'?html.replace(token,`const LAUNCHER_VERSION = '${patchVersion}';`):html);});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
+const profile=await mkdtemp(join(tmpdir(),'portal-compatibility-browser-'));
+const browser=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,viewport:{width:1280,height:960}});
 try{
- const context=await browser.newContext(),page=await context.newPage(),errors=[];
+ const context=browser,page=await context.newPage(),errors=[];
  await context.addInitScript(()=>{FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
  const origin='http://127.0.0.1:'+server.address().port;
  async function open(path='/'){
@@ -48,4 +52,4 @@ try{
  assert.equal(await page.evaluate(async()=>await(await library.getFile(root,'game.html')).text()),'<body><script>localStorage.setItem("level","keep")</script>Game</body>');
  assert.deepEqual(errors,[]);
  console.log('Compatibility UI passed: read-only legacy connection, verified marker initialization, instrumented old-reader rejection, compatible patch reader, peer floor change with existing play preserved, new play/write blocking, corruption and manual recovery, IDs/files/saves unchanged. Pre-0.14 HTML cannot enforce this guard.');
-}finally{await browser.close();await new Promise(r=>server.close(r));}
+}finally{await browser.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true});}

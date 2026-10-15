@@ -56,7 +56,9 @@ async function requireLibraryConnection(forWrite=false){
   await checkLibraryCompatibility();
   if(localLibrary&&await library.loadLibraryId(root)!==localLibrary){syncPaused=true;$('#reconnect').hidden=false;syncStatus('保管フォルダーのIDが変わりました。設定からフォルダーを指定し直してください。');throw new Error('保管フォルダーのIDが変わりました。フォルダーを指定し直してください。');}
 }
-try { $('#rememberFolder').checked=localStorage.getItem('game-portal.remember-folder')!=='false';$('#autoSync').checked=localStorage.getItem('game-portal.auto-sync')!=='false'; } catch {}
+function fixedPreferences(){for(const id of ['rememberFolder','autoSync']){$('#'+id).checked=true;$('#'+id).disabled=true;}}
+fixedPreferences();
+try{localStorage.setItem('game-portal.remember-folder','true');localStorage.setItem('game-portal.auto-sync','true');}catch{}
 const pendingSettings=path=>settingsReceipts.some(a=>a.libraryId===localLibrary&&a.gamePath===path);
 library.setSettingsSaveObserver(async(stage,attempt)=>{
   const receipt={...attempt,libraryId:localLibrary};
@@ -150,9 +152,10 @@ async function checkSharedFolder(){
 setInterval(()=>{void checkSharedFolder();},5000);
 window.addEventListener('focus',()=>{void checkSharedFolder();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)void checkSharedFolder();});
-window.addEventListener('storage',event=>{if(event.key==='game-portal.remember-folder')$('#rememberFolder').checked=event.newValue!=='false';});
+window.addEventListener('storage',event=>{if(['game-portal.remember-folder','game-portal.auto-sync'].includes(event.key))fixedPreferences();});
 
 function writeControls() {
+  fixedPreferences();
   folderSharingControls();
   contentControls();
   renderSaveVerification();
@@ -249,6 +252,7 @@ async function savedResult(message){
   catch(error){if(remembered)$('#reconnect').hidden=false;const warning=message+' 一覧更新だけ失敗しました。再保存せず、接続を確認して「再読み込み」を押してください：'+error.message;if($('#player').open)$('#playerStatus').textContent=warning;return warning;}
 }
 function selectEditTab(name){
+  $('#editContent').scrollTop=0;
   for(const part of ['Basic','Description','Image']){const active=part===name;$('#panel'+part).hidden=!active;$('#tab'+part).setAttribute('aria-selected',String(active));$('#tab'+part).tabIndex=active?0:-1;}
   $('#edit').scrollTop=0;
 }
@@ -285,7 +289,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   const nextLocalLibrary = initialize ? await library.ensureLibraryId(handle) : scannedLibrary;
   await checkLibraryCompatibility(handle);
   resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; resetSearch();
-  let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,$('#rememberFolder').checked);}catch(error){cacheError=' 投稿先をこのPCに記憶できませんでした。次回はフォルダーを選び直してください：'+error.message;}
+  let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){cacheError=' 投稿先をこのPCに記憶できませんでした。次回はフォルダーを選び直してください：'+error.message;}
   syncPaused=false;$('#reconnect').hidden = true;
   $('#sharedFolderPath').value=portableConnection?.path||'';try{$('#sharedFolderPath').value=localStorage.getItem('game-portal.folder-path.'+localLibrary)||$('#sharedFolderPath').value;}catch{}
   metadata = next; games = nextGames; $('#folderName').textContent = handle.name; $('#settingFolder').textContent = handle.name;
@@ -756,9 +760,9 @@ else Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([
   if(previous?.handle&&$('#rememberFolder').checked){remembered=previous.handle;$('#reconnect').hidden=false;try{if(await remembered.queryPermission({mode:editingEnabled?'readwrite':'read'})==='granted')await connect(remembered,false,true);else syncStatus('前回の投稿先を使用するには「設定」→「再接続する」でアクセスを許可してください。');}catch(error){syncStatus('前回の投稿先に接続できません。「設定」から再接続してください：'+error.message);}}
 }).catch(error => status('このPCの保存機能を確認してください：' + error.message)).finally(initialized);
 
-$('#rememberFolder').onchange=()=>action(async()=>{const enabled=$('#rememberFolder').checked;if(remembered)await cacheHandle(remembered,enabled);try{localStorage.setItem('game-portal.remember-folder',String(enabled));}catch{throw new Error('このPCに設定を記憶できません。ブラウザーの保存設定を確認してください。');}return enabled?'投稿先をこのPCで記憶します。':'投稿先の記憶を解除しました。次回は選び直してください。';});
-$('#forgetFolder').onclick=()=>action(async()=>{await localState.forgetHandle();$('#rememberFolder').checked=false;try{localStorage.setItem('game-portal.remember-folder','false');}catch{}return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。';});
-$('#autoSync').onchange=()=>{try{localStorage.setItem('game-portal.auto-sync',String($('#autoSync').checked));}catch{status('自動確認の設定はこの起動中だけ適用します。');}syncStatus($('#autoSync').checked?'共有フォルダーの自動確認：有効（15秒ごと）':'共有フォルダーの自動確認：停止中');};
+$('#rememberFolder').onchange=fixedPreferences;
+$('#forgetFolder').onclick=()=>action(async()=>{await localState.forgetHandle();return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
+$('#autoSync').onchange=fixedPreferences;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)void syncLibrary();});
 
 $('#enableEditing').onchange = () => action(async () => {

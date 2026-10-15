@@ -1,12 +1,16 @@
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {chromium,expect} from '@playwright/test';
 import {readFile,mkdir} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 const html=await readFile('offline-release/GAME-PORTAL.html');
 const server=createServer((q,r)=>{r.setHeader('Content-Type','text/html');r.end(html);});await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
+const profile=await mkdtemp(join(tmpdir(),'portal-save-backup-browser-'));
+const browser=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,viewport:{width:1280,height:960}});
 try{
- const context=await browser.newContext({viewport:{width:1280,height:960}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const context=browser,page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await context.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
  await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
  await page.evaluate(async()=>{const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('backup-library',{create:true});window.showDirectoryPicker=async()=>folder;});
@@ -51,4 +55,4 @@ try{
  assert.match(await page.evaluate(async()=>{try{await localState.restoreLocalSaveBackup(localLibrary,games[0].id,'missing');}catch(e){return e.message;}}),/見つかりません/);assert.deepEqual(await page.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id)),{level:'11'});
  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');assert.equal((await page.evaluate(({library,game})=>localState.loadSaveBackups(library,game),identity)).length,10);
  assert.deepEqual(errors,[]);console.log('Save backup UI passed: automatic pre-update/rollback snapshots, backup failure blocks content switch, atomic restore/undo with failure rollback, JSON export, actual game reads restored save, game-content independence, play locks, bounded retention, profile reload and identity isolation.');
-}finally{await browser.close();await new Promise(r=>server.close(r));}
+}finally{await browser.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true});}

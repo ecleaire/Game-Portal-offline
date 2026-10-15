@@ -6,10 +6,11 @@ import {join} from 'node:path';
 import assert from 'node:assert/strict';
 import {packageWebFiles} from '../../assets/zip-upload.js';
 const html=await readFile('offline-release/GAME-PORTAL.html'),server=createServer((q,r)=>{r.setHeader('Content-Type','text/html');r.end(html);});await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true}),temp=await mkdtemp(join(tmpdir(),'portal-update-'));
+const temp=await mkdtemp(join(tmpdir(),'portal-update-'));
+const browser=await chromium.launchPersistentContext(join(temp,'profile'),{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,viewport:{width:1280,height:960}});
 const body=version=>`<h1>${version}</h1><script>document.body.dataset.version='${version}';document.body.dataset.previous=localStorage.getItem('level')||'none';localStorage.setItem('level','keep');</script>`;
 try{
- const context=await browser.newContext({viewport:{width:1280,height:960}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));const origin='http://127.0.0.1:'+server.address().port;
+ const context=browser,page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));const origin='http://127.0.0.1:'+server.address().port;
  await context.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});
  await page.goto(origin);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
  const picker=async target=>target.evaluate(async()=>{window.testRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('update-library',{create:true});window.showDirectoryPicker=async()=>window.testRoot;});

@@ -1,9 +1,13 @@
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {chromium,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 const html=await readFile('offline-release/GAME-PORTAL.html'),server=createServer((q,r)=>{r.setHeader('Content-Type','text/html');r.end(html);});await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
+const profile=await mkdtemp(join(tmpdir(),'portal-first-play-'));
+const browser=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
 try{
  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}FileSystemDirectoryHandle.prototype.queryPermission=async options=>options?.mode==='readwrite'&&window.readonlyFirstPlay?'prompt':'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=>{window.permissionRequests=(window.permissionRequests||0)+1;if(window.readonlyFirstPlay&&!window.allowFirstWrite)return 'denied';window.readonlyFirstPlay=false;return 'granted';};});
@@ -42,8 +46,8 @@ try{
  // A native selection also recovers after a previous sync abort instead of being reported as cancelled.
  await page.evaluate(()=>{syncPromise=Promise.reject(oldSyncAbort);syncPromise.catch(()=>{});});await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#settings')).toBeHidden();await page.evaluate(()=>syncPromise=null);
  // First-open home supports a folder drop, and a failed home picker reveals help.
- await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('#setupFolder')).toBeVisible();await expect(page.locator('#settings')).toBeHidden();
+ await page.evaluate(()=>localState.forgetHandle());await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('#setupFolder')).toBeVisible();await expect(page.locator('#settings')).toBeHidden();
  await page.evaluate(()=>window.showDirectoryPicker=async()=>{throw new DOMException('Home picker blocked','AbortError');});await page.locator('#setupFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#settings')).toBeVisible();await expect(page.locator('#folderSelectionHelp')).toHaveAttribute('open','');await page.locator('#settings [data-close]').click();
  await page.evaluate(async()=>{const handle=await(await navigator.storage.getDirectory()).getDirectoryHandle('restored-grant');const event=new Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(event,'dataTransfer',{value:{items:[{kind:'file',getAsFileSystemHandle:()=>Promise.resolve(handle)}]}});document.querySelector('#emptyState').dispatchEvent(event);});await page.waitForFunction(()=>!busy);await expect(page.locator('#settings')).toBeHidden();assert.equal(await page.evaluate(()=>root.name),'restored-grant');await expect(page.locator('#setupFolder')).toBeHidden();await page.locator('.game-title-link').click();await expect(page.frameLocator('#frame').locator('body')).toContainText('Last');await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);
  assert.deepEqual(errors,[]);console.log('First play passed: automatic setup on folder selection, editing stays off, direct play/save/reopen, original file unchanged, readonly legacy grant auto-repair, denial/retry no startup permission prompt, picker user activation before sync, read-only destination and stage-specific abort handling.');
-}finally{await browser.close();await new Promise(r=>server.close(r));}
+}finally{await browser.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true});}
