@@ -13,7 +13,7 @@ let helper,context;
 try{
  await mkdir(join(disk,'.gameportal'),{recursive:true});await mkdir(join(disk,'作品'));await writeFile(join(disk,'.gameportal','library-id.json'),JSON.stringify({schema:1,id:libraryId}));
  await writeFile(join(disk,'作品','index.html'),'<!doctype html><h1>Native auto game</h1><img src="image.svg"><script>localStorage.setItem("native-test","played");</script>');await writeFile(join(disk,'作品','image.svg'),'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="red"/></svg>');
- await writeFile(html,await readFile('GAME-PORTAL.html'));await writeFile(join(temp,'GAME-PORTAL-FOLDER.txt'),'./'+disk.split(/[\\/]/).at(-1)+'\n');
+ await writeFile(html,await readFile('GAME-PORTAL.html'));await writeFile(join(temp,'GAME-PORTAL-FOLDER.txt'),'\uFEFF./'+disk.split(/[\\/]/).at(-1)+'\n');
  const exe=resolve(process.platform==='win32'?'GAME-PORTAL-WINDOWS.exe':'GAME-PORTAL-MAC');
  helper=spawn(exe,['--headless','--html',html,'--ready-file',ready],{windowsHide:true,stdio:'pipe'});let output='';helper.stderr.on('data',data=>output+=data);
  let info;for(let n=0;n<200;n++){try{info=JSON.parse(await readFile(ready,'utf8'));break;}catch{if(helper.exitCode!==null)throw Error('Helper exited: '+output);await delay(100);}}assert(info,'Helper readiness');
@@ -30,6 +30,10 @@ try{
  await page.locator('.game-title-link').click();await expect(page.frameLocator('#frame').locator('h1')).toHaveText('Native auto game');await expect(page.frameLocator('#frame').locator('img')).toHaveJSProperty('naturalWidth',20);await page.waitForFunction(()=>!busy);
  await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);assert.equal((await page.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id)))['native-test'],'played');
  assert.equal(await page.evaluate(token=>launcherSource().includes(token),info.token),false);
+ await writeFile(join(disk,'.gameportal','compatibility.json'),JSON.stringify({schema:true,minLauncherVersion:version,requiredFeatures:[]}));assert.equal((await api('info')).status,400,'boolean schema rejected');
+ await writeFile(join(disk,'.gameportal','compatibility.json'),JSON.stringify({schema:1,minLauncherVersion:version,requiredFeatures:['unsupported']}));assert.equal((await api('info')).status,400,'unknown feature rejected');
+ await writeFile(join(disk,'.gameportal','compatibility.json'),JSON.stringify({schema:1,minLauncherVersion:'99.0.0',requiredFeatures:[]}));assert.equal((await api('info')).status,400,'newer floor rejected');
+ await writeFile(join(disk,'.gameportal','compatibility.json'),JSON.stringify({schema:1,minLauncherVersion:version,requiredFeatures:['per-game-settings-v1','content-selector-v1']}));assert.equal((await api('info')).status,200);
  await writeFile(join(disk,'.gameportal','library-id.json'),JSON.stringify({schema:1,id:'b'.repeat(32)}));assert.equal((await api('read','作品/index.html')).status,400,'library replacement rejected');assert.deepEqual(errors,[]);
  assert.equal(await readFile(join(disk,'作品','index.html'),'utf8'),'<!doctype html><h1>Native auto game</h1><img src="image.svg"><script>localStorage.setItem("native-test","played");</script>');
  console.log('Native auto-folder passed: fresh profile, no picker, Unicode relative path, actual HTML/assets play, read-only controls, auth/traversal/link/ID replacement blocked, no token export.');

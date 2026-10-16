@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import Security
+import CoreFoundation
 
 // macOS 12+, universal Intel / Apple silicon. No external runtime installation.
 let version = "__VERSION__"
@@ -28,13 +29,14 @@ func bound(_ root: URL, _ path: String) throws -> URL {
     return current
 }
 func validID(_ value: Any?) -> String? { guard let id=value as? String, id.range(of:"^[a-f0-9]{32}$",options:.regularExpression) != nil else{return nil};return id }
+func schema(_ value: Any?) -> Bool { guard let number=value as? NSNumber else{return false};return CFGetTypeID(number) != CFBooleanGetTypeID() && number.doubleValue==1 }
 func checkLibrary(_ root: URL, _ expected: String? = nil) throws -> String {
     let value=try object(read(bound(root,".gameportal/library-id.json"),1024))
-    guard value["schema"] as? Int == 1, let id=validID(value["id"]), expected == nil || expected == id else { throw PortalError("保存先のIDを確認してください。HTMLから初回設定を済ませた保存先を指定します。") }
+    guard schema(value["schema"]), let id=validID(value["id"]), expected == nil || expected == id else { throw PortalError("保存先のIDを確認してください。HTMLから初回設定を済ませた保存先を指定します。") }
     let compatibility=root.appendingPathComponent(".gameportal/compatibility.json")
     if fm.fileExists(atPath:compatibility.path) {
         let info=try object(read(bound(root,".gameportal/compatibility.json"),8192))
-        guard info["schema"] as? Int == 1, let minimum=info["minLauncherVersion"] as? String, minimum.range(of:"^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",options:.regularExpression) != nil, minimum.compare(version,options:.numeric) != .orderedDescending, let features=info["requiredFeatures"] as? [String], features.allSatisfy({["per-game-settings-v1","content-selector-v1"].contains($0)}) else { throw PortalError("HTMLとMac起動補助を対応する最新版にしてください。") }
+        guard schema(info["schema"]), let minimum=info["minLauncherVersion"] as? String, minimum.range(of:"^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",options:.regularExpression) != nil, minimum.compare(version,options:.numeric) != .orderedDescending, let features=info["requiredFeatures"] as? [String], features.allSatisfy({["per-game-settings-v1","content-selector-v1"].contains($0)}) else { throw PortalError("HTMLとMac起動補助を対応する最新版にしてください。") }
     }
     return id
 }
@@ -57,7 +59,7 @@ do {
     var root: URL?=nil, libraryID: String?=nil
     if fm.fileExists(atPath:config.path) {
         guard let raw=String(data:try read(config,8192),encoding:.utf8) else {throw PortalError("保存先設定はUTF-8で保存してください。")}
-        let path=raw.trimmingCharacters(in:.whitespacesAndNewlines)
+        let path=(raw.hasPrefix("\u{FEFF}") ? String(raw.dropFirst()) : raw).trimmingCharacters(in:.whitespacesAndNewlines)
         guard !path.isEmpty && !path.contains(where:{$0.isNewline || $0 == "\0"}) else {throw PortalError("GAME-PORTAL-FOLDER.txtには保存先を1行で指定してください。")}
         let url=path.hasPrefix("/") ? URL(fileURLWithPath:path).standardizedFileURL : html.deletingLastPathComponent().appendingPathComponent(path).standardizedFileURL
         let values=try url.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey]);guard values.isDirectory == true && values.isSymbolicLink != true else{throw PortalError("自動接続の保存先にアクセスできません。")}
