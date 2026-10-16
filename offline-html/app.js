@@ -409,10 +409,10 @@ $('#enableCrop').onchange=()=>{$('#cropFields').disabled=!$('#enableCrop').check
 for(const id of ['cropZoom','cropX','cropY'])$('#'+id).oninput=renderCropPreview;
 $('#resetCrop').onclick=()=>{$('#cropZoom').value='1';$('#cropX').value='50';$('#cropY').value='50';renderCropPreview();};
 $('#edit').addEventListener('close',()=>{editImageRevision++;resetCropState();});
-async function connect(handle, request = false, restoring = false, shared = false, signal = null, {expectedLibrary=null,preserveSearch=false}={}) {
+async function connect(handle, request = false, restoring = false, shared = false, signal = null, {expectedLibrary=null,preserveSearch=false,readOnlySelection=false}={}) {
   signal?.throwIfAborted();
   if(connectionError)throw new Error(connectionError);
-  const mode = restoring ? 'read' : editingEnabled || request ? 'readwrite' : 'read';
+  const mode = restoring||readOnlySelection ? 'read' : editingEnabled || request ? 'readwrite' : 'read';
   const permission = request ? await handle.requestPermission({ mode }) : await handle.queryPermission({ mode });
   signal?.throwIfAborted();
   if (permission !== 'granted') throw new DOMException('保管フォルダーへのアクセスを許可してください。','NotAllowedError');
@@ -428,7 +428,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   if (!await flushSave()) throw new Error('このPCへのセーブを完了してからフォルダーを切り替えてください。');
   signal?.throwIfAborted();
   // Timed automatic restoration is read-only; initialization remains an explicit connection operation.
-  const initialize=!signal&&((editingEnabled&&!restoring)||(!scannedLibrary&&await handle.queryPermission({mode:'readwrite'})==='granted'));
+  const initialize=!signal&&((editingEnabled&&!restoring&&!readOnlySelection)||(!scannedLibrary&&await handle.queryPermission({mode:'readwrite'})==='granted'));
   const nextLocalLibrary = initialize ? await library.ensureLibraryId(handle) : scannedLibrary;
   await checkLibraryCompatibility(handle,signal);
   signal?.throwIfAborted();
@@ -774,20 +774,19 @@ function renderActiveFilters(){
   for(const [label,clear]of filters){const b=document.createElement('button');b.className='filter-chip';b.textContent=label+' ×';b.setAttribute('aria-label',label+'を解除');b.onclick=()=>{clear();render().catch(e=>status(e.message));$('#search').focus();};$('#activeFilters').append(b);}
 }
 for(const id of ['searchScope','kindFilter','environmentFilter','tagMatch','sortGames'])$('#'+id).onchange=()=>render().catch(e=>status(e.message));
-function openFolderSelection(selection, dropped = false) {
+function openFolderSelection(selection) {
   return action(async()=>{
     const {handle,error}=await selection;
     if(error){
       $('#folderSelectionHelp').open=true;
       if(!$('#settings').open)$('#settings').showModal();
       const detail='（v'+compatibilityTools.LAUNCHER_VERSION+' / '+(error.name||'Error')+'）'+(error.message||'');
-      if(error.name==='AbortError')throw new Error('フォルダー選択が完了しませんでした。選択後にChromeのアクセス確認を許可してください。中断が続く場合は、下の枠へフォルダーをドラッグしてください。'+detail);
+      if(error.name==='AbortError')throw new Error('フォルダー選択が完了しませんでした。選択後にChromeのアクセス確認を許可してください。もう一度「保存先を選ぶ」を押すと、簡易設定で選び直せます。下の枠へのドラッグでも接続できます。'+detail);
       if(error.name==='SecurityError'||error.name==='NotAllowedError')throw new Error('Chromeがフォルダーへのアクセスを許可しませんでした。ChromeでHTMLを直接開き、ゲーム専用フォルダーを選んでください。'+detail);
       throw error;
     }
     if(!handle||handle.kind!=='directory')throw new Error('ファイルではなく、ゲームを保管しているフォルダーを1つドラッグしてください。');
-    if(dropped&&editingEnabled&&await handle.queryPermission({mode:'readwrite'})!=='granted')throw new Error('まず編集モードをオフにして、フォルダーをドラッグしてください。接続後に編集モードをオンにすると保存を許可できます。');
-    try{await connect(handle);}catch(error){
+    try{await connect(handle,false,false,false,null,{readOnlySelection:true});}catch(error){
       $('#folderSelectionHelp').open=true;
       if(!$('#settings').open)$('#settings').showModal();
       if(error.name==='AbortError')throw new Error('フォルダーは選択されましたが、接続処理が中断しました。保存先への接続とアクセス権を確認してください。詳細：'+error.message);
@@ -796,15 +795,16 @@ function openFolderSelection(selection, dropped = false) {
     $('#folderSelectionHelp').open=false;
   },true);
 }
+let simpleFolderPicker=false;
 $('#chooseFolder').onclick = () => {
   if(busy||starting)return;
   // Open the picker in the click itself; waiting for sync can lose user activation.
   let selection;
   try{
     if(!window.showDirectoryPicker)throw new Error('フォルダー選択に対応したPC版Chromeを使用してください。');
-    const startIn=[root,remembered].find(handle=>handle&&!handle.nativeReadOnly);
-    selection=Promise.resolve(window.showDirectoryPicker({mode:editingEnabled?'readwrite':'read',id:'game-portal-library',...(startIn?{startIn}:{})})).then(handle=>({handle}),error=>({error}));
-  }catch(error){selection=Promise.resolve({error});}
+    // Let Chrome remember its own location; stale cached handles can break startIn.
+    selection=Promise.resolve(window.showDirectoryPicker({mode:'read',...(simpleFolderPicker?{}:{id:'game-portal-library'})})).then(handle=>({handle}),error=>{simpleFolderPicker=true;return {error};});
+  }catch(error){simpleFolderPicker=true;selection=Promise.resolve({error});}
   return openFolderSelection(selection);
 };
 const folderDrop=$('#folderDrop');
@@ -819,7 +819,7 @@ folderDrop.ondrop=event=>{
     // The data store is only available in this drop event; acquire before awaits.
     selection=Promise.resolve(items[0].getAsFileSystemHandle()).then(handle=>({handle}),error=>({error}));
   }catch(error){selection=Promise.resolve({error});}
-  return openFolderSelection(selection,true);
+  return openFolderSelection(selection);
 };
 // A new PC can connect from the home screen without opening Settings.
 $('#emptyState').ondragover=event=>{
