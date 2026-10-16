@@ -1909,9 +1909,10 @@ const originalLauncher='<!doctype html>\n'+initialLauncherShell(document.documen
 let nativeBridge=null;
 try{
   nativeBridge=nativeTools.nativePageConnection(location.href,history.state,performance.getEntriesByType('navigation')[0]?.type);
-  if(nativeBridge){const page=location.href.split('#')[0];history.replaceState({...history.state,gamePortalNative:{page,fragment:'#native='+new URL(nativeBridge.origin).port+'.'+nativeBridge.token}},'',page);}
+  if(nativeBridge)rememberNativePageConnection();
   else clearNativePageConnection();
 }catch{nativeBridge=nativeTools.nativeConnection(location.href);}
+function rememberNativePageConnection(url=location.href.split('#')[0]){const page=location.href.split('#')[0];history.replaceState({...history.state,gamePortalNative:{page,fragment:'#native='+new URL(nativeBridge.origin).port+'.'+nativeBridge.token}},'',url);}
 function clearNativePageConnection(){try{const {gamePortalNative,...state}=history.state||{};history.replaceState(state,'',location.href);}catch{}}
 function launcherSource(){return originalLauncher.replace('__PORTAL_EXPORT_RUNTIME__',()=>exportRuntimeNode.textContent).replace('__PORTAL_EXPORT_APP__',()=>exportAppNode.textContent);}
 function applyTheme(value){const theme=value==='light'?'light':'dark';document.documentElement.dataset.theme=theme;$('#colorTheme').value=theme;}
@@ -1924,6 +1925,7 @@ try{portableConnection=folderSharing.connectionInfo(JSON.parse($('#folderConnect
 try{folderChannel=new BroadcastChannel('game-portal-folder:'+folderScope);folderChannel.onmessage=()=>{void checkSharedFolder();};}catch{}
 
 let root = null, remembered = null, metadata = null, games = [], editing = null, busy = false, localLibrary = null;
+window.addEventListener('hashchange',()=>{if(nativeBridge&&(!root||root.nativeReadOnly)&&['','#main','#libraryTitle'].includes(location.hash))try{rememberNativePageConnection(location.href);}catch{}});
 let openedGame = null, stopGame = null, pendingSave = null, saveTimer, flushing = null, activePlay = null, closingPlayer = false;
 let editingEnabled = false, starting = true;
 let inspectionRoot = null, inspectionReport = null, selectedHistory = null, capturedImage = null;
