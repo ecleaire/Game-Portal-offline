@@ -2,33 +2,29 @@
 
 バージョン：**0.20.16**
 
-ゲームをフォルダーにまとめて、追加・編集・プレイできる単体HTMLランチャーです。
+ゲームをフォルダーにまとめて、追加・編集・プレイできるオフラインHTMLランチャーです。
 
-## [ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)
+## はじめる
 
-GitHubの「Code → Download ZIP」からダウンロードできます。
+**[ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)**
 
-## 使い方
+1. GitHubの **Code → Download ZIP** からダウンロードして展開します。
+2. 展開したフォルダーの一番上にある **`GAME-PORTAL.html`** をPC版Google Chromeで開きます。
+3. 初回は **「保存先フォルダーを選ぶ」** でゲームの保管場所を選び、カードを押して遊びます。
 
-1. ZIPを展開し、`Game-Portal-offline-html-main` 内の **`GAME-PORTAL.html`** をPC版Chromeで開きます。
-2. 初回はホームの**「保存先フォルダーを選ぶ」**から作成したゲームの出力保存先フォルダーを選びます。
-3. ゲームを追加・変更するときは**「編集モード」**をオンにします。
+ゲームを追加・変更するときは、設定の **「編集モード」** をオンにします。
+操作の説明は、HTML内の **「ヘルプ」** で確認できます。
 
-詳細な操作手順はHTML内の「ヘルプ」で確認できます。
+## 次回から
 
-### 次回からの起動
+同じPC・Chromeで同じ場所のHTMLを開くと、許可が残っていれば保存先へ自動接続します。
+別PCで初めて使うときや許可が切れたときは、フォルダーの選択・アクセス許可が必要です。
 
-同じPC・Chromeで同じ場所のHTMLを使う場合、**保存先へ自動接続**します。
-許可が切れたら再接続し、別PC・HTMLの移動・ブラウザーのデータ削除後は選び直す場合があります。
+**HTMLをブックマークしておくと便利です。** ファイルを移動したら登録し直してください。
 
-開いたHTMLをブックマークすると、次回から開きやすくなります。ファイルを移動したら登録し直してください。
+## 必要に応じて
 
-### WindowsのEXEゲーム（ベータ版）
+- **フォルダー選択を省略したい** → [Windows・Macの自動接続（ベータ版）](docs/AUTO_CONNECT.md)。プレイ専用で、セーブは各PCのブラウザー内に保存します。
+- **WindowsのEXEゲームを使いたい** → [EXE起動補助（ベータ版）](docs/WINDOWS_EXE.md)。同じ場所の `GAME-PORTAL-WINDOWS.exe` から開きます。
 
-WindowsのEXEゲーム対応は**ベータ版**です。同じフォルダーの `GAME-PORTAL-WINDOWS.exe` を開きます。[詳しい手順](docs/WINDOWS_EXE.md)
-
-### フォルダー選択なしで起動（ベータ版）
-
-Windows・Mac用の起動補助と保存先設定を一緒に置くと、別PCでも同じ保存先へ接続できます。**プレイ専用**で、セーブは各PCのブラウザー内に保存します。[準備方法・Macの対応条件](docs/AUTO_CONNECT.md)
-
-[詳しい案内](docs/README.md) · [変更履歴](CHANGELOG.md)
+[詳しい使い方・配布ファイルの案内](docs/README.md) · [変更履歴](CHANGELOG.md)

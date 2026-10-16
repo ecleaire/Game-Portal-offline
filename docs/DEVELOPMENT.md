@@ -26,12 +26,23 @@ npm run test:native
 
 Windows補助のビルドには.NET FrameworkのC#コンパイラーが必要です。
 
+Mac補助はmacOS上で、Xcodeのコマンドラインツールを使ってビルドします。
+
+```sh
+npm run build:macos
+npm run test:native-folder
+```
+
+Intel・Appleシリコン共通のバイナリーを生成し、macOS 12以降を対象にします。Windowsでフォルダー自動接続を検証するときも `npm run test:native-folder` を実行してください。
+
 ## 公開するファイル
 
 | 場所 | 内容 |
 | --- | --- |
 | 最上位の `GAME-PORTAL.html` | Code ZIPからそのまま開く配布HTML |
 | 最上位の `GAME-PORTAL-WINDOWS.exe` / `README-WINDOWS.txt` | Windows起動補助と案内 |
+| 最上位の `GAME-PORTAL-MAC` / `GAME-PORTAL-MAC.command` | Mac起動補助と起動用スクリプト |
+| 最上位の `GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。個人の設定ファイルはGitへ含めません。 |
 | 最上位の `THIRD-PARTY-LICENSES.txt` | 同梱ランタイムのライセンス |
 | `offline-html/` / `assets/` | HTML・画面・実行処理のソース |
 | `scripts/` / `tests/` / `.github/` | ビルド・検証・CI |
@@ -39,14 +50,14 @@ Windows補助のビルドには.NET FrameworkのC#コンパイラーが必要で
 
 ビルドは配布物を最上位と `offline-release/` に生成します。生成物を直接編集せず、ソースを変更して再ビルドしてください。最上位の配布物はGitへ含めます。`offline-release/` と `source-release/` はローカル出力です。
 
-アプリの版を変える場合は `package.json`・`package-lock.json`・`offline-html/compatibility.js`・README・利用案内の表記をそろえ、HTMLとWindows補助を同じ版で作り直してください。
+アプリの版を変える場合は `package.json`・`package-lock.json`・`offline-html/compatibility.js`・README・利用案内の表記をそろえ、HTML・Windows補助・Mac補助を同じ版で作り直してください。
 
 ```sh
 node scripts/verify-distribution.mjs
 npm run source:package
 ```
 
-`verify-distribution` は最上位HTMLとビルド出力の一致、ライセンス、Windows補助の版を確認します。ソースZIPは `source-release/GAME-PORTAL-SOURCE.zip` へ出力し、ファイルごとのハッシュを記録します。
+`verify-distribution` は最上位HTMLとビルド出力の一致、ライセンス、Windows・Mac補助の版とMacの対応アーキテクチャー・OS条件を確認します。ソースZIPは `source-release/GAME-PORTAL-SOURCE.zip` へ出力し、ファイルごとのハッシュを記録します。
 
 公開後は実際のCode ZIPをダウンロードし、展開した最上位HTMLの起動とバージョンを確認してください。GitHub Actionsは開発時の自動検証用です。利用者のダウンロード操作には使いません。
 
