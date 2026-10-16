@@ -9,7 +9,7 @@ if(digest(await readFile('THIRD-PARTY-LICENSES.txt'))!==digest(await readFile('o
 if(!await readFile('README.md','utf8').then(text=>text.includes('バージョン：**'+version+'**')))throw Error('README version differs.');
 const rootHelper=await readFile('GAME-PORTAL-WINDOWS.exe');
 if(!rootHelper.subarray(0,2).equals(Buffer.from('MZ'))||!rootHelper.includes(Buffer.from(version,'utf16le')))throw Error('The Code ZIP Windows helper is missing, corrupt or from another version. Rebuild on Windows.');
-await readFile('README-WINDOWS.txt');
+if(await readFile('README-WINDOWS.txt','utf8')!==(await readFile('docs/WINDOWS_EXE.md','utf8')).replaceAll('\r\n','\n'))throw Error('Windows guide differs from the built UTF-8 guide.');
 const mac=await readFile('GAME-PORTAL-MAC');
 if(mac.readUInt32BE(0)!==0xcafebabe||mac.readUInt32BE(4)!==2||!mac.includes(Buffer.from(version)))throw Error('Mac universal helper is missing or from another version.');
 const architectures=new Set();
