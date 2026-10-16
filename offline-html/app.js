@@ -44,7 +44,6 @@ async function recoverFolderConnection(){
   const previousStatus=$('#status').textContent;
   folderRecoveryPromise=(async()=>{
     try{
-      if(await job.handle.queryPermission({mode:'read'})!=='granted'){folderRecovery=null;remembered=job.handle;$('#reconnect').hidden=false;syncStatus(reconnectHint);writeControls();return;}
       controller.signal.throwIfAborted();
       await connectRememberedRead(job.handle,false,{expectedLibrary:job.libraryId||portableConnection?.libraryId,preserveSearch:true,signal:controller.signal});
       if(folderRecovery===job)folderRecovery=null;
@@ -52,6 +51,7 @@ async function recoverFolderConnection(){
       writeControls();
     }catch(error){
       if(controller.signal.aborted)return;
+      if(error.name==='NotAllowedError'){folderRecovery=null;remembered=job.handle;$('#reconnect').hidden=false;syncStatus(reconnectHint);writeControls();return;}
       if(!transientFolderError(error)){folderRecovery=null;syncPaused=true;compatibilityFailure(error);status(error.message);writeControls();}
     }
   })();
@@ -415,7 +415,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   const mode = restoring ? 'read' : editingEnabled || request ? 'readwrite' : 'read';
   const permission = request ? await handle.requestPermission({ mode }) : await handle.queryPermission({ mode });
   signal?.throwIfAborted();
-  if (permission !== 'granted') throw new Error('保管フォルダーへのアクセスを許可してください。');
+  if (permission !== 'granted') throw new DOMException('保管フォルダーへのアクセスを許可してください。','NotAllowedError');
   // Read and validate before replacing the current folder or cached handle.
   await checkLibraryCompatibility(handle,signal);
   const scannedLibrary=await library.loadLibraryId(handle);
