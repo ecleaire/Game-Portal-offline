@@ -29,11 +29,22 @@ export async function launchNative(connection,libraryId,game,version) {
 }
 
 // Read-only native directory adapter. Capabilities stay in this page, never IDB or exports.
-export async function nativeFolder(connection,version,signal) {
+export async function nativeFolder(connection,version,signal,{onPendingChange}={}) {
+  const pending=new Set();
+  const notify=()=>onPendingChange?.(pending.size);
+  function connectionError(name='NetworkError') {const error=new Error('起動補助との接続を確認してください。起動補助から開き直すか、「設定」で保存先を選び直せます。');error.name=name;return error;}
   async function request(action,path='',binary=false) {
-    const response=await fetch(connection.origin+'/native/folder',{method:'POST',signal,headers:{'Content-Type':'application/json','X-Game-Portal-Token':connection.token},body:JSON.stringify({version,action,path})});
-    if(!response.ok){const error=await response.json();throw new DOMException(error.error||'保存先に接続できません。',error.name||'NotReadableError');}
-    return binary?response.arrayBuffer():response.json();
+    const controller=new AbortController(),abort=()=>controller.abort(signal.reason);
+    if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
+    // Large game assets on slow NAS/PCs get a longer deadline; cancel stays available.
+    const timer=setTimeout(()=>controller.abort(connectionError('TimeoutError')),binary?120000:10000);
+    pending.add(controller);notify();
+    try{
+      const response=await fetch(connection.origin+'/native/folder',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','X-Game-Portal-Token':connection.token},body:JSON.stringify({version,action,path})});
+      if(!response.ok){const error=await response.json();throw new DOMException(error.error||'保存先に接続できません。',error.name||'NotReadableError');}
+      return await (binary?response.blob():response.json());
+    }catch(error){if(controller.signal.aborted)throw controller.signal.reason;if(error instanceof TypeError)throw connectionError();throw error;}
+    finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);pending.delete(controller);notify();}
   }
   const info=await request('info');
   if(!info.configured)return null;
@@ -51,5 +62,8 @@ export async function nativeFolder(connection,version,signal) {
     async function lookup(name,kind,options){if(options.create)deny();const next=child(path,name),entry=await request('stat',next);if(entry.kind!==kind)throw new DOMException('種類が違います。','TypeMismatchError');return handle(next,name,kind);}
     return result;
   }
-  return handle('',info.name,'directory');
+  const root=handle('',info.name,'directory');
+  root.cancelReads=()=>{const error=new Error('接続待ちを中止しました。もう一度試すか、「設定」で保存先を選び直せます。');error.name='NativeReadCancelled';for(const controller of pending)controller.abort(error);};
+  Object.defineProperty(root,'pendingReads',{get:()=>pending.size});
+  return root;
 }

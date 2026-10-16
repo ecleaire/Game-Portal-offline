@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {nativeLayout,validateExe,nativeConnection,launchNative} from '../offline-html/native-tools.js';
+import {nativeLayout,validateExe,nativeConnection,launchNative,nativeFolder} from '../offline-html/native-tools.js';
 import {canUpdateGame} from '../offline-html/updates.js';
 
 function exe(flags=2){const bytes=new Uint8Array(128),view=new DataView(bytes.buffer);view.setUint16(0,0x5a4d,true);view.setUint32(60,64,true);view.setUint32(64,0x4550,true);view.setUint16(86,flags,true);return new File([bytes],'game.exe');}
@@ -13,6 +13,31 @@ test('native entry selection keeps dependencies and recognizes Godot and Unity h
   assert.equal(nativeLayout(['__MACOSX/game.exe','.cache/game.exe']),null);
   assert.throws(()=>nativeLayout(['one.exe','two.exe']),/複数/);
   assert.throws(()=>nativeLayout(['nested/game.exe']),/直接/);
+});
+
+test('native reads time out while receiving the body, release pending state and remain retryable',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  let receiving,hang=true;const bodyReady=new Promise(resolve=>receiving=resolve),counts=[];
+  t.mock.method(globalThis,'fetch',async(url,options)=>{
+    const {action}=JSON.parse(options.body);
+    if(action==='info')return {ok:true,json:async()=>({configured:true,name:'library'})};
+    if(action==='stat')return {ok:true,json:async()=>({kind:'file'})};
+    return {ok:true,arrayBuffer:()=>{throw Error('Must not allocate an intermediate binary ArrayBuffer');},blob:()=>{if(!hang)return Promise.resolve(new Blob(['game']));receiving();return new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(options.signal.reason),{once:true}));}};
+  });
+  const root=await nativeFolder({origin:'http://127.0.0.1:12345',token:'test'},'1.0.0',undefined,{onPendingChange:count=>counts.push(count)}),file=await root.getFileHandle('game.html');
+  const reading=file.getFile();await bodyReady;assert.equal(root.pendingReads,1);const rejected=assert.rejects(reading,error=>error.name==='TimeoutError'&&error.message.includes('設定'));t.mock.timers.tick(120000);await rejected;
+  assert.equal(root.pendingReads,0);assert.equal(counts.at(-1),0);hang=false;assert.equal(await(await file.getFile()).text(),'game');assert.equal(root.pendingReads,0);
+});
+
+test('canceling native reads preserves the handle and does not abort later reads',async t=>{
+  let waiting,hang=true;const started=new Promise(resolve=>waiting=resolve);
+  t.mock.method(globalThis,'fetch',async(url,options)=>{
+    const {action}=JSON.parse(options.body);if(action==='info')return {ok:true,json:async()=>({configured:true,name:'library'})};
+    if(hang){waiting();return new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(options.signal.reason),{once:true}));}
+    return {ok:true,json:async()=>({entries:[]})};
+  });
+  const root=await nativeFolder({origin:'http://127.0.0.1:12345',token:'test'},'1.0.0');
+  const reading=Array.fromAsync(root.values());await started;const rejected=assert.rejects(reading,{name:'NativeReadCancelled'});root.cancelReads();await rejected;assert.equal(root.pendingReads,0);hang=false;assert.deepEqual(await Array.fromAsync(root.values()),[]);
 });
 
 test('EXE validation reads bounded headers and rejects corrupt executables and renamed DLLs',async()=>{

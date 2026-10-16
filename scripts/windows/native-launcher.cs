@@ -21,7 +21,7 @@ internal static class PortalNative {
     static readonly SemaphoreSlim Slots = new SemaphoreSlim(8);
     static TcpListener Listener;
     static Control Dispatcher;
-    static string Token, Origin, Html, FixedRoot, AutoRoot, AutoId;
+    static string Token, Origin, Html, FixedRoot, AutoRoot, AutoId, AutoRootError;
     static bool Headless;
     static string Serialize(object value) { lock(JsonLock) return Json.Serialize(value); }
     static Dictionary<string,object> Parse(string value) { lock(JsonLock) return Json.Deserialize<Dictionary<string,object>>(value); }
@@ -97,6 +97,7 @@ internal static class PortalNative {
     }
     static void Folder(NetworkStream stream,Dictionary<string,object> data) {
         if(data==null||data.Count!=3||data.Keys.Any(k=>!new[]{"version","action","path"}.Contains(k))||Text(data,"version")!=Version)throw new Exception("HTMLと起動補助を同じ最新版にしてください。");
+        if(AutoRootError!=null)throw new Exception(AutoRootError);
         if(String.IsNullOrEmpty(AutoRoot)){Reply(stream,200,new{configured=false},true);return;}
         CheckLibrary(AutoRoot,AutoId);
         string action=Text(data,"action"),path=Text(data,"path");
@@ -170,10 +171,12 @@ internal static class PortalNative {
             if(!File.Exists(Html))throw new Exception("同じフォルダーにGAME-PORTAL.htmlを置いてください。");
             string config=Path.Combine(Path.GetDirectoryName(Html),"GAME-PORTAL-FOLDER.txt");
             if(File.Exists(config)){
+              try {
                 string path=Read(config,8192).Trim();if(path.Length==0||path.IndexOfAny(new[]{'\r','\n','\0'})>=0)throw new Exception("GAME-PORTAL-FOLDER.txtには保存先を1行で指定してください。");
                 AutoRoot=Path.GetFullPath(Path.IsPathRooted(path)?path:Path.Combine(Path.GetDirectoryName(Html),path));
                 if(!Directory.Exists(AutoRoot)||(File.GetAttributes(AutoRoot)&FileAttributes.ReparsePoint)!=0)throw new Exception("自動接続の保存先にアクセスできません。");
                 var library=Parse(Read(Bound(AutoRoot,".gameportal/library-id.json",false),1024));AutoId=Id(Text(library,"id"));CheckLibrary(AutoRoot,AutoId);if(String.IsNullOrEmpty(FixedRoot))FixedRoot=AutoRoot;
+              } catch(Exception error){AutoRoot=null;AutoId=null;AutoRootError="保存先の自動接続設定を確認してください。HTMLの「設定」で保存先を選び直せます："+error.Message;}
             }
             byte[] secret=new byte[32];using(var rng=RandomNumberGenerator.Create())rng.GetBytes(secret);Token=BitConverter.ToString(secret).Replace("-","").ToLowerInvariant();
             Listener=new TcpListener(IPAddress.Loopback,0);Listener.Start();Origin="http://127.0.0.1:"+((IPEndPoint)Listener.LocalEndpoint).Port;
