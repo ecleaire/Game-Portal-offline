@@ -36,7 +36,7 @@ try{
  await expect(page.locator('#playerMoreTools')).not.toHaveAttribute('open','');await expect(page.locator('#exportSave')).toBeHidden();await expect(page.locator('#saveBackupsButton')).toBeHidden();await expect(page.locator('#playerHelpButton')).toBeHidden();
  assert((await page.locator('#playerInstructions').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)))>=16);
  for(const theme of ['light','dark']){
-  await page.evaluate(theme=>applyTheme(theme),theme);
+  await page.evaluate(theme=>applyTheme(theme),theme);assert.equal(await page.evaluate(()=>getComputedStyle(document.body).getPropertyValue('--accent').trim()),theme==='light'?'#9b4d0a':'#f3bd79');
   for(const [width,height]of [[1280,960],[640,480],[320,568]]){
    await page.setViewportSize({width,height});assert(await page.locator('#player').evaluate(e=>e.scrollWidth<=e.clientWidth));
    for(const id of ['fullscreen','closePlayer']){await page.locator('#'+id).scrollIntoViewIfNeeded();assert(await page.locator('#'+id).evaluate(e=>{const r=e.getBoundingClientRect(),top=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return top===e||e.contains(top);}));}
@@ -55,7 +55,7 @@ try{
  await page.locator('#homeLink').click();await expect(page.locator('.card')).toHaveCount(2);assert.equal(await page.locator('#search').inputValue(),'');
  await page.locator('#settingsButton').click();await page.locator('#colorTheme').selectOption('light');
  const exported=await page.evaluate(()=>launcherSource());assert(!/<html[^>]*data-theme=/.test(exported));
- await context.close();context=await chromium.launchPersistentContext(profile,options);page=await open();await expect(page.locator('html')).toHaveAttribute('data-theme','light');await expect(page.locator('#folderName')).toHaveText('表示検証 空白 #%🎮');
+ await context.close();context=await chromium.launchPersistentContext(profile,options);page=await open();await expect(page.locator('html')).toHaveAttribute('data-theme','light');await expect(page.locator('#folderName')).toHaveText('表示検証 空白 #%🎮');await expect(page.locator('body')).toHaveClass(/editing-mode/);await expect(page.locator('#editingState')).toHaveText('オン');
  await page.evaluate(()=>localStorage.setItem('game-portal.offline-theme','unknown'));await page.reload();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
  await context.addInitScript(()=>{const get=Storage.prototype.getItem,set=Storage.prototype.setItem;Storage.prototype.getItem=function(k){if(k==='game-portal.offline-theme')throw new DOMException('Test denied','SecurityError');return get.call(this,k);};Storage.prototype.setItem=function(k,v){if(k==='game-portal.offline-theme')throw new DOMException('Test quota','QuotaExceededError');return set.call(this,k,v);};});
  page=await open();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.locator('#settingsButton').click();await page.locator('#colorTheme').selectOption('light');await expect(page.locator('html')).toHaveAttribute('data-theme','light');await expect(page.locator('#status')).toContainText('記憶できませんでした');

@@ -108,3 +108,22 @@ body.working::before{content:'';position:fixed;top:0;left:0;right:0;height:3px;b
 .game-title-link::after{content:none}.card{cursor:pointer}.game-title-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 
 header,main{max-width:1520px;padding-inline:clamp(16px,2vw,24px)}.grid{grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr))}.card .tags{flex-wrap:nowrap;overflow:hidden;min-width:0}.card .game-tag{flex:0 0 auto;white-space:nowrap}.card .tags[hidden],.card .tags button[hidden]{display:none}
+
+/* Search controls remain readable at narrow widths and enlarged text sizes. */
+#filterDetails>summary{font-size:1.067rem;line-height:1.6;padding:8px 0}
+#filterDetails>summary .hint,#filters .search-help,#searchSummary,#filters .tag-tools .hint{font-size:.933rem;line-height:1.7}
+#filters .search-options{gap:18px}
+#filters .search-options label,#filters .filter-label{font-size:.933rem;line-height:1.6}
+#filters .search-options select,#filters .tag-tools input,#filters .tag-tools select{font-size:1rem;min-height:44px;line-height:1.5;padding:10px 12px;min-width:0;max-width:100%}
+#filters .tag-tools>label{min-width:min(180px,100%)}
+#filters .filter-chip,#tagFilters .tag{font-size:.933rem;line-height:1.5;min-height:38px}
+
+#player .playerbar #fullscreen,#player .playerbar #closePlayer{font-size:1.2rem;line-height:1.5;min-height:48px;padding:11px 18px;white-space:normal;overflow-wrap:anywhere}
+
+.settings-editing .check{gap:14px;min-height:58px;font-size:1.133rem;font-weight:750;flex-wrap:wrap}.settings-editing #enableEditing{width:28px;height:28px;flex-shrink:0}.editing-state{margin-left:auto;border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:.933rem;color:var(--muted);background:var(--bg)}.editing-mode .editing-state{color:var(--text);border-color:var(--editing-accent);background:color-mix(in srgb,var(--editing-accent) 16%,var(--panel))}.editing-mode .editing-indicator{font-size:1.067rem;line-height:1.5;padding:7px 14px;border-width:2px}.editing-mode .editing-indicator::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:currentColor;margin-right:9px}
+
+/* Editing uses an orange accent while preserving the selected background theme. */
+body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--accent)}
+[data-theme=light] body.editing-mode{--accent:#9b4d0a;--accent-ink:#fff;--editing-accent:var(--accent)}
+.editing-mode .filter-chip,.editing-mode .card .type{background:color-mix(in srgb,var(--accent) 10%,var(--panel));border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.editing-mode.working::before{box-shadow:0 0 14px color-mix(in srgb,var(--accent) 55%,transparent)}

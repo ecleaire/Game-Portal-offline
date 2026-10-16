@@ -110,8 +110,27 @@ body.working::before{content:'';position:fixed;top:0;left:0;right:0;height:3px;b
 .game-title-link::after{content:none}.card{cursor:pointer}.game-title-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 
 header,main{max-width:1520px;padding-inline:clamp(16px,2vw,24px)}.grid{grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr))}.card .tags{flex-wrap:nowrap;overflow:hidden;min-width:0}.card .game-tag{flex:0 0 auto;white-space:nowrap}.card .tags[hidden],.card .tags button[hidden]{display:none}
+
+/* Search controls remain readable at narrow widths and enlarged text sizes. */
+#filterDetails>summary{font-size:1.067rem;line-height:1.6;padding:8px 0}
+#filterDetails>summary .hint,#filters .search-help,#searchSummary,#filters .tag-tools .hint{font-size:.933rem;line-height:1.7}
+#filters .search-options{gap:18px}
+#filters .search-options label,#filters .filter-label{font-size:.933rem;line-height:1.6}
+#filters .search-options select,#filters .tag-tools input,#filters .tag-tools select{font-size:1rem;min-height:44px;line-height:1.5;padding:10px 12px;min-width:0;max-width:100%}
+#filters .tag-tools>label{min-width:min(180px,100%)}
+#filters .filter-chip,#tagFilters .tag{font-size:.933rem;line-height:1.5;min-height:38px}
+
+#player .playerbar #fullscreen,#player .playerbar #closePlayer{font-size:1.2rem;line-height:1.5;min-height:48px;padding:11px 18px;white-space:normal;overflow-wrap:anywhere}
+
+.settings-editing .check{gap:14px;min-height:58px;font-size:1.133rem;font-weight:750;flex-wrap:wrap}.settings-editing #enableEditing{width:28px;height:28px;flex-shrink:0}.editing-state{margin-left:auto;border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:.933rem;color:var(--muted);background:var(--bg)}.editing-mode .editing-state{color:var(--text);border-color:var(--editing-accent);background:color-mix(in srgb,var(--editing-accent) 16%,var(--panel))}.editing-mode .editing-indicator{font-size:1.067rem;line-height:1.5;padding:7px 14px;border-width:2px}.editing-mode .editing-indicator::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:currentColor;margin-right:9px}
+
+/* Editing uses an orange accent while preserving the selected background theme. */
+body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--accent)}
+[data-theme=light] body.editing-mode{--accent:#9b4d0a;--accent-ink:#fff;--editing-accent:var(--accent)}
+.editing-mode .filter-chip,.editing-mode .card .type{background:color-mix(in srgb,var(--accent) 10%,var(--panel));border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.editing-mode.working::before{box-shadow:0 0 14px color-mix(in srgb,var(--accent) 55%,transparent)}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.5</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.6</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p>
@@ -137,7 +156,7 @@ header,main{max-width:1520px;padding-inline:clamp(16px,2vw,24px)}.grid{grid-temp
     <div id="helpContent" class="help-content" role="region" aria-label="操作手順" tabindex="0">
       <section id="helpSetup" class="help-section" tabindex="-1"><h3>はじめに</h3>
         <p class="help-lead">保存先を選ぶ → カードを押して遊ぶ</p>
-        <ol><li><strong>GAME-PORTAL.html</strong>をPC版Chromeで開きます。</li><li>ホームの<strong>「保存先フォルダーを選ぶ」</strong>で保存先を選び、アクセスを許可します。</li><li>追加・変更する人は<strong>「設定」→「編集モード」</strong>をオンにします。遊ぶだけならオフのままで使えます。</li></ol>
+        <ol><li><strong>GAME-PORTAL.html</strong>をPC版Chromeで開きます。</li><li>ホームの<strong>「保存先フォルダーを選ぶ」</strong>で保存先を選び、アクセスを許可します。</li><li>追加・変更する人は<strong>「設定」→「編集モード」</strong>をオンにします。オンの間はボタンなどがオレンジになり、ホームに「編集モード オン」と表示します。遊ぶだけならオフのままで使えます。</li></ol>
         <details><summary>次回も同じフォルダーを使う</summary><p>保存先は自動で記憶します。許可が残っていれば次回は自動接続します。許可が切れたらホームの「前回の保存先を開く」を押します。初回設定は保存先を選ぶと自動で済みます。HTMLを同じ場所に置き、ブックマークしておくと次回も開きやすくなります。</p></details>
         <details><summary>ライト／ダークを切り替える</summary><p>「設定」→「表示モード」で選びます。初期状態はダークです。このPCのブラウザーに選択を記憶し、開き直しても同じモードで表示します。ゲームそのものの色は変わりません。</p></details>
       </section>
@@ -217,7 +236,7 @@ header,main{max-width:1520px;padding-inline:clamp(16px,2vw,24px)}.grid{grid-temp
   </section>
   <section class="settings-card settings-preferences" aria-label="基本設定">
     <div class="settings-option"><label for="colorTheme">表示モード</label><select id="colorTheme"><option value="dark">ダーク</option><option value="light">ライト</option></select></div>
-    <div class="settings-option settings-editing"><div><label class="check"><input id="enableEditing" type="checkbox" aria-describedby="editingHelp">編集モード</label><p id="editingHelp">ゲームを追加・編集するときにオンにします。</p></div></div>
+    <div class="settings-option settings-editing"><div><label class="check"><input id="enableEditing" type="checkbox" aria-describedby="editingHelp" aria-label="編集モード">編集モード<span id="editingState" class="editing-state" aria-hidden="true">オフ</span></label><p id="editingHelp">ゲームを追加・編集するときにオンにします。</p></div></div>
     <div class="settings-option"><div><p><strong>ほかのPCの変更は自動で表示</strong></p><p id="autoSyncHelp">ホームで3分操作がないと、ゲーム・情報・対応セーブを同期します。</p></div></div>
   </section>
   <section id="sharedSavePanel" class="settings-card" aria-labelledby="sharedSaveTitle">
@@ -483,7 +502,7 @@ function portableLauncher(source,info) {
 
 return {connectionInfo,portableLauncher};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.20.5';
+const LAUNCHER_VERSION = '0.20.6';
 const MINIMUM_VERSION = '0.14.0';
 const FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FILE = 'compatibility.json';
@@ -2012,6 +2031,7 @@ function writeControls() {
   $('#captureReason').textContent = !editingEnabled ? '画像を設定するには「設定」で追加・編集を有効にしてください。' : '';
   $('#captureButton').title = $('#captureReason').textContent; $('#captureButton').setAttribute('aria-describedby','captureReason');
   $('#enableEditing').checked = editingEnabled;
+  $('#editingState').textContent=editingEnabled?'オン':'オフ';
   $('#modeLabel').textContent = editingEnabled ? '追加・編集' : 'あそぶ';
   $('#editingIndicator').hidden=!editingEnabled;$('#editingIndicator').textContent='編集モード オン';
   document.body.classList.toggle('editing-mode',editingEnabled);

@@ -212,6 +212,7 @@ function writeControls() {
   $('#captureReason').textContent = !editingEnabled ? '画像を設定するには「設定」で追加・編集を有効にしてください。' : '';
   $('#captureButton').title = $('#captureReason').textContent; $('#captureButton').setAttribute('aria-describedby','captureReason');
   $('#enableEditing').checked = editingEnabled;
+  $('#editingState').textContent=editingEnabled?'オン':'オフ';
   $('#modeLabel').textContent = editingEnabled ? '追加・編集' : 'あそぶ';
   $('#editingIndicator').hidden=!editingEnabled;$('#editingIndicator').textContent='編集モード オン';
   document.body.classList.toggle('editing-mode',editingEnabled);
