@@ -16,7 +16,9 @@
     "offline:test": "npm run test:browser",
     "source:package": "node scripts/package-source.mjs",
     "build:windows": "node scripts/build-windows.mjs",
-    "test:native": "node tests/windows-native.mjs"
+    "test:native": "node tests/windows-native.mjs",
+    "build:macos": "node scripts/build-macos.mjs",
+    "test:native-folder": "node tests/native-folder-browser.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"

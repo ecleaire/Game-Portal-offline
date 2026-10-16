@@ -30,6 +30,10 @@ try{
  await page.locator('.game-title-link').click();await expect(page.frameLocator('#frame').locator('h1')).toHaveText('Native auto game');await expect(page.frameLocator('#frame').locator('img')).toHaveJSProperty('naturalWidth',20);await page.waitForFunction(()=>!busy);
  await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);assert.equal((await page.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id)))['native-test'],'played');
  assert.equal(await page.evaluate(token=>launcherSource().includes(token),info.token),false);
+ if(process.platform==='darwin'){
+  await mkdir(join(disk,'windows'));const exe=Buffer.alloc(128);exe.writeUInt16LE(0x5a4d,0);exe.writeUInt32LE(64,60);exe.writeUInt32LE(0x4550,64);exe.writeUInt16LE(2,86);await writeFile(join(disk,'windows','windows.exe'),exe);
+  await page.locator('#refresh').click();await expect(page.locator('.card')).toHaveCount(2);await page.locator('.game-title-link').filter({hasText:'windows'}).click();await expect(page.locator('#nativeLaunch')).toBeDisabled();await expect(page.locator('#nativeReason')).toContainText('Macでは動きません');await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);
+ }
  await writeFile(join(disk,'.gameportal','compatibility.json'),JSON.stringify({schema:true,minLauncherVersion:version,requiredFeatures:[]}));assert.equal((await api('info')).status,400,'boolean schema rejected');
  await writeFile(join(disk,'.gameportal','compatibility.json'),JSON.stringify({schema:1,minLauncherVersion:version,requiredFeatures:['unsupported']}));assert.equal((await api('info')).status,400,'unknown feature rejected');
  await writeFile(join(disk,'.gameportal','compatibility.json'),JSON.stringify({schema:1,minLauncherVersion:'99.0.0',requiredFeatures:[]}));assert.equal((await api('info')).status,400,'newer floor rejected');

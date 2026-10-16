@@ -6,6 +6,10 @@ on:
       - 'scripts/build-macos.mjs'
       - 'tests/native-folder-browser.mjs'
       - 'offline-html/native-tools.js'
+      - 'offline-html/app.js'
+      - 'offline-html/index.html'
+      - 'GAME-PORTAL.html'
+      - 'package.json'
       - '.github/workflows/macos-helper.yml'
   workflow_dispatch:
 permissions:

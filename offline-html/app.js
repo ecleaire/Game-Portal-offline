@@ -500,9 +500,9 @@ function editGame(game) {
 function updatePlayerInfo(){
   if(!openedGame)return;
   const latest=games.find(g=>g.path===openedGame.path&&g.id===openedGame.id);if(latest)openedGame=latest;
-  const native=openedGame.kind==='exe';
-  $('#nativeLaunch').hidden=!native;$('#nativeLaunch').disabled=busy||!nativeBridge||!!openedGame.settingsError||syncPaused;
-  $('#nativeReason').hidden=!native;$('#nativeReason').textContent=nativeBridge?'Windowsの別ウィンドウで起動します。信頼できるゲームだけ実行してください。セーブはゲーム自身が管理します。':'EXEを使うときは、同じフォルダーのGAME-PORTAL-WINDOWS.exeを開いてください。メイン画面はこのHTMLのままです。';
+  const native=openedGame.kind==='exe',mac=/Mac/i.test(navigator.platform);
+  $('#nativeLaunch').hidden=!native;$('#nativeLaunch').disabled=busy||mac||!nativeBridge||!!openedGame.settingsError||syncPaused;
+  $('#nativeReason').hidden=!native;$('#nativeReason').textContent=mac?'Windows用のEXEゲームはMacでは動きません。HTML・ZIPなどのWeb版を使ってください。':nativeBridge?'Windowsの別ウィンドウで起動します。信頼できるゲームだけ実行してください。セーブはゲーム自身が管理します。':'EXEを使うときは、同じフォルダーのGAME-PORTAL-WINDOWS.exeを開いてください。メイン画面はこのHTMLのままです。';
   $('#playerMoreTools').hidden=native;$('#saveBackupsButton').hidden=native;$('#fullscreen').hidden=native;
   if(activePlay&&activePlay.game.id===openedGame.id)activePlay.game=openedGame;
   $('#playerTitle').textContent=openedGame.title;$('#playerEnvironment').textContent=openedGame.developmentEnvironment?'作成ツール：'+openedGame.developmentEnvironment:'';$('#playerEnvironment').hidden=!openedGame.developmentEnvironment;
