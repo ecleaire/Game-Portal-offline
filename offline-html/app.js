@@ -13,6 +13,7 @@ let nativeBridge=null;
 try{
   nativeBridge=nativeTools.nativePageConnection(location.href,history.state,performance.getEntriesByType('navigation')[0]?.type);
   if(nativeBridge){const page=location.href.split('#')[0];history.replaceState({...history.state,gamePortalNative:{page,fragment:'#native='+new URL(nativeBridge.origin).port+'.'+nativeBridge.token}},'',page);}
+  else clearNativePageConnection();
 }catch{nativeBridge=nativeTools.nativeConnection(location.href);}
 function clearNativePageConnection(){try{const {gamePortalNative,...state}=history.state||{};history.replaceState(state,'',location.href);}catch{}}
 function launcherSource(){return originalLauncher.replace('__PORTAL_EXPORT_RUNTIME__',()=>exportRuntimeNode.textContent).replace('__PORTAL_EXPORT_APP__',()=>exportAppNode.textContent);}

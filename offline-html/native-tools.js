@@ -25,8 +25,8 @@ export function nativePageConnection(url,state,navigationType) {
   const direct=nativeConnection(url);
   if(direct)return direct;
   const parsed=new URL(url),saved=state?.gamePortalNative;
-  if(parsed.hash||navigationType!=='reload'||!saved||saved.page!==parsed.href||typeof saved.fragment!=='string')return null;
-  return nativeConnection(parsed.href+saved.fragment);
+  if(!['','#main','#libraryTitle'].includes(parsed.hash)||navigationType!=='reload'||!saved||saved.page!==parsed.href.split('#')[0]||typeof saved.fragment!=='string')return null;
+  return nativeConnection(saved.page+saved.fragment);
 }
 export async function launchNative(connection,libraryId,game,version) {
   if(!connection)throw new Error('同じフォルダーのGAME-PORTAL-WINDOWS.exeを開いてから、このHTMLでEXEを起動してください。');

@@ -8,6 +8,7 @@ function exe(flags=2){const bytes=new Uint8Array(128),view=new DataView(bytes.bu
 test('native reload capability is bound to its exact file history entry',()=>{
   const page='file:///C:/portal.html',fragment='#native=32123.'+'a'.repeat(64),state={gamePortalNative:{page,fragment}};
   assert.deepEqual(nativePageConnection(page,state,'reload'),nativeConnection(page+fragment));
+  for(const anchor of ['#main','#libraryTitle'])assert.deepEqual(nativePageConnection(page+anchor,state,'reload'),nativeConnection(page+fragment));
   for(const type of ['navigate','back_forward',undefined])assert.equal(nativePageConnection(page,state,type),null);
   for(const url of [page+'#other',page+'?other',page.replace('portal','copy'),'https://example.com/portal.html'])assert.equal(nativePageConnection(url,state,'reload'),null);
   for(const saved of [null,{}, {page,fragment:23},{page,fragment:'#native=80.'+'a'.repeat(64)},{page,fragment:'#native=32123.bad'}])assert.equal(nativePageConnection(page,{gamePortalNative:saved},'reload'),null);
