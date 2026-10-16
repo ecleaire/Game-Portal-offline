@@ -141,7 +141,7 @@ const status = message => {
   document.querySelectorAll('[data-dialog-status]').forEach(node=>{node.textContent=node.closest('dialog').open?message:'';});
   if(transientStatuses.has(message))statusTimer=setTimeout(()=>{
     for(const node of document.querySelectorAll('#status,[data-dialog-status],#playerStatus'))if(node.textContent===message)node.textContent='';
-  },20000);
+  },message==='一覧を更新しました。'?10000:20000);
 };
 async function cacheHandle(value,remember=true){
   const record=await localState.cacheHandle(value,remember,folderScope);
