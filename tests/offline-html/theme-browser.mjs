@@ -1,0 +1,64 @@
+import {chromium,expect} from '@playwright/test';
+import {readFile,writeFile,mkdtemp,mkdir,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import assert from 'node:assert/strict';
+import {createServer} from 'node:http';
+const temp=await mkdtemp(join(tmpdir(),'portal-display-')),profile=join(temp,'profile');
+const file=join(temp,'GAME PORTAL 日本語 #%.html');await writeFile(file,await readFile('offline-release/GAME-PORTAL.html'));
+const options={executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,colorScheme:'light',viewport:{width:1280,height:960}};
+const server=createServer((q,r)=>r.end(html));const html=await readFile('offline-release/GAME-PORTAL.html');await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;let targetURL=pathToFileURL(file).href;
+let context;const errors=[],network=[];
+const open=async()=>{const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(/^https?:/.test(r.url())&&!r.url().startsWith(origin+'/'))network.push(r.url());});await p.goto(targetURL);await expect(p.locator('html')).toHaveAttribute('data-ready','true');return p;};
+try{
+ context=await chromium.launchPersistentContext(profile,options);let page=await open();console.log('Display validation browser:',context.browser().version());
+ await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.locator('#settingsButton').click();await expect(page.locator('#colorTheme')).toHaveValue('dark');
+ const darkBackground=await page.locator('body').evaluate(e=>getComputedStyle(e).backgroundColor);
+ await page.locator('#colorTheme').selectOption('light');await expect(page.locator('html')).toHaveAttribute('data-theme','light');assert.notEqual(await page.locator('body').evaluate(e=>getComputedStyle(e).backgroundColor),darkBackground);
+ await page.locator('#enableEditing').check();await page.waitForFunction(()=>!busy);await mkdir('offline-release/ui-checks',{recursive:true});await page.screenshot({path:'offline-release/ui-checks/settings-light.png'});
+ await page.locator('#colorTheme').selectOption('dark');await page.waitForTimeout(200);await page.screenshot({path:'offline-release/ui-checks/settings-dark-soft-editing.png'});await page.locator('#colorTheme').selectOption('light');
+ await page.locator('#settings [data-close]').click();
+ // File URLs cannot use OPFS in every Chrome build. Verify theme persistence on
+ // the real file origin, then use a local fixture origin for native OPFS handles.
+ await context.close();context=await chromium.launchPersistentContext(profile,options);page=await open();await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+ targetURL=origin;await page.goto(targetURL);await expect(page.locator('html')).toHaveAttribute('data-ready','true');await page.locator('#settingsButton').click();await page.locator('#enableEditing').check();await page.waitForFunction(()=>!busy);await page.locator('#colorTheme').selectOption('light');await page.locator('#settings [data-close]').click();
+ await page.evaluate(async()=>{
+  window.displayRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('表示検証 空白 #%🎮',{create:true});window.showDirectoryPicker=async()=>displayRoot;
+  for(const [name,title,tags]of [['one.html','長いゲームタイトルと日本語の表示確認',['アクション','Godot','ジャンプ','1人用','短時間','キーボード']],['two.html','別のゲーム',['パズル']]]){
+   await library.writeFile(displayRoot,name,'<body><script>document.body.dataset.previous=localStorage.getItem("level")||"none";localStorage.setItem("level","kept");</script><h1>Playable</h1></body>');
+   await library.writeFile(displayRoot,name+'.gameportal.json',JSON.stringify({schema:1,id:await library.gameId(name),title,developmentEnvironment:'Godot',tags,description:'ゲームの概要です。\n改行も読みやすく表示します。',instructions:'矢印キーで移動します。',thumbnail:null}));
+  }
+ });await page.locator('#setupFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('.card')).toHaveCount(2);await expect(page.locator('.card').filter({has:page.getByRole('heading',{name:'長いゲームタイトルと日本語の表示確認',exact:true})}).locator('.game-tag')).toHaveCount(6);assert(await page.locator('.card .tags').first().evaluate(row=>{const r=row.getBoundingClientRect(),items=[...row.querySelectorAll('button:not([hidden])')].map(e=>e.getBoundingClientRect());return items.length>0&&items.every(e=>Math.abs(e.top-items[0].top)<1&&e.right<=r.right+1);}));await page.setViewportSize({width:1920,height:1080});await expect.poll(()=>page.locator('#games').evaluate(e=>e.getBoundingClientRect().width)).toBeGreaterThan(1400);assert(await page.locator('#games').evaluate(e=>{const r=e.getBoundingClientRect();return r.left>=180&&r.right<=innerWidth-180;}));await page.screenshot({path:'offline-release/ui-checks/library-light-compact.png'});await page.setViewportSize({width:1280,height:960});
+ await page.locator('.card .game-tag').filter({hasText:'アクション'}).click();await expect(page.locator('.card')).toHaveCount(1);await expect(page.locator('#player')).toBeHidden();await page.locator('#clearFilters').click();
+ await page.evaluate(()=>{const start=player.startPlayer;player.startPlayer=(frame,options,preview,report)=>{window.reportDisplay=report;return start(frame,options,preview,report);};});
+ await page.locator('.card').filter({has:page.getByRole('heading',{name:'長いゲームタイトルと日本語の表示確認',exact:true})}).locator('.game-title-link').click();await page.waitForFunction(()=>!busy);await expect(page.frameLocator('#frame').locator('h1')).toHaveText('Playable');await expect(page.locator('#playerStatus')).toBeEmpty();await expect(page.locator('#playerEnvironment')).toHaveText('作成ツール：Godot');
+ await expect(page.locator('#playerMoreTools')).not.toHaveAttribute('open','');await expect(page.locator('#exportSave')).toBeHidden();await expect(page.locator('#saveBackupsButton')).toBeHidden();await expect(page.locator('#playerHelpButton')).toBeHidden();
+ assert((await page.locator('#playerInstructions').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)))>=16);
+ for(const theme of ['light','dark']){
+  await page.evaluate(theme=>applyTheme(theme),theme);
+  for(const [width,height]of [[1280,960],[640,480],[320,568]]){
+   await page.setViewportSize({width,height});assert(await page.locator('#player').evaluate(e=>e.scrollWidth<=e.clientWidth));
+   for(const id of ['fullscreen','closePlayer']){await page.locator('#'+id).scrollIntoViewIfNeeded();assert(await page.locator('#'+id).evaluate(e=>{const r=e.getBoundingClientRect(),top=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return top===e||e.contains(top);}));}
+  }
+  await page.setViewportSize({width:1280,height:960});await page.locator('#player').evaluate(e=>e.scrollTop=0);await page.waitForTimeout(200);await page.screenshot({path:'offline-release/ui-checks/player-'+theme+'.png'});
+  const ratios=await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');const rgb=color=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data];};const lum=a=>{const c=a.slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return c[0]*.2126+c[1]*.7152+c[2]*.0722;};const panel=rgb(getComputedStyle(document.querySelector('#player')).backgroundColor);return ['#playerTitle','#playerEnvironment','#fullscreen','#closePlayer','#playerTags .game-tag'].map(selector=>{const e=document.querySelector(selector),style=getComputedStyle(e),fg=rgb(style.color),raw=rgb(style.backgroundColor),alpha=raw[3]/255,bg=raw.map((v,i)=>i<3?v*alpha+panel[i]*(1-alpha):255),x=lum(fg),y=lum(bg);return {selector,ratio:(Math.max(x,y)+.05)/(Math.min(x,y)+.05)};});});for(const result of ratios)assert(result.ratio>=4.5,theme+' low contrast: '+JSON.stringify(result));
+ }
+ // A late ready/progress event must not erase an error or a save warning.
+ await page.evaluate(()=>{document.querySelector('#playerStatus').textContent='保存結果未確認です。';reportDisplay({type:'ready'});});await expect(page.locator('#playerStatus')).toHaveText('保存結果未確認です。');
+ await page.evaluate(()=>{reportDisplay({type:'error',message:'起動エラーです。'});reportDisplay({type:'ready'});reportDisplay({type:'status',message:'読み込み中'});});await expect(page.locator('#playerStatus')).toHaveText('起動エラーです。');await expect(page.locator('#retryPlaying')).toBeVisible();
+ await page.locator('#playerMoreTools summary').click();await expect(page.locator('#exportSave')).toBeVisible();await expect(page.locator('#saveBackupsButton')).toBeVisible();await expect(page.locator('#playerHelpButton')).toBeVisible();await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);
+ await page.locator('.game-title-link').filter({hasText:'長いゲームタイトルと日本語の表示確認'}).click();await page.waitForFunction(()=>!busy);await expect(page.locator('#playerMoreTools')).not.toHaveAttribute('open','');
+ await page.evaluate(()=>{window.displaySaveWrite=localState.writeLocalSave;localState.writeLocalSave=async()=>{throw new DOMException('Test full disk','QuotaExceededError');};});await expect(page.frameLocator('#frame').locator('h1')).toHaveText('Playable');await page.frameLocator('#frame').locator('body').evaluate(()=>localStorage.setItem('level','after-tag-click'));await page.waitForFunction(()=>activePlay?.latest?.level==='after-tag-click');
+ await page.locator('#playerTags .game-tag').filter({hasText:'アクション'}).click();await expect(page.locator('#player')).toBeVisible();await expect(page.locator('#playerStatus')).toContainText('セーブできません');assert.equal(await page.evaluate(()=>selectedTags.size),0);
+ await page.evaluate(()=>localState.writeLocalSave=window.displaySaveWrite);await page.locator('#playerTags .game-tag').filter({hasText:'アクション'}).click();await expect(page.locator('#player')).toBeHidden();await expect(page.locator('.card')).toHaveCount(1);assert.equal(await page.evaluate(async()=>(await localState.loadLocalSave(localLibrary,games.find(g=>g.path==='one.html').id)).level),'after-tag-click');
+ await page.locator('#homeLink').click();await expect(page.locator('.card')).toHaveCount(2);assert.equal(await page.locator('#search').inputValue(),'');
+ await page.locator('#settingsButton').click();await page.locator('#colorTheme').selectOption('light');
+ const exported=await page.evaluate(()=>launcherSource());assert(!/<html[^>]*data-theme=/.test(exported));
+ await context.close();context=await chromium.launchPersistentContext(profile,options);page=await open();await expect(page.locator('html')).toHaveAttribute('data-theme','light');await expect(page.locator('#folderName')).toHaveText('表示検証 空白 #%🎮');
+ await page.evaluate(()=>localStorage.setItem('game-portal.offline-theme','unknown'));await page.reload();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ await context.addInitScript(()=>{const get=Storage.prototype.getItem,set=Storage.prototype.setItem;Storage.prototype.getItem=function(k){if(k==='game-portal.offline-theme')throw new DOMException('Test denied','SecurityError');return get.call(this,k);};Storage.prototype.setItem=function(k,v){if(k==='game-portal.offline-theme')throw new DOMException('Test quota','QuotaExceededError');return set.call(this,k,v);};});
+ page=await open();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.locator('#settingsButton').click();await page.locator('#colorTheme').selectOption('light');await expect(page.locator('html')).toHaveAttribute('data-theme','light');await expect(page.locator('#status')).toContainText('記憶できませんでした');
+ assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
+ console.log('Display passed: actual file URL/Unicode path, dark default, light/dark settings and browser restart persistence, invalid/denied storage, silent ready and warning retention, folded save tools, responsive player controls, clickable card/player tags and save-preserving navigation, no external HTTP (local fixture origin for game cases). Folder picker is simulated; native permission UI remains unverified.');
+}finally{await context?.close();await new Promise(r=>server.close(r));await rm(temp,{recursive:true,force:true});}

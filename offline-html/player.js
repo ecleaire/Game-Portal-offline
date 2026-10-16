@@ -101,7 +101,12 @@ function pyxelBootstrap(nonce) {
       const script = document.createElement('script'); script.textContent = source; document.head.append(script);
       const interval = setInterval(() => {
         if (window.pyxelContext?.initialized) { port.postMessage({ type: 'ready' }); clearInterval(interval); }
-        else if (document.getElementById('pyxel-prompt')) port.postMessage({ type: 'status', message: 'ゲーム画面をクリックして開始してください。' });
+        else if (document.getElementById('pyxel-prompt')) {
+          const prompt=document.getElementById('pyxel-prompt');
+          // A frame restored from a hidden update dialog can initially measure 0.
+          if(!prompt.getBoundingClientRect().width&&document.documentElement.clientWidth)window.dispatchEvent(new Event('resize'));
+          port.postMessage({type:'status',message:'ゲーム画面をクリックして開始してください。'});
+        }
       }, 300);
       await window.launchPyxel({ command: 'play', name: 'game.pyxapp', base64: event.data.app, gamepad: 'enabled' });
     } catch (e) { port.postMessage({ type: 'error', message: 'Pyxelを起動できません：' + e.message }); }

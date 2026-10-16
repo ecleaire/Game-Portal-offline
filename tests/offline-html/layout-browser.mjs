@@ -8,7 +8,7 @@ const html=await readFile('offline-release/GAME-PORTAL.html'),server=createServe
 const profile=await mkdtemp(join(tmpdir(),'portal-layout-'));let context;
 try{
  context=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});const page=await context.newPage(),errors=[],issues=[];page.on('pageerror',error=>errors.push(error.message));await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');await mkdir('offline-release/ui-checks',{recursive:true});
- const sizes=[[1280,720,15],[800,600,15],[640,400,15],[390,700,15],[320,568,15],[1280,360,15],[640,480,24],[320,568,24]];
+ const sizes=[[1920,1080,15],[2560,1440,15],[1280,720,15],[800,600,15],[640,400,15],[390,700,15],[320,568,15],[1280,360,15],[640,480,24],[320,568,24]];
  for(const [width,height,font]of sizes){
   await page.setViewportSize({width,height});await page.evaluate(font=>document.documentElement.style.fontSize=font+'px',font);
   for(const scenario of ['home','settings','help','edit','player','post','updateContent','inspection','history','capture','saveBackups','saveVerification']){
@@ -55,5 +55,5 @@ try{
    }
   }
  }
- assert.deepEqual(errors,[]);assert.deepEqual(issues,[]);console.log('Layout passed: 12 screens/dialogs at 1280/800/640/390/320 widths, low heights and enlarged text; no horizontal overflow, collapsed editor or covered save controls.');
+ assert.deepEqual(errors,[]);assert.deepEqual(issues,[]);console.log('Layout passed: 12 screens/dialogs at 2560/1920/1280/800/640/390/320 widths, low heights and enlarged text; no horizontal overflow, collapsed editor or covered save controls.');
 }finally{await context?.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true});}

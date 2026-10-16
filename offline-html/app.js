@@ -3,6 +3,7 @@ const $ = selector => document.querySelector(selector);
 const exportRuntimeNode=$('#runtime'),exportAppNode=document.currentScript;
 function initialLauncherShell(node){
   const copy=node.cloneNode(false);
+  if(node===document.documentElement)copy.removeAttribute("data-theme");
   if(node===exportRuntimeNode){copy.textContent='__PORTAL_EXPORT_RUNTIME__';return copy;}
   if(node===exportAppNode){copy.textContent='__PORTAL_EXPORT_APP__';return copy;}
   for(const child of node.childNodes)copy.append(initialLauncherShell(child));return copy;
@@ -11,6 +12,10 @@ const originalLauncher='<!doctype html>\n'+initialLauncherShell(document.documen
 const nativeBridge=nativeTools.nativeConnection(location.href);
 if(nativeBridge)try{history.replaceState(null,'',location.href.split('#')[0]);}catch{}
 function launcherSource(){return originalLauncher.replace('__PORTAL_EXPORT_RUNTIME__',()=>exportRuntimeNode.textContent).replace('__PORTAL_EXPORT_APP__',()=>exportAppNode.textContent);}
+function applyTheme(value){const theme=value==='light'?'light':'dark';document.documentElement.dataset.theme=theme;$('#colorTheme').value=theme;}
+applyTheme(document.documentElement.dataset.theme);
+$('#colorTheme').onchange=()=>{applyTheme($('#colorTheme').value);try{localStorage.setItem('game-portal.offline-theme',$('#colorTheme').value);}catch{status('表示モードをこのPCに記憶できませんでした。開き直すとダークモードに戻る場合があります。');}};
+window.addEventListener('storage',event=>{if(event.key==='game-portal.offline-theme')applyTheme(event.newValue);});
 const folderScope=location.pathname;
 let portableConnection=null,connectionError='',lastFolderRevision='',folderWatchPromise=null,folderChannel=null;
 try{portableConnection=folderSharing.connectionInfo(JSON.parse($('#folderConnection').textContent));}catch(error){connectionError=error.message;}
@@ -374,6 +379,30 @@ async function connect(handle, request = false, restoring = false, shared = fals
   metadata = next; games = nextGames; $('#folderName').textContent = handle.name; $('#settingFolder').textContent = handle.name;
   await render(); $('#settings').close();syncStatus(('共有フォルダーの自動確認：有効（ホームで3分操作がないとき）')+cacheError);
 }
+async function filterByGameTag(tag){
+  if(busy||closingPlayer)return;
+  if($('#player').open){await $('#closePlayer').onclick();if($('#player').open)return;}
+  await action(async()=>{resetSearch();selectedTags.add(tag);await render();});
+  $('#activeFilters button')?.focus();
+}
+function gameTagButton(tag){
+  const button=document.createElement('button');button.type='button';button.className='tag game-tag';button.textContent=tag;button.setAttribute('aria-label',tag+'で絞り込む');
+  button.onclick=event=>{event.stopPropagation();void filterByGameTag(tag).catch(error=>status(error.message));};return button;
+}
+function fitCardTags(){
+  for(const row of document.querySelectorAll('#games .tags')){
+    const items=[...row.querySelectorAll('.game-tag')],more=row.querySelector('.game-tags-more'),width=row.clientWidth;if(!items.length||!more||!width)continue;
+    for(const item of items)item.hidden=false;more.hidden=false;
+    const gap=parseFloat(getComputedStyle(row).columnGap)||0;
+    const sizes=items.map(item=>Math.max(item.getBoundingClientRect().width,item.scrollWidth+2)),sum=[0];for(const size of sizes)sum.push(sum.at(-1)+size);
+    let count=items.length;
+    if(sum.at(-1)+gap*(count-1)>width){for(count=items.length-1;count>=0;count--){more.textContent='＋'+(items.length-count);if(sum[count]+gap*count+more.getBoundingClientRect().width<=width)break;}count=Math.max(0,count);}
+    items.forEach((item,index)=>item.hidden=index>=count);more.hidden=count===items.length;
+    more.textContent='＋'+(items.length-count);more.setAttribute('aria-label','残り'+(items.length-count)+'件のタグをゲーム情報で見る');
+  }
+}
+let cardTagWidth=-1;
+new ResizeObserver(entries=>{const width=entries[0]?.contentRect.width;if(width===cardTagWidth)return;cardTagWidth=width;requestAnimationFrame(fitCardTags);}).observe($('#games'));
 async function render() {
   const revision = ++renderRevision, folder = root;
   const allTags = [...new Set(games.flatMap(g => g.tags))].sort((a,b) => a.localeCompare(b,'ja'));
@@ -424,18 +453,20 @@ async function render() {
     const title = document.createElement('h2'); title.textContent = game.title;
     const type = document.createElement('p'); type.className = 'type'; type.textContent = game.developmentEnvironment || (game.kind === 'pyxapp' ? 'Pyxel' : game.kind === 'exe' ? 'Windowsゲーム' : 'Webゲーム');
     const tags = document.createElement('div'); tags.className = 'tags';
-    for (const tag of game.tags) { const span = document.createElement('span'); span.className = 'tag'; span.textContent = tag; tags.append(span); }
-    const open=document.createElement('a');open.href='#player';open.className='game-title-link';open.textContent=game.title;open.onclick=event=>{event.preventDefault();action(()=>playGame(game),false,true);};title.replaceChildren(open);
+    for(const tag of game.tags)tags.append(gameTagButton(tag));tags.hidden=!game.tags.length;
+    if(game.tags.length){const more=document.createElement('button');more.type='button';more.className='tag game-tags-more';more.textContent='＋'+game.tags.length;more.setAttribute('aria-label','すべてのタグをゲーム情報で見る');more.onclick=()=>action(()=>playGame(game),false,true);tags.append(more);}
+    const open=document.createElement('a');open.href='#player';open.className='game-title-link';const titleText=document.createElement('span');titleText.className='game-title-text';titleText.textContent=game.title;open.append(titleText);open.onclick=event=>{event.preventDefault();action(()=>playGame(game),false,true);};title.replaceChildren(open);
     const thumb=document.createElement('a');thumb.href='#player';thumb.className='game-thumb-link';thumb.tabIndex=-1;thumb.setAttribute('aria-label',game.title+'の画面を開く');thumb.onclick=open.onclick;thumb.append(cover);
     for(const img of cover.querySelectorAll('img')){img.loading='lazy';img.decoding='async';}
     body.append(type,title,tags);
     if(game.description){const summary=document.createElement('p');summary.className='game-summary';summary.textContent=game.description.slice(0,100)+(game.description.length>100?'…':'');body.append(summary);}
     if(game.settingsError){const warning=document.createElement('p');warning.className='hint';warning.textContent='設定の確認が必要です：'+game.settingsError;body.append(warning);}
+    article.onclick=event=>{if(!event.target.closest('a,button,input,select,textarea'))open.onclick(event);};
     article.append(thumb,body);cardCache.set(game.path,{game,node:article});visibleCards.push(article);
   }
   if(revision!==renderRevision)return;
   const wanted=new Set(visibleCards);for(const card of [...$('#games').children])if(!wanted.has(card))card.remove();
-  visibleCards.forEach((card,index)=>{const current=$('#games').children[index];if(current!==card)$('#games').insertBefore(card,current||null);});
+  visibleCards.forEach((card,index)=>{const current=$('#games').children[index];if(current!==card)$('#games').insertBefore(card,current||null);});fitCardTags();
 }
 function editGame(game) {
   if (!editingEnabled || game.settingsError) return;
@@ -458,12 +489,12 @@ function updatePlayerInfo(){
   const native=openedGame.kind==='exe';
   $('#nativeLaunch').hidden=!native;$('#nativeLaunch').disabled=busy||!nativeBridge||!!openedGame.settingsError||syncPaused;
   $('#nativeReason').hidden=!native;$('#nativeReason').textContent=nativeBridge?'Windowsの別ウィンドウで起動します。信頼できるゲームだけ実行してください。セーブはゲーム自身が管理します。':'EXEを使うときは、同じフォルダーのGAME-PORTAL-WINDOWS.exeを開いてください。メイン画面はこのHTMLのままです。';
-  $('#saveBackupsButton').hidden=native;$('#fullscreen').hidden=native;
+  $('#playerMoreTools').hidden=native;$('#saveBackupsButton').hidden=native;$('#fullscreen').hidden=native;
   if(activePlay&&activePlay.game.id===openedGame.id)activePlay.game=openedGame;
-  $('#playerTitle').textContent=openedGame.title;$('#playerEnvironment').textContent=openedGame.developmentEnvironment||'';$('#playerEnvironment').hidden=!openedGame.developmentEnvironment;
+  $('#playerTitle').textContent=openedGame.title;$('#playerEnvironment').textContent=openedGame.developmentEnvironment?'作成ツール：'+openedGame.developmentEnvironment:'';$('#playerEnvironment').hidden=!openedGame.developmentEnvironment;
   $('#playerDescription').textContent=openedGame.description||'';$('#playerInstructions').textContent=openedGame.instructions||'';
   $('#playerDescription').closest('section').hidden=!openedGame.description;$('#playerInstructions').closest('section').hidden=!openedGame.instructions;
-  $('#playerTags').replaceChildren();for(const tag of openedGame.tags){const span=document.createElement('span');span.className='tag';span.textContent=tag;$('#playerTags').append(span);}
+  $('#playerTags').replaceChildren(...openedGame.tags.map(gameTagButton));
   $('#editPlaying').disabled=busy||!editingEnabled||!!openedGame.settingsError||pendingSettings(openedGame.path);
   $('#editPlaying').hidden=!editingEnabled;$('#captureButton').hidden=!editingEnabled||native;$('#captureReason').hidden=!editingEnabled||native;$('#editPlayingReason').hidden=!editingEnabled;
   $('#editPlayingReason').textContent=openedGame.settingsError?'設定の確認が必要です。「ライブラリ点検」を確認してください。':!editingEnabled?'編集するには「設定」で追加・編集を有効にしてください。':'';
@@ -518,7 +549,7 @@ $('#editTags').addEventListener('input', updateTagChoices);
 function updateFormCounters(){
   for(const [id,limit]of[['editTitle',120],['editDescription',2000],['editInstructions',4000]])$('#'+id+'Count').textContent=$('#'+id).value.length+' / '+limit;
   $('#editTitle').setCustomValidity($('#editTitle').value.trim()?'':'ゲーム名を入力してください。');
-  const environment=$('#editEnvironment').value.trim();$('#editEnvironment').setCustomValidity(!environment?'作ったソフトを入力または選択してください。':environment.length>32||/[,、\n]/.test(environment)?'作ったソフトは区切り文字を使わず32文字以内で入力してください。':'');
+  const environment=$('#editEnvironment').value.trim();$('#editEnvironment').setCustomValidity(!environment?'作成ツールを入力または選択してください。':environment.length>32||/[,、\n]/.test(environment)?'作成ツールは区切り文字を使わず32文字以内で入力してください。':'');
 }
 for(const id of ['editTitle','editEnvironment','editDescription','editInstructions'])$('#'+id).addEventListener('input',updateFormCounters);
 async function thumbnail(file,adjust=false,adjustment=null) {
@@ -557,6 +588,7 @@ function stopPlayer() {
   try { if (stopGame) stopGame(); } finally { stopGame = null; if (activePlay) activePlay.release(); activePlay = null; }
 }
 async function playGame(game) {
+  $("#playerMoreTools").open=false;
   const requested=playRevision;await requireLibraryConnection();if(playRevision!==requested)return;
   $('#retryPlaying').hidden=true;
   $('#player').scrollTop=0;
@@ -607,10 +639,12 @@ async function playGame(game) {
       options = { kind: game.kind, files, saved };
     }
     if (activePlay !== session) return;
+    let loadingStatus=$('#playerStatus').textContent,playerReady=false,playerFailed=false;
     stopGame = player.startPlayer($('#frame'), options, preview, message => {
       if (activePlay !== session) return;
-      if (message?.type === 'ready') {$('#playerStatus').textContent = 'ゲームを表示しました。';$('#retryPlaying').hidden=true;}
-      if (message?.type === 'error' || message?.type === 'status') {$('#playerStatus').textContent = String(message.message).slice(0, 500);if(message.type==='error')$('#retryPlaying').hidden=false;}
+      if(message?.type==='ready'&&!playerFailed){playerReady=true;if($('#playerStatus').textContent===loadingStatus)$('#playerStatus').textContent='';$('#retryPlaying').hidden=true;}
+      if(message?.type==='error'){playerFailed=true;$('#playerStatus').textContent=String(message.message).slice(0,500);$('#retryPlaying').hidden=false;}
+      if(message?.type==='status'&&!playerReady&&!playerFailed&&$('#playerStatus').textContent===loadingStatus){loadingStatus=String(message.message).slice(0,500);$('#playerStatus').textContent=loadingStatus;}
       if (message?.type === 'save') receiveSave(session, message.data);
     });
   } catch (e) { if(activePlay!==session)return;stopPlayer();$('#playerStatus').textContent='ゲームを開けませんでした。接続・作品のファイルを確認して再試行してください：'+e.message;$('#retryPlaying').hidden=false;throw new Error($('#playerStatus').textContent); }
@@ -652,6 +686,15 @@ $('#helpContent').addEventListener('scroll',()=>{
   markHelpTopic(current);
 },{passive:true});
 $('#settingsButton').onclick = () => $('#settings').showModal();
+$('#homeLink').onclick=event=>{
+  event.preventDefault();if(busy||starting||closingPlayer||!confirmEditClose())return;
+  return action(async()=>{
+    if(!await flushSave())return;
+    if($('#player').open){await $('#closePlayer').onclick();if($('#player').open)return;}
+    for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
+    resetSearch();await render();window.scrollTo({top:0});$('#homeLink').focus();
+  },false,true);
+};
 $('#setupFolder').onclick = () => remembered&&!$('#reconnect').hidden?$('#reconnect').onclick():$('#chooseFolder').onclick();
 function resetSearch(){clearTimeout(searchTimer);renderLimit=60;$('#search').value='';$('#tagSearch').value='';$('#tagCategory').value='';selectedTags.clear();$('#searchScope').value='all';$('#kindFilter').value='';$('#environmentFilter').value='';$('#tagMatch').value='all';$('#sortGames').value='name-asc'; }
 $('#clearFilters').onclick = () => { resetSearch();render().catch(e => status(e.message));$('#search').focus(); };

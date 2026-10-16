@@ -129,6 +129,7 @@ try {
   await openGame('My portable game');
   await expect(frame.locator('body')).toHaveAttribute('data-previous','saved');
   assert.equal(await frame.locator('body').evaluate(()=>{try{localStorage.setItem('large','あ'.repeat(180000));return 'allowed';}catch(error){return error.name;}}),'QuotaExceededError');
+  if(!await page.locator('#exportSave').isVisible())await page.locator('#playerMoreTools summary').click();
   const exported = page.waitForEvent('download'); await page.getByRole('button',{name:'セーブ書き出し',exact:true}).click();
   const download = await exported; const exportName=join(temp,'save.json'); await download.saveAs(exportName);
   const exportedData=JSON.parse(await readFile(exportName,'utf8')); assert.equal(exportedData.data.level,'saved');
@@ -140,7 +141,7 @@ try {
   await expect(peer.locator('#folderName')).toHaveText('games');
   await expect(peer.locator('#postButton')).toBeDisabled();
   const peerCard=peer.locator('.card').filter({has:peer.getByRole('heading',{name:'My portable game',exact:true})});
-  await expect(peerCard.locator('button')).toHaveCount(0);
+  await expect(peerCard.locator('button:not(.game-tag):not(.game-tags-more)')).toHaveCount(0);
   await peerCard.locator('.game-title-link').click(); await expect(peer.locator('#status')).toContainText('別のタブで起動中');
   await expect(peer.locator('#player')).not.toBeVisible();
   await page.getByRole('button',{name:'← ゲーム一覧',exact:true}).click();
