@@ -1,6 +1,6 @@
 # 完全オフライン HTML版 GAME PORTAL
 
-現在のバージョンは **0.20.6**。画面上部のロゴ横に表示します。
+現在のバージョンは **0.20.7**。画面上部のロゴ横に表示します。
 
 PC版Google Chrome（Windows / macOS）推奨です。配布ZIPを展開し、`GAME-PORTAL.html` をChromeで開きます。画面・Pyxel・Pyodide・Python標準ライブラリーをHTMLに同梱しています。使用中のCDN・Supabase・Google Drive接続、アカウント登録は不要です。
 
