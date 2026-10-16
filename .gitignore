@@ -10,3 +10,6 @@ playwright-report/
 
 .private/
 AGENTS.md
+
+# Personal auto-connection path is never part of a distribution.
+GAME-PORTAL-FOLDER.txt

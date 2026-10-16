@@ -1,0 +1,12 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {resolve,join} from 'node:path';
+import {execFileSync} from 'node:child_process';
+if(process.platform!=='darwin')throw Error('Mac版のビルドはmacOSで実行してください。');
+const root=resolve(import.meta.dirname,'..'),output=join(root,'offline-release','.mac-build');
+await mkdir(output,{recursive:true});
+const {version}=JSON.parse(await readFile(join(root,'package.json'),'utf8'));
+const source=join(output,'native-launcher.swift');await writeFile(source,(await readFile(join(root,'scripts/macos/native-launcher.swift'),'utf8')).replace('__VERSION__',version));
+for(const arch of ['x86_64','arm64'])execFileSync('xcrun',['swiftc','-swift-version','5','-O','-target',arch+'-apple-macosx12.0',source,'-o',join(output,arch)],{stdio:'inherit'});
+execFileSync('xcrun',['lipo','-create',join(output,'x86_64'),join(output,'arm64'),'-output',join(root,'GAME-PORTAL-MAC')],{stdio:'inherit'});
+execFileSync('codesign',['--force','--sign','-','--timestamp=none',join(root,'GAME-PORTAL-MAC')],{stdio:'inherit'});
+console.log('Mac helper built: v'+version+', universal Intel / Apple silicon, macOS 12+.');

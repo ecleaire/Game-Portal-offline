@@ -1,0 +1,31 @@
+name: Build Mac portable helper
+on:
+  push:
+    paths:
+      - 'scripts/macos/**'
+      - 'scripts/build-macos.mjs'
+      - 'tests/native-folder-browser.mjs'
+      - 'offline-html/native-tools.js'
+      - '.github/workflows/macos-helper.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: node scripts/build-macos.mjs
+      - run: npx playwright install chromium
+      - run: node tests/native-folder-browser.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GAME-PORTAL-MAC-universal
+          path: GAME-PORTAL-MAC
+          if-no-files-found: error

@@ -1,6 +1,6 @@
 # GAME PORTAL
 
-バージョン：**0.20.11**
+バージョン：**0.20.12**
 
 ゲームをフォルダーにまとめて、追加・編集・プレイできる単体HTMLランチャーです。
 
@@ -26,5 +26,9 @@ GitHubの「Code → Download ZIP」からダウンロードできます。
 ### WindowsのEXEゲーム（ベータ版）
 
 WindowsのEXEゲーム対応は**ベータ版**です。同じフォルダーの `GAME-PORTAL-WINDOWS.exe` を開きます。[詳しい手順](docs/WINDOWS_EXE.md)
+
+### フォルダー選択なしで起動（ベータ版）
+
+Windows・Mac用の起動補助と保存先設定を一緒に置くと、別PCでも同じ保存先へ接続できます。**プレイ専用**で、セーブは各PCのブラウザー内に保存します。[準備方法・Macの対応条件](docs/AUTO_CONNECT.md)
 
 [詳しい案内](docs/README.md) · [変更履歴](CHANGELOG.md)

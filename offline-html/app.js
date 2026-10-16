@@ -156,7 +156,7 @@ function folderSharingControls(){
   $('#sharedConnectionHint').textContent=hint?'このHTMLの保存先：'+hint:'';
 }
 async function checkSharedFolder(){
-  const available=()=>!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!document.hidden;
+  const available=()=>!root?.nativeReadOnly&&!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!document.hidden;
   if(folderWatchPromise||!available())return;
   folderWatchPromise=(async()=>{
     try{
@@ -190,7 +190,9 @@ function writeControls() {
   folderSharingControls();
   contentControls();
   renderSaveVerification();
-  $('#enableEditing').disabled = starting;
+  $('#enableEditing').disabled = starting || !!root?.nativeReadOnly;
+  $('#nativeFolderNotice').hidden=!root?.nativeReadOnly;
+  $('#syncSaves').disabled=!!root?.nativeReadOnly;
   if(openedGame)updatePlayerInfo();else $('#editPlaying').disabled=true;
   $('#postButton').hidden=!editingEnabled;
   $('#postButton').disabled = !root || !editingEnabled || settingsReceipts.some(a=>a.libraryId===localLibrary&&a.kind==='post');
@@ -284,6 +286,7 @@ function requestSaveSync(operation){
   void action(async()=>{const granted=await permission;if(granted?.error)throw granted.error;if(!folder||granted!=='granted')throw Error('セーブ共有にはフォルダーへの保存許可が必要です。');await requireLibraryConnection();if(root!==folder)throw Error('フォルダーが変わりました。');return operation();},false,true);
 }
 async function syncAllSaves(signal){
+  if(root?.nativeReadOnly)return '';
   if(activePlay||openedGame||pendingSave||flushing)throw Error('ゲームを終了してホームに戻ってからセーブを同期してください。');
   const folder=root,libraryId=localLibrary;let count=0;
   for(const game of games){
@@ -644,7 +647,7 @@ async function playGame(game) {
     } else {
       let files = game.kind === 'zip' ? await preview.unpackPrivateZip(await file.arrayBuffer()) : await library.readTree(game.folder, new Map([[game.entry, htmlBytes]]), {fileBacked:true});
       if (game.kind === 'html') files.set('index.html', files.get(game.entry));
-      const shared=await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal:loadController.signal});
+      const shared=root.nativeReadOnly?{state:'local'}:await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal:loadController.signal});
       if(shared.state==='conflict'){sharedSaveIssues.set(game.id,{game,result:shared});saveSyncRows();throw Error('セーブが別々のPCで進んでいます。ホームに戻り「設定」→「セーブの共有」で使うセーブを選んでください。');}
       const saved = await localState.loadLocalSave(session.libraryId, game.id);
       options = { kind: game.kind, files, saved };
@@ -932,13 +935,14 @@ $('#closePlayer').onclick = async () => {
 $('#player').addEventListener('cancel', event => { event.preventDefault(); $('#closePlayer').click(); });
 $('#fullscreen').onclick = () => $('#frame').requestFullscreen().catch(e => { $('#playerStatus').textContent = e.message; });
 function initialized() { if(connectionError)status(connectionError);starting = false; document.querySelectorAll('button').forEach(button => { button.disabled = false; }); writeControls(); document.documentElement.dataset.ready = 'true'; }
-if (!window.showDirectoryPicker) { status('このブラウザーはフォルダーへの保存に対応していません。PC版Google Chromeを使用してください。'); initialized(); }
+if (!window.showDirectoryPicker&&!nativeBridge) { status('このブラウザーはフォルダーへの保存に対応していません。PC版Google Chromeを使用してください。'); initialized(); }
 else {
 const startupAbort=new AbortController();
 const startupTimeout=setTimeout(()=>{startupAbort.abort();status('前回の保存先への自動接続を中止しました。保存先を開き直してください。ヘルプ・設定から操作できます。');initialized();},12000);
 Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previous,receipts]) => {
   startupAbort.signal.throwIfAborted();
   settingsReceipts=receipts;lastFolderRevision=previous?.revision||'';
+  if(nativeBridge){const handle=await nativeTools.nativeFolder(nativeBridge,compatibilityTools.LAUNCHER_VERSION,startupAbort.signal);startupAbort.signal.throwIfAborted();if(handle){editingEnabled=false;$('#enableEditing').checked=false;await connect(handle,false,true,false,startupAbort.signal);return;}}
   if(previous?.scope&&previous.scope!==folderScope)previous=null;
   if (previous?.name) $('#settingFolder').textContent = '前回：' + previous.name;
   if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;writeControls();try{const permission=await remembered.queryPermission({mode:'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal);}else {syncStatus(reconnectHint);status(reconnectHint);}}catch(error){if(startupAbort.signal.aborted)return;syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}

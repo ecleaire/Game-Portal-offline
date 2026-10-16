@@ -27,3 +27,29 @@ export async function launchNative(connection,libraryId,game,version) {
   if(!response.ok||result.launched!==true)throw new Error(result.error||'EXEを起動できませんでした。');
   return result;
 }
+
+// Read-only native directory adapter. Capabilities stay in this page, never IDB or exports.
+export async function nativeFolder(connection,version,signal) {
+  async function request(action,path='',binary=false) {
+    const response=await fetch(connection.origin+'/native/folder',{method:'POST',signal,headers:{'Content-Type':'application/json','X-Game-Portal-Token':connection.token},body:JSON.stringify({version,action,path})});
+    if(!response.ok){const error=await response.json();throw new DOMException(error.error||'保存先に接続できません。',error.name||'NotReadableError');}
+    return binary?response.arrayBuffer():response.json();
+  }
+  const info=await request('info');
+  if(!info.configured)return null;
+  const child=(path,name)=>{if(!name||name==='.'||name==='..'||/[\\/]/.test(name))throw new TypeError('ファイル名を確認してください。');return path?path+'/'+name:name;};
+  const deny=()=>{throw new DOMException('自動接続の試用版は読み取り専用です。追加・編集・セーブ共有には「保存先を選ぶ」を使ってください。','NotAllowedError');};
+  function handle(path,name,kind) {
+    const result={name,kind,nativeReadOnly:true,queryPermission:async({mode='read'}={})=>mode==='read'?'granted':'denied',requestPermission:async({mode='read'}={})=>{if(mode!=='read')deny();return 'granted';},isSameEntry:async other=>other===result,removeEntry:async()=>deny()};
+    if(kind==='file')Object.assign(result,{getFile:async()=>new File([await request('read',path,true)],name),createWritable:async()=>deny()});
+    else Object.assign(result,{
+      getDirectoryHandle:async(name,options={})=>lookup(name,'directory',options),
+      getFileHandle:async(name,options={})=>lookup(name,'file',options),
+      async *values(){for(const entry of (await request('list',path)).entries)yield handle(child(path,entry.name),entry.name,entry.kind);},
+      async *entries(){for await(const entry of result.values())yield [entry.name,entry];}
+    });
+    async function lookup(name,kind,options){if(options.create)deny();const next=child(path,name),entry=await request('stat',next);if(entry.kind!==kind)throw new DOMException('種類が違います。','TypeMismatchError');return handle(next,name,kind);}
+    return result;
+  }
+  return handle('',info.name,'directory');
+}

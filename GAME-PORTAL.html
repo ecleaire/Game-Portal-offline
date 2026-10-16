@@ -136,7 +136,7 @@ body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--a
 
 #folderDrop{min-height:160px;display:grid;place-items:center;padding:28px 20px;border:2px dashed var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 6%,var(--panel));font-size:1.067rem;font-weight:650;line-height:1.7;text-align:center;overflow-wrap:anywhere}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.11</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.12</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p>
@@ -236,7 +236,7 @@ body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--a
   <p data-dialog-status role="status" class="hint"></p>
   <section class="settings-card" aria-labelledby="folderSettingsTitle">
     <h3 id="folderSettingsTitle">ゲームのフォルダー</h3>
-    <p id="settingFolder">未設定</p>
+    <p id="settingFolder">未設定</p><p id="nativeFolderNotice" class="hint" hidden>自動接続（ベータ版・プレイ専用）。セーブはこのブラウザー内に保存します。追加・編集・セーブ共有は「保存先を選ぶ」から接続してください。</p>
     <div class="buttons settings-folder-actions"><button id="chooseFolder">保存先を選ぶ</button><button id="reconnect" class="secondary" hidden>再接続する</button></div>
     <details id="folderSelectionHelp" class="settings-detail"><summary>フォルダーを選べないとき</summary><p class="hint">選択後にChromeのアクセス確認を許可してください。ドライブ全体ではなく、ゲーム専用のフォルダーを選びます。</p><div id="folderDrop" class="notice" role="group" aria-label="保存先フォルダーをドラッグして接続">保存先フォルダーをここへドラッグ</div><p class="hint">接続だけを行います。ゲームのコピー・投稿はしません。PCやブラウザーのアクセス制限がある場合は接続できません。</p></details>
   </section>
@@ -507,7 +507,7 @@ function portableLauncher(source,info) {
 
 return {connectionInfo,portableLauncher};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.20.11';
+const LAUNCHER_VERSION = '0.20.12';
 const MINIMUM_VERSION = '0.14.0';
 const FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FILE = 'compatibility.json';
@@ -702,7 +702,33 @@ async function launchNative(connection,libraryId,game,version) {
   return result;
 }
 
-return {nativeLayout,validateExe,nativeConnection,launchNative};})();
+// Read-only native directory adapter. Capabilities stay in this page, never IDB or exports.
+async function nativeFolder(connection,version,signal) {
+  async function request(action,path='',binary=false) {
+    const response=await fetch(connection.origin+'/native/folder',{method:'POST',signal,headers:{'Content-Type':'application/json','X-Game-Portal-Token':connection.token},body:JSON.stringify({version,action,path})});
+    if(!response.ok){const error=await response.json();throw new DOMException(error.error||'保存先に接続できません。',error.name||'NotReadableError');}
+    return binary?response.arrayBuffer():response.json();
+  }
+  const info=await request('info');
+  if(!info.configured)return null;
+  const child=(path,name)=>{if(!name||name==='.'||name==='..'||/[\\/]/.test(name))throw new TypeError('ファイル名を確認してください。');return path?path+'/'+name:name;};
+  const deny=()=>{throw new DOMException('自動接続の試用版は読み取り専用です。追加・編集・セーブ共有には「保存先を選ぶ」を使ってください。','NotAllowedError');};
+  function handle(path,name,kind) {
+    const result={name,kind,nativeReadOnly:true,queryPermission:async({mode='read'}={})=>mode==='read'?'granted':'denied',requestPermission:async({mode='read'}={})=>{if(mode!=='read')deny();return 'granted';},isSameEntry:async other=>other===result,removeEntry:async()=>deny()};
+    if(kind==='file')Object.assign(result,{getFile:async()=>new File([await request('read',path,true)],name),createWritable:async()=>deny()});
+    else Object.assign(result,{
+      getDirectoryHandle:async(name,options={})=>lookup(name,'directory',options),
+      getFileHandle:async(name,options={})=>lookup(name,'file',options),
+      async *values(){for(const entry of (await request('list',path)).entries)yield handle(child(path,entry.name),entry.name,entry.kind);},
+      async *entries(){for await(const entry of result.values())yield [entry.name,entry];}
+    });
+    async function lookup(name,kind,options){if(options.create)deny();const next=child(path,name),entry=await request('stat',next);if(entry.kind!==kind)throw new DOMException('種類が違います。','TypeMismatchError');return handle(next,name,kind);}
+    return result;
+  }
+  return handle('',info.name,'directory');
+}
+
+return {nativeLayout,validateExe,nativeConnection,launchNative,nativeFolder};})();
 const library=(()=>{const {checkCompatibility,ensureCompatibility}=compatibilityTools;
 const {resolveGameContent}=updateTools;
 const {nativeLayout,validateExe}=nativeTools;
@@ -1983,7 +2009,7 @@ function folderSharingControls(){
   $('#sharedConnectionHint').textContent=hint?'このHTMLの保存先：'+hint:'';
 }
 async function checkSharedFolder(){
-  const available=()=>!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!document.hidden;
+  const available=()=>!root?.nativeReadOnly&&!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!document.hidden;
   if(folderWatchPromise||!available())return;
   folderWatchPromise=(async()=>{
     try{
@@ -2017,7 +2043,9 @@ function writeControls() {
   folderSharingControls();
   contentControls();
   renderSaveVerification();
-  $('#enableEditing').disabled = starting;
+  $('#enableEditing').disabled = starting || !!root?.nativeReadOnly;
+  $('#nativeFolderNotice').hidden=!root?.nativeReadOnly;
+  $('#syncSaves').disabled=!!root?.nativeReadOnly;
   if(openedGame)updatePlayerInfo();else $('#editPlaying').disabled=true;
   $('#postButton').hidden=!editingEnabled;
   $('#postButton').disabled = !root || !editingEnabled || settingsReceipts.some(a=>a.libraryId===localLibrary&&a.kind==='post');
@@ -2111,6 +2139,7 @@ function requestSaveSync(operation){
   void action(async()=>{const granted=await permission;if(granted?.error)throw granted.error;if(!folder||granted!=='granted')throw Error('セーブ共有にはフォルダーへの保存許可が必要です。');await requireLibraryConnection();if(root!==folder)throw Error('フォルダーが変わりました。');return operation();},false,true);
 }
 async function syncAllSaves(signal){
+  if(root?.nativeReadOnly)return '';
   if(activePlay||openedGame||pendingSave||flushing)throw Error('ゲームを終了してホームに戻ってからセーブを同期してください。');
   const folder=root,libraryId=localLibrary;let count=0;
   for(const game of games){
@@ -2471,7 +2500,7 @@ async function playGame(game) {
     } else {
       let files = game.kind === 'zip' ? await preview.unpackPrivateZip(await file.arrayBuffer()) : await library.readTree(game.folder, new Map([[game.entry, htmlBytes]]), {fileBacked:true});
       if (game.kind === 'html') files.set('index.html', files.get(game.entry));
-      const shared=await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal:loadController.signal});
+      const shared=root.nativeReadOnly?{state:'local'}:await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal:loadController.signal});
       if(shared.state==='conflict'){sharedSaveIssues.set(game.id,{game,result:shared});saveSyncRows();throw Error('セーブが別々のPCで進んでいます。ホームに戻り「設定」→「セーブの共有」で使うセーブを選んでください。');}
       const saved = await localState.loadLocalSave(session.libraryId, game.id);
       options = { kind: game.kind, files, saved };
@@ -2759,13 +2788,14 @@ $('#closePlayer').onclick = async () => {
 $('#player').addEventListener('cancel', event => { event.preventDefault(); $('#closePlayer').click(); });
 $('#fullscreen').onclick = () => $('#frame').requestFullscreen().catch(e => { $('#playerStatus').textContent = e.message; });
 function initialized() { if(connectionError)status(connectionError);starting = false; document.querySelectorAll('button').forEach(button => { button.disabled = false; }); writeControls(); document.documentElement.dataset.ready = 'true'; }
-if (!window.showDirectoryPicker) { status('このブラウザーはフォルダーへの保存に対応していません。PC版Google Chromeを使用してください。'); initialized(); }
+if (!window.showDirectoryPicker&&!nativeBridge) { status('このブラウザーはフォルダーへの保存に対応していません。PC版Google Chromeを使用してください。'); initialized(); }
 else {
 const startupAbort=new AbortController();
 const startupTimeout=setTimeout(()=>{startupAbort.abort();status('前回の保存先への自動接続を中止しました。保存先を開き直してください。ヘルプ・設定から操作できます。');initialized();},12000);
 Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previous,receipts]) => {
   startupAbort.signal.throwIfAborted();
   settingsReceipts=receipts;lastFolderRevision=previous?.revision||'';
+  if(nativeBridge){const handle=await nativeTools.nativeFolder(nativeBridge,compatibilityTools.LAUNCHER_VERSION,startupAbort.signal);startupAbort.signal.throwIfAborted();if(handle){editingEnabled=false;$('#enableEditing').checked=false;await connect(handle,false,true,false,startupAbort.signal);return;}}
   if(previous?.scope&&previous.scope!==folderScope)previous=null;
   if (previous?.name) $('#settingFolder').textContent = '前回：' + previous.name;
   if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;writeControls();try{const permission=await remembered.queryPermission({mode:'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal);}else {syncStatus(reconnectHint);status(reconnectHint);}}catch(error){if(startupAbort.signal.aborted)return;syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}

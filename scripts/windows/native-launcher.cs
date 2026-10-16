@@ -21,7 +21,7 @@ internal static class PortalNative {
     static readonly SemaphoreSlim Slots = new SemaphoreSlim(8);
     static TcpListener Listener;
     static Control Dispatcher;
-    static string Token, Origin, Html, FixedRoot;
+    static string Token, Origin, Html, FixedRoot, AutoRoot, AutoId;
     static bool Headless;
     static string Serialize(object value) { lock(JsonLock) return Json.Serialize(value); }
     static Dictionary<string,object> Parse(string value) { lock(JsonLock) return Json.Deserialize<Dictionary<string,object>>(value); }
@@ -95,6 +95,34 @@ internal static class PortalNative {
         if(cors)headers+="Access-Control-Allow-Origin: null\r\nAccess-Control-Allow-Methods: POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, X-Game-Portal-Token\r\nAccess-Control-Allow-Private-Network: true\r\nVary: Origin\r\n";
         byte[] prefix=Encoding.ASCII.GetBytes(headers+"\r\n");stream.Write(prefix,0,prefix.Length);stream.Write(bytes,0,bytes.Length);
     }
+    static void Folder(NetworkStream stream,Dictionary<string,object> data) {
+        if(data==null||data.Count!=3||data.Keys.Any(k=>!new[]{"version","action","path"}.Contains(k))||Text(data,"version")!=Version)throw new Exception("HTMLと起動補助を同じ最新版にしてください。");
+        if(String.IsNullOrEmpty(AutoRoot)){Reply(stream,200,new{configured=false},true);return;}
+        CheckLibrary(AutoRoot,AutoId);
+        string action=Text(data,"action"),path=Text(data,"path");
+        if(action=="info"&&path==""){Reply(stream,200,new{configured=true,name=new DirectoryInfo(AutoRoot).Name},true);return;}
+        string full=path==""?AutoRoot:Bound(AutoRoot,path,false);
+        if(action=="list") {
+            if(!Directory.Exists(full))throw new DirectoryNotFoundException();
+            var entries=new List<object>();
+            foreach(string entry in Directory.EnumerateFileSystemEntries(full)){
+                if(entries.Count>=10000)throw new Exception("フォルダー内の項目が多すぎます。");
+                var attributes=File.GetAttributes(entry);if((attributes&FileAttributes.ReparsePoint)!=0)continue;
+                entries.Add(new{name=Path.GetFileName(entry),kind=(attributes&FileAttributes.Directory)!=0?"directory":"file"});
+            }
+            Reply(stream,200,new{entries=entries},true);return;
+        }
+        if(path=="")throw new Exception("ファイルを指定してください。");
+        if(action=="stat"){var attributes=File.GetAttributes(full);Reply(stream,200,new{kind=(attributes&FileAttributes.Directory)!=0?"directory":"file"},true);return;}
+        if(action=="read"){
+            using(var input=new FileStream(full,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete)){
+                long length=input.Length;if(length>200L*1024*1024)throw new Exception("ファイルは200MB以内にしてください。");
+                byte[] prefix=Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/octet-stream\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: null\r\nVary: Origin\r\nContent-Length: "+length+"\r\n\r\n");stream.Write(prefix,0,prefix.Length);
+                byte[] buffer=new byte[65536];while(length>0){int n=input.Read(buffer,0,(int)Math.Min(buffer.Length,length));if(n==0)throw new IOException("読み込み中にファイルが変わりました。");stream.Write(buffer,0,n);length-=n;}
+            }return;
+        }
+        throw new Exception("この自動接続は読み取り専用です。");
+    }
     static void Handle(TcpClient client) {
         NetworkStream stream=null;Mutex lease=null;bool owned=false,cors=false;Process process=null;
         try {
@@ -112,12 +140,13 @@ internal static class PortalNative {
             string host,origin;headers.TryGetValue("Origin",out origin);cors=origin=="null";
             if(!headers.TryGetValue("Host",out host)||host!="127.0.0.1:"+((IPEndPoint)Listener.LocalEndpoint).Port){Reply(stream,403,new{error="接続先が一致しません。"},false);return;}
             if(request[0]=="GET"&&request[1]=="/health"){Reply(stream,200,new{product="GAME PORTAL",version=Version},false);return;}
-            if(!cors||request[1]!="/native/launch"){Reply(stream,403,new{error="HTMLから接続してください。"},false);return;}
+            if(!cors||(request[1]!="/native/launch"&&request[1]!="/native/folder")){Reply(stream,403,new{error="HTMLから接続してください。"},false);return;}
             if(request[0]=="OPTIONS"){Reply(stream,200,new{ok=true},true);return;}
             string token,type;
             if(request[0]!="POST"||!headers.TryGetValue("X-Game-Portal-Token",out token)||token!=Token){Reply(stream,403,new{error="Windows起動補助からHTMLを開き直してください。"},true);return;}
             if(length<2||!headers.TryGetValue("Content-Type",out type)||type.Split(';')[0].Trim()!="application/json")throw new Exception("起動リクエストが不正です。");
             var data=Parse(new UTF8Encoding(false,true).GetString(body));
+            if(request[1]=="/native/folder"){Folder(stream,data);return;}
             if(data==null||data.Count!=4||data.Keys.Any(k=>!new[]{"libraryId","gameId","gamePath","version"}.Contains(k)))throw new Exception("起動リクエストが不正です。");
             if(Text(data,"version")!=Version)throw new Exception("HTMLとWindows起動補助を同じ最新版にしてください。");
             string libraryId=Id(Text(data,"libraryId")),gameId=Id(Text(data,"gameId")),root=Root(libraryId),full=Executable(root,Text(data,"gamePath"),gameId);
@@ -127,7 +156,7 @@ internal static class PortalNative {
             process=Process.Start(new ProcessStartInfo { FileName=full,WorkingDirectory=Path.GetDirectoryName(full),UseShellExecute=false,WindowStyle=ProcessWindowStyle.Normal });
             if(process==null)throw new Exception("Windowsがゲームを起動できませんでした。");
             Reply(stream,200,new{launched=true},true);
-        } catch(Exception error) {try{if(stream!=null)Reply(stream,400,new{error=error.Message},cors);}catch{}} finally {client.Close();Slots.Release();if(!owned&&lease!=null)lease.Dispose();}
+        } catch(Exception error) {try{if(stream!=null)Reply(stream,400,new{error=error.Message,name=error is FileNotFoundException||error is DirectoryNotFoundException?"NotFoundError":"NotReadableError"},cors);}catch{}} finally {client.Close();Slots.Release();if(!owned&&lease!=null)lease.Dispose();}
         try { if(process!=null)process.WaitForExit(); } catch(InvalidOperationException) {} finally {if(process!=null)process.Dispose();if(owned)lease.ReleaseMutex();if(lease!=null)lease.Dispose();}
     }
     static void Accept() {
@@ -139,6 +168,13 @@ internal static class PortalNative {
             Html=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"GAME-PORTAL.html");string ready=null;
             for(int i=0;i<args.Length;i++){if(args[i]=="--headless")Headless=true;else if(args[i]=="--root")FixedRoot=args[++i];else if(args[i]=="--html")Html=Path.GetFullPath(args[++i]);else if(args[i]=="--ready-file")ready=args[++i];else throw new Exception("起動オプションが不正です。");}
             if(!File.Exists(Html))throw new Exception("同じフォルダーにGAME-PORTAL.htmlを置いてください。");
+            string config=Path.Combine(Path.GetDirectoryName(Html),"GAME-PORTAL-FOLDER.txt");
+            if(File.Exists(config)){
+                string path=Read(config,8192).Trim();if(path.Length==0||path.IndexOfAny(new[]{'\r','\n','\0'})>=0)throw new Exception("GAME-PORTAL-FOLDER.txtには保存先を1行で指定してください。");
+                AutoRoot=Path.GetFullPath(Path.IsPathRooted(path)?path:Path.Combine(Path.GetDirectoryName(Html),path));
+                if(!Directory.Exists(AutoRoot)||(File.GetAttributes(AutoRoot)&FileAttributes.ReparsePoint)!=0)throw new Exception("自動接続の保存先にアクセスできません。");
+                var library=Parse(Read(Bound(AutoRoot,".gameportal/library-id.json",false),1024));AutoId=Id(Text(library,"id"));CheckLibrary(AutoRoot,AutoId);if(String.IsNullOrEmpty(FixedRoot))FixedRoot=AutoRoot;
+            }
             byte[] secret=new byte[32];using(var rng=RandomNumberGenerator.Create())rng.GetBytes(secret);Token=BitConverter.ToString(secret).Replace("-","").ToLowerInvariant();
             Listener=new TcpListener(IPAddress.Loopback,0);Listener.Start();Origin="http://127.0.0.1:"+((IPEndPoint)Listener.LocalEndpoint).Port;
             if(ready!=null)File.WriteAllText(ready,Serialize(new{origin=Origin,token=Token}),new UTF8Encoding(false));

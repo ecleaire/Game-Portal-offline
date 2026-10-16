@@ -1,6 +1,6 @@
 # 完全オフライン HTML版 GAME PORTAL
 
-現在のバージョンは **0.20.11**。画面上部のロゴ横に表示します。
+現在のバージョンは **0.20.12**。画面上部のロゴ横に表示します。
 
 PC版Google Chrome（Windows / macOS）推奨です。配布ZIPを展開し、`GAME-PORTAL.html` をChromeで開きます。画面・Pyxel・Pyodide・Python標準ライブラリーをHTMLに同梱しています。使用中のCDN・Supabase・Google Drive接続、アカウント登録は不要です。
 
@@ -9,6 +9,8 @@ PC版Google Chrome（Windows / macOS）推奨です。配布ZIPを展開し、`G
 保管先のフォルダー名を決められた名前へ変更する必要はありません。日本語・空白・記号など、OSとChromeで選択できる名前をそのまま使えます。名前は案内表示にだけ使い、ライブラリIDで保存先を識別します。ブラウザーがアクセスを許可しない場所や、読み取り・保存の権限がない場所は、名前を変えても利用できません。
 
 ## 使用手順
+
+Windows・Mac用起動補助でフォルダー選択を省略する[プレイ専用の自動接続（ベータ版）](AUTO_CONNECT.md)も用意しています。通常のHTMLだけの使い方は以下のとおりです。
 
 HTML内の「ヘルプ」は、左の目次を表示したまま本文を読めます。Scratch（sb3）のHTML出力は「Scratch → HTML」に、TurboWarp Packagerでの変換から追加までを案内しています。[TurboWarp Packager](https://packager.turbowarp.org/?import_from=https://turbowarp.org)でsb3を読み込み、HTML（Plain HTML）として出力したものを追加してください。sb3の拡張子変更だけでは変換できません。変換にはネット接続が必要です。ネットなしで変換する場合は、事前に[公式のオフライン版](https://docs.turbowarp.org/packager/offline)を用意してください。
 
