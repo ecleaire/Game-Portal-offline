@@ -2216,13 +2216,16 @@ async function action(fn, reconnecting = false, prioritizePlay = false) {
   catch (e) { compatibilityFailure(e);queueFolderRecovery(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;status(e.name === 'AbortError' ? '選択をキャンセルしました。' : e.message || '操作できませんでした。');if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
   finally { busy = false;document.body.setAttribute('aria-busy','false');document.body.classList.remove('working'); document.querySelectorAll('button').forEach(b => b.disabled = false);document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=false); writeControls(); }
 }
-async function refresh() {
+async function refresh({signal}={}) {
   if (!root) return;
-  await checkLibraryCompatibility();
-  const nextLibrary=await library.loadLibraryId(root);
-  if(localLibrary&&nextLibrary!==localLibrary){syncPaused=true;writeControls();throw new Error('保管フォルダーのIDが変わりました。設定からフォルダーを指定し直してください。');}
-  const nextMetadata=await library.loadMetadata(root),nextGames=await library.scan(root,nextMetadata);
-  if(await library.loadLibraryId(root)!==nextLibrary)throw new Error('読み込み中に保管フォルダーのIDが変わりました。再接続してください。');
+  const folder=root,id=localLibrary;await checkLibraryCompatibility(folder,signal);signal?.throwIfAborted();
+  const nextLibrary=await library.loadLibraryId(folder);
+  signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw new DOMException('保存先が変わりました。','AbortError');
+  if(id&&nextLibrary!==id){syncPaused=true;writeControls();throw new Error('保管フォルダーのIDが変わりました。設定からフォルダーを指定し直してください。');}
+  const nextMetadata=await library.loadMetadata(folder),nextGames=await library.scan(folder,nextMetadata,{signal});
+  signal?.throwIfAborted();
+  if(await library.loadLibraryId(folder)!==nextLibrary)throw new Error('読み込み中に保管フォルダーのIDが変わりました。再接続してください。');
+  signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw new DOMException('保存先が変わりました。','AbortError');
   localLibrary=nextLibrary;syncPaused=false;folderRecovery=null;$('#reconnect').hidden=true;syncStatus('共有フォルダーの自動確認：有効（ホームで3分操作がないとき）');
   metadata=nextMetadata;games=nextGames;resetCards();
   $('#folderName').textContent = root.name; $('#settingFolder').textContent = root.name;
@@ -2573,12 +2576,12 @@ function stopPlayer(preserveLoad=false) {
   try { if (stopGame) stopGame(); } finally { stopGame = null; if (activePlay) activePlay.release(); activePlay = null; }
 }
 function updateGameLoadControls(){const button=$('#cancelGameLoad');button.hidden=!gameLoading;button.disabled=!gameLoading;}
-async function playGame(game){
+async function playGame(game,{refreshFirst=false}={}){
   if(!await flushSave())return;
   stopPlayer();const task={game,folder:root,controller:new AbortController(),cancelled:false};gameLoading=task;
   openedGame=game;$('#frame').hidden=true;$('#playerStatus').textContent='読み込んでいます…';updatePlayerInfo();
   if(!$('#player').open)$('#player').showModal();updateGameLoadControls();
-  try{await loadGame(game,task);}
+  try{if(refreshFirst){await readTasks.readWithSignal(()=>refresh({signal:task.controller.signal}),task.controller.signal);task.controller.signal.throwIfAborted();const latest=games.find(item=>item.id===game.id&&item.path===game.path);if(!latest)throw new Error('作品が移動・削除されています。ゲーム一覧を確認してください。');game=latest;task.game=latest;}await loadGame(game,task);}
   catch(error){if(task.cancelled)return;if($('#player').open&&openedGame?.path===game.path){$('#playerStatus').textContent=error.message;$('#retryPlaying').hidden=false;}throw error;}
   finally{if(gameLoading===task&&!stopGame){gameLoading=null;updateGameLoadControls();}}
 }
@@ -2648,20 +2651,7 @@ async function loadGame(game,task) {
   finally{loading=false;if(releaseRequested)unlock();}
 }
 
-$('#retryPlaying').onclick=()=>action(async()=>{
-  const game=openedGame,revision=playRevision;if(!game)return;let launching=false;
-  const cancelled=()=>!$('#player').open||openedGame?.id!==game.id||openedGame?.path!==game.path;
-  try{
-    await refresh();if(playRevision!==revision||cancelled())return;
-    const latest=games.find(g=>g.id===game.id&&g.path===game.path);
-    if(!latest)throw new Error('作品が移動・削除されています。ゲーム一覧を確認してください。');
-    launching=true;await playGame(latest);
-  }catch(error){
-    if(cancelled()||!launching&&playRevision!==revision)return;
-    $('#playerStatus').textContent='起動を再試行できませんでした。接続と作品のファイルを確認してください：'+error.message;
-    $('#retryPlaying').hidden=false;throw error;
-  }
-},false,true);
+$('#retryPlaying').onclick=()=>action(async()=>{const game=openedGame;if(game)await playGame(game,{refreshFirst:true});},false,true);
 $('#nativeLaunch').onclick=()=>action(async()=>{
   await requireLibraryConnection();if(openedGame?.kind!=='exe'||openedGame.settingsError)throw new Error('ゲームの設定を確認してください。');
   try{await nativeTools.launchNative(nativeBridge,localLibrary,openedGame,compatibilityTools.LAUNCHER_VERSION);$('#playerStatus').textContent='Windowsの別ウィンドウで起動しました。';}
