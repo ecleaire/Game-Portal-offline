@@ -40,6 +40,20 @@ test('canceling native reads preserves the handle and does not abort later reads
   const reading=Array.fromAsync(root.values());await started;const rejected=assert.rejects(reading,{name:'NativeReadCancelled'});root.cancelReads();await rejected;assert.equal(root.pendingReads,0);hang=false;assert.deepEqual(await Array.fromAsync(root.values()),[]);
 });
 
+test('native resource preflight validates sizes and carries the reserved limit to the read',async t=>{
+  let size=3,reads=0;
+  t.mock.method(globalThis,'fetch',async(url,options)=>{
+    const body=JSON.parse(options.body);
+    if(body.action==='info')return {ok:true,json:async()=>({configured:true,name:'library'})};
+    if(body.action==='stat')return {ok:true,json:async()=>({kind:'file',size})};
+    reads++;assert.equal(body.limit,3);return {ok:true,blob:async()=>new Blob(['abc'])};
+  });
+  const root=await nativeFolder({origin:'http://127.0.0.1:12345',token:'test'},'1.0.0'),file=await root.getFileHandle('game.wasm');
+  assert.deepEqual(await file.getFileInfo(),{size:3});assert.equal((await file.getFile()).size,3);
+  for(const invalid of [-1,NaN,'3',201*1024*1024,Number.MAX_SAFE_INTEGER+1]){size=invalid;await assert.rejects(file.getFileInfo(),/200MB/);}
+  assert.equal(reads,1);
+});
+
 test('EXE validation reads bounded headers and rejects corrupt executables and renamed DLLs',async()=>{
   await validateExe(exe());
   await assert.rejects(validateExe(exe(0x2002)),/EXE/);

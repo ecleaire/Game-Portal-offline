@@ -640,8 +640,9 @@ async function playGame(game) {
   const unlock=session.release,loadController=new AbortController();let loading=true,releaseRequested=false;
   session.release=()=>{loadController.abort();if(loading)releaseRequested=true;else unlock();};
   try {
-    const file = await game.handle.getFile(); let options;
     const entryLimit=game.kind==='html'?200:50;
+    if(typeof game.handle.getFileInfo==='function'&&(await game.handle.getFileInfo()).size>entryLimit*1024*1024)throw new Error('起動ファイルは'+entryLimit+'MB以内にしてください。ゲームのファイルを確認してください。');
+    const file = await game.handle.getFile(); let options;
     if(file.size>entryLimit*1024*1024)throw new Error('起動ファイルは'+entryLimit+'MB以内にしてください。ゲームのファイルを確認してください。');
     const htmlBytes = game.kind === 'html' ? new Uint8Array(await file.arrayBuffer()) : null;
     const embedded = htmlBytes ? library.embeddedPyxel(new TextDecoder().decode(htmlBytes)) : null;

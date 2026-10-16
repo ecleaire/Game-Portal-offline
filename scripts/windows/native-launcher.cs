@@ -96,7 +96,7 @@ internal static class PortalNative {
         byte[] prefix=Encoding.ASCII.GetBytes(headers+"\r\n");stream.Write(prefix,0,prefix.Length);stream.Write(bytes,0,bytes.Length);
     }
     static void Folder(NetworkStream stream,Dictionary<string,object> data) {
-        if(data==null||data.Count!=3||data.Keys.Any(k=>!new[]{"version","action","path"}.Contains(k))||Text(data,"version")!=Version)throw new Exception("HTMLと起動補助を同じ最新版にしてください。");
+        if(data==null||!(data.Count==3&&!data.ContainsKey("limit")||data.Count==4&&data.ContainsKey("limit")&&Text(data,"action")=="read")||data.Keys.Any(k=>!new[]{"version","action","path","limit"}.Contains(k))||Text(data,"version")!=Version)throw new Exception("HTMLと起動補助を同じ最新版にしてください。");
         if(AutoRootError!=null)throw new Exception(AutoRootError);
         if(String.IsNullOrEmpty(AutoRoot)){Reply(stream,200,new{configured=false},true);return;}
         CheckLibrary(AutoRoot,AutoId);
@@ -114,10 +114,11 @@ internal static class PortalNative {
             Reply(stream,200,new{entries=entries},true);return;
         }
         if(path=="")throw new Exception("ファイルを指定してください。");
-        if(action=="stat"){var attributes=File.GetAttributes(full);Reply(stream,200,new{kind=(attributes&FileAttributes.Directory)!=0?"directory":"file"},true);return;}
+        if(action=="stat"){var attributes=File.GetAttributes(full);bool directory=(attributes&FileAttributes.Directory)!=0;Reply(stream,200,new{kind=directory?"directory":"file",size=directory?0:new FileInfo(full).Length},true);return;}
         if(action=="read"){
+            int limit=200*1024*1024;object value;if(data.TryGetValue("limit",out value)){if(!(value is int)||(int)value<0||(int)value>limit)throw new Exception("読み込み上限が不正です。");limit=(int)value;}
             using(var input=new FileStream(full,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete)){
-                long length=input.Length;if(length>200L*1024*1024)throw new Exception("ファイルは200MB以内にしてください。");
+                long length=input.Length;if(length>limit)throw new Exception("ファイルのサイズが上限を超えたか、読み込み前に変わりました。一覧を更新してもう一度試してください。");
                 byte[] prefix=Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: application/octet-stream\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: null\r\nVary: Origin\r\nContent-Length: "+length+"\r\n\r\n");stream.Write(prefix,0,prefix.Length);
                 byte[] buffer=new byte[65536];while(length>0){int n=input.Read(buffer,0,(int)Math.Min(buffer.Length,length));if(n==0)throw new IOException("読み込み中にファイルが変わりました。");stream.Write(buffer,0,n);length-=n;}
             }return;

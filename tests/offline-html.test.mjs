@@ -21,6 +21,16 @@ import { unpackPrivateZip } from '../assets/private-preview.js';
 import * as library from '../offline-html/library.js';
 import { inspectLibrary, localResources, loadSettingsHistory, restoreSettingsHistory } from '../offline-html/maintenance.js';
 import * as preview from '../assets/private-preview.js';
+
+test('native game size preflight rejects oversized resources before materializing any bodies',async()=>{
+  let reads=0;
+  const file=(name,size)=>({kind:'file',name,getFileInfo:async()=>({size}),getFile:async()=>{reads++;throw Error('Must not fetch oversized game');}});
+  const folder=entries=>({async *values(){yield* entries;}});
+  await assert.rejects(readTree(folder([file('a.wasm',110*1024*1024),file('b.pck',110*1024*1024)]),new Map(),{fileBacked:true}),/200MB/);
+  await assert.rejects(readTree(folder([file('a.wasm',201*1024*1024)])),/200MB/);
+  await assert.rejects(readTree(folder([file('index.html',1),file('b.pck',150*1024*1024)]),new Map([['index.html',{byteLength:60*1024*1024}]])),/200MB/);
+  assert.equal(reads,0);
+});
 import {searchGames} from '../offline-html/search.js';
 import {checkUpload,cropRect} from '../offline-html/improvements.js';
 import {analyzeDependencies,inspectUploadDependencies} from '../offline-html/dependencies.js';

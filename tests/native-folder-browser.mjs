@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFile,writeFile,mkdir,mkdtemp,rm,symlink} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,mkdtemp,rm,symlink,open} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
@@ -17,10 +17,13 @@ try{
  const exe=resolve(process.platform==='win32'?'GAME-PORTAL-WINDOWS.exe':'GAME-PORTAL-MAC');
  helper=spawn(exe,['--headless','--html',html,'--ready-file',ready],{windowsHide:true,stdio:'pipe'});let output='';helper.stderr.on('data',data=>output+=data);
  let info;for(let n=0;n<200;n++){try{info=JSON.parse(await readFile(ready,'utf8'));break;}catch{if(helper.exitCode!==null)throw Error('Helper exited: '+output);await delay(100);}}assert(info,'Helper readiness');
- const api=(action,path='',headers={})=>fetch(info.origin+'/native/folder',{method:'POST',headers:{Origin:'null','Content-Type':'application/json','X-Game-Portal-Token':info.token,...headers},body:JSON.stringify({version,action,path})});
+ const api=(action,path='',headers={},extra={})=>fetch(info.origin+'/native/folder',{method:'POST',headers:{Origin:'null','Content-Type':'application/json','X-Game-Portal-Token':info.token,...headers},body:JSON.stringify({version,action,path,...extra})});
  assert.equal((await api('info','',{'X-Game-Portal-Token':'0'.repeat(64)})).status,403);assert.equal((await api('info','',{Origin:'https://example.invalid'})).status,403);
  for(const path of ['../GAME-PORTAL.html','/etc/passwd','作品/../index.html','作品\\index.html'])assert.equal((await api('read',path)).status,400);
  assert.equal((await api('write','作品/index.html')).status,400);
+ for(const limit of [-1,true,0.5,'20',201*1024*1024])assert.equal((await api('read','作品/index.html',{}, {limit})).status,400,'invalid byte budget rejected');
+ const imagePath=join(disk,'作品','image.svg'),image=await readFile(imagePath),imageSize=(await(await api('stat','作品/image.svg')).json()).size;assert.equal(imageSize,image.length);
+ assert.equal((await api('read','作品/image.svg',{}, {limit:imageSize})).status,200);await writeFile(imagePath,Buffer.concat([image,Buffer.from(' ')]));assert.equal((await api('read','作品/image.svg',{}, {limit:imageSize})).status,400,'growth after preflight rejected');await writeFile(imagePath,image);
  const missing=await api('stat','missing.html');assert.equal(missing.status,400);assert.equal((await missing.json()).name,'NotFoundError');
  const outside=join(temp,'outside');await mkdir(outside);await writeFile(join(outside,'secret.txt'),'do not expose');await symlink(outside,join(disk,'linked'),process.platform==='win32'?'junction':'dir');assert.equal((await api('read','linked/secret.txt')).status,400);
  context=await chromium.launchPersistentContext(join(temp,'profile'),{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
@@ -35,9 +38,16 @@ try{
  await page.locator('#refresh').click();await expect(page.locator('#cancelConnection')).toBeVisible();await expect(page.locator('#helpButton')).toBeEnabled();await page.locator('#settingsButton').click();await expect(page.locator('#cancelFolderRead')).toBeVisible();await page.locator('#cancelFolderRead').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#status')).toContainText('接続待ちを中止');await expect(page.locator('#chooseFolder')).toBeEnabled();await expect(page.locator('#cancelFolderRead')).toBeHidden();
  await page.locator('#settings [data-close]').click();assert.equal(await page.evaluate(()=>localLibrary),libraryId);assert.equal((await page.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id)))['native-test'],'played');
  await page.clock.install();await page.locator('#refresh').click();await expect(page.locator('#cancelConnection')).toBeVisible();await page.clock.fastForward(10001);await page.waitForFunction(()=>!busy);await expect(page.locator('#status')).toContainText('起動補助');await page.clock.resume();await page.evaluate(()=>{window.stallNative=false;});await page.locator('#refresh').click();await page.waitForFunction(()=>!busy);await expect(page.locator('.card')).toHaveCount(1);
+ // Sparse oversized exports must fail before either large resource is transferred.
+ await mkdir(join(disk,'oversized'));await writeFile(join(disk,'oversized','index.html'),'<h1>Oversized</h1>');for(const name of ['large.wasm','large.pck']){const file=await open(join(disk,'oversized',name),'w');try{await file.truncate(110*1024*1024);}finally{await file.close();}}
+ await page.evaluate(()=>{const previous=window.fetch;window.largeNativeReads=0;window.fetch=(url,options)=>{if(String(url).includes('/native/folder')){const body=JSON.parse(options.body);if(body.action==='read'&&/\.(wasm|pck|zip)$/.test(body.path))window.largeNativeReads++;}return previous(url,options);};});
+ await page.locator('#refresh').click();await expect(page.locator('.card')).toHaveCount(2);await page.locator('.game-title-link').filter({hasText:'oversized'}).click();await page.waitForFunction(()=>!busy);await expect(page.locator('#playerStatus')).toContainText('200MB');assert.equal(await page.evaluate(()=>window.largeNativeReads),0);await expect(page.locator('#retryPlaying')).toBeEnabled();await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);
+ const largeZip=await open(join(disk,'large.zip'),'w');try{await largeZip.truncate(51*1024*1024);}finally{await largeZip.close();}
+ await page.locator('#refresh').click();await expect(page.locator('.card')).toHaveCount(3);await page.locator('.game-title-link').filter({hasText:'large'}).click();await page.waitForFunction(()=>!busy);await expect(page.locator('#playerStatus')).toContainText('50MB');assert.equal(await page.evaluate(()=>window.largeNativeReads),0);await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);
+ await page.getByRole('link',{name:'作品',exact:true}).click();await expect(page.frameLocator('#frame').locator('h1')).toHaveText('Native auto game');await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);
  if(process.platform==='darwin'){
   await mkdir(join(disk,'windows'));const exe=Buffer.alloc(128);exe.writeUInt16LE(0x5a4d,0);exe.writeUInt32LE(64,60);exe.writeUInt32LE(0x4550,64);exe.writeUInt16LE(2,86);await writeFile(join(disk,'windows','windows.exe'),exe);
-  await page.locator('#refresh').click();await expect(page.locator('.card')).toHaveCount(2);await page.locator('.game-title-link').filter({hasText:'windows'}).click();await expect(page.locator('#nativeLaunch')).toBeDisabled();await expect(page.locator('#nativeReason')).toContainText('Macでは動きません');await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);
+  await page.locator('#refresh').click();await expect(page.locator('.card')).toHaveCount(4);await page.locator('.game-title-link').filter({hasText:'windows'}).click();await expect(page.locator('#nativeLaunch')).toBeDisabled();await expect(page.locator('#nativeReason')).toContainText('Macでは動きません');await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);
  }
  await writeFile(join(disk,'.gameportal','compatibility.json'),JSON.stringify({schema:true,minLauncherVersion:version,requiredFeatures:[]}));assert.equal((await api('info')).status,400,'boolean schema rejected');
  await writeFile(join(disk,'.gameportal','compatibility.json'),JSON.stringify({schema:1,minLauncherVersion:version,requiredFeatures:['unsupported']}));assert.equal((await api('info')).status,400,'unknown feature rejected');

@@ -95,7 +95,7 @@ do {
         if request[0]=="OPTIONS"{reply(connection,200,try json(["ok":true]));return}
         guard request[0]=="POST" && headers["x-game-portal-token"]==token else{reply(connection,403,try json(["error":"Mac起動補助からHTMLを開き直してください。"]));return}
         guard headers["content-type"]?.components(separatedBy:";")[0]=="application/json", let length=Int(headers["content-length"] ?? ""),length>1,length<=16384,bytes.count-split.upperBound==length else{throw PortalError("リクエストが不正です。")}
-        let data=try object(bytes[split.upperBound...]);guard Set(data.keys)==Set(["version","action","path"]),data["version"] as? String == version, let action=data["action"] as? String,let path=data["path"] as? String,path.utf8.count<=4000 else{throw PortalError("HTMLとMac起動補助を同じ最新版にしてください。")}
+        let data=try object(bytes[split.upperBound...]);guard data["version"] as? String == version, let action=data["action"] as? String,let path=data["path"] as? String,path.utf8.count<=4000,Set(data.keys)==Set(["version","action","path"]) || action=="read" && Set(data.keys)==Set(["version","action","path","limit"]) else{throw PortalError("HTMLとMac起動補助を同じ最新版にしてください。")}
         if let error=configuredError{throw PortalError(error)}
         guard let root=configuredRoot else{reply(connection,200,try json(["configured":false]));return}
         _=try checkLibrary(root,configuredID)
@@ -106,8 +106,12 @@ do {
             let urls=try fm.contentsOfDirectory(at:url,includingPropertiesForKeys:[.isDirectoryKey,.isSymbolicLinkKey]);guard urls.count<=10000 else{throw PortalError("フォルダー内の項目が多すぎます。")}
             var entries=[[String:String]]();for child in urls{let values=try child.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey]);if values.isSymbolicLink != true {entries.append(["name":child.lastPathComponent,"kind":values.isDirectory == true ? "directory":"file"])}}
             reply(connection,200,try json(["entries":entries]))
-        case "stat":let values=try url.resourceValues(forKeys:[.isDirectoryKey]);reply(connection,200,try json(["kind":values.isDirectory == true ? "directory":"file"]))
-        case "read":guard !path.isEmpty else{throw PortalError("ファイルを指定してください。")};reply(connection,200,try read(url,200*1024*1024),true)
+        case "stat":let values=try url.resourceValues(forKeys:[.isDirectoryKey,.fileSizeKey]);reply(connection,200,try json(["kind":values.isDirectory == true ? "directory":"file","size":values.isDirectory == true ? 0:values.fileSize ?? 0]))
+        case "read":
+            guard !path.isEmpty else{throw PortalError("ファイルを指定してください。")}
+            var limit=200*1024*1024
+            if let value=data["limit"]{guard let number=value as? NSNumber,CFGetTypeID(number) != CFBooleanGetTypeID(),number.doubleValue>=0,number.doubleValue<=Double(limit),number.doubleValue.rounded(.down)==number.doubleValue else{throw PortalError("読み込み上限が不正です。")};limit=number.intValue}
+            reply(connection,200,try read(url,limit),true)
         default:throw PortalError("この自動接続は読み取り専用です。")
         }
     }

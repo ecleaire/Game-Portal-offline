@@ -261,6 +261,21 @@ export async function readTree(folder, preloaded = new Map(), {fileBacked = fals
     }
   }
   await walk(folder);
+  // Native reads copy data over the bridge. Reserve the whole game before any
+  // resource bodies are fetched; ordinary browser File snapshots remain lazy.
+  if(entries.some(({entry})=>typeof entry.getFileInfo==='function')){
+    let reserved=0,index=0,failed;
+    await Promise.all(Array.from({length:Math.min(4,entries.length)},async()=>{
+      while(!failed&&index<entries.length){
+        const {path,entry}=entries[index++];
+        try{const ready=preloaded.get(path),size=ready?ready.byteLength:typeof entry.getFileInfo==='function'?(await entry.getFileInfo()).size:0;
+          if(!Number.isSafeInteger(size)||size<0)throw new Error('ファイルのサイズを確認できません。');reserved+=size;
+          if(reserved>MAX_BYTES)throw new Error('ゲームは500ファイル・展開後200MB以内にしてください。');
+        }catch(error){failed ||= error;}
+      }
+    }));
+    if(failed)throw failed;
+  }
   // Reserve bytes before allocating buffers; preserve traversal order.
   const contents = new Array(entries.length); let next = 0, failure;
   await Promise.all(Array.from({length: Math.min(4, entries.length)}, async () => {

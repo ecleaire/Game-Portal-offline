@@ -33,14 +33,14 @@ export async function nativeFolder(connection,version,signal,{onPendingChange}={
   const pending=new Set();
   const notify=()=>onPendingChange?.(pending.size);
   function connectionError(name='NetworkError') {const error=new Error('起動補助との接続を確認してください。起動補助から開き直すか、「設定」で保存先を選び直せます。');error.name=name;return error;}
-  async function request(action,path='',binary=false) {
+  async function request(action,path='',binary=false,limit=null) {
     const controller=new AbortController(),abort=()=>controller.abort(signal.reason);
     if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
     // Large game assets on slow NAS/PCs get a longer deadline; cancel stays available.
     const timer=setTimeout(()=>controller.abort(connectionError('TimeoutError')),binary?120000:10000);
     pending.add(controller);notify();
     try{
-      const response=await fetch(connection.origin+'/native/folder',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','X-Game-Portal-Token':connection.token},body:JSON.stringify({version,action,path})});
+      const response=await fetch(connection.origin+'/native/folder',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','X-Game-Portal-Token':connection.token},body:JSON.stringify({version,action,path,...(limit===null?{}:{limit})})});
       if(!response.ok){const error=await response.json();throw new DOMException(error.error||'保存先に接続できません。',error.name||'NotReadableError');}
       return await (binary?response.blob():response.json());
     }catch(error){if(controller.signal.aborted)throw controller.signal.reason;if(error instanceof TypeError)throw connectionError();throw error;}
@@ -52,7 +52,13 @@ export async function nativeFolder(connection,version,signal,{onPendingChange}={
   const deny=()=>{throw new DOMException('自動接続の試用版は読み取り専用です。追加・編集・セーブ共有には「保存先を選ぶ」を使ってください。','NotAllowedError');};
   function handle(path,name,kind) {
     const result={name,kind,nativeReadOnly:true,queryPermission:async({mode='read'}={})=>mode==='read'?'granted':'denied',requestPermission:async({mode='read'}={})=>{if(mode!=='read')deny();return 'granted';},isSameEntry:async other=>other===result,removeEntry:async()=>deny()};
-    if(kind==='file')Object.assign(result,{getFile:async()=>new File([await request('read',path,true)],name),createWritable:async()=>deny()});
+    if(kind==='file'){
+      let readLimit=null;
+      Object.assign(result,{
+        getFileInfo:async()=>{const info=await request('stat',path);if(info.kind!=='file'||!Number.isSafeInteger(info.size)||info.size<0||info.size>200*1024*1024)throw new Error('ファイルは200MB以内にしてください。');readLimit=info.size;return {size:info.size};},
+        getFile:async()=>new File([await request('read',path,true,readLimit)],name),createWritable:async()=>deny()
+      });
+    }
     else Object.assign(result,{
       getDirectoryHandle:async(name,options={})=>lookup(name,'directory',options),
       getFileHandle:async(name,options={})=>lookup(name,'file',options),
