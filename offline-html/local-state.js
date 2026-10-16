@@ -4,14 +4,16 @@ let database;
 function openDatabase() {
   if (!database) database = new Promise((resolve, reject) => {
     const request = indexedDB.open('game-portal-offline-folder-v1', 3);
+    let expired=false;const timeout=setTimeout(()=>{expired=true;reject(new Error('このPCの保存領域から応答がありません。Chromeを開き直して再試行してください。'));},8000);
     request.onupgradeneeded = () => {
+      if(expired){request.transaction.abort();return;}
       if (request.result.objectStoreNames.contains('libraries')) request.result.deleteObjectStore('libraries');
       for (const name of ['settings', 'saves']) if (!request.result.objectStoreNames.contains(name)) request.result.createObjectStore(name);
       request.transaction.objectStore('settings').delete('folder');
     };
-    request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('以前のランチャーを閉じてから再読み込みしてください。'));
-    request.onsuccess = () => { const db = request.result; db.onversionchange = () => { db.close(); database = null; }; resolve(db); };
+    request.onerror = () => {clearTimeout(timeout);reject(request.error);};
+    request.onblocked = () => {expired=true;clearTimeout(timeout);reject(new Error('以前のランチャーを閉じてから再読み込みしてください。'));};
+    request.onsuccess = () => { clearTimeout(timeout);const db = request.result;if(expired){db.close();return;} db.onversionchange = () => { db.close(); database = null; }; resolve(db); };
   }).catch(error => { database = null; throw error; });
   return database;
 }
@@ -20,7 +22,8 @@ async function access(name, mode, operation) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(name, mode); let result;
     const request = operation(tx.objectStore(name)); request.onsuccess = () => { result = request.result; };
-    tx.oncomplete = () => resolve(result); tx.onabort = () => reject(tx.error || new Error('このPCへ保存できませんでした。')); tx.onerror = () => {};
+    const timeout=mode==='readonly'?setTimeout(()=>{reject(new Error('このPCの保存情報を読み込めませんでした。もう一度操作してください。'));try{tx.abort();}catch{}},8000):null;
+    tx.oncomplete = () => {clearTimeout(timeout);resolve(result);}; tx.onabort = () => {clearTimeout(timeout);reject(tx.error || new Error('このPCへ保存できませんでした。'));}; tx.onerror = () => {};
   });
 }
 export async function cacheHandle(value, remember = true, scope = null) {

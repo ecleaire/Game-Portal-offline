@@ -131,3 +131,5 @@ body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--a
 /* Use the same bright fills in light mode, with darker text/link colors for readability. */
 :root[data-theme=light]{--accent-fill:#73e7d1;--accent-ink:#102d24}
 [data-theme=light] body.editing-mode{--accent-fill:#f3bd79;--accent-ink:#302115}
+
+#folderDrop{min-height:160px;display:grid;place-items:center;padding:28px 20px;border:2px dashed var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 6%,var(--panel));font-size:1.067rem;font-weight:650;line-height:1.7;text-align:center;overflow-wrap:anywhere}

@@ -133,8 +133,10 @@ body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--a
 /* Use the same bright fills in light mode, with darker text/link colors for readability. */
 :root[data-theme=light]{--accent-fill:#73e7d1;--accent-ink:#102d24}
 [data-theme=light] body.editing-mode{--accent-fill:#f3bd79;--accent-ink:#302115}
+
+#folderDrop{min-height:160px;display:grid;place-items:center;padding:28px 20px;border:2px dashed var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 6%,var(--panel));font-size:1.067rem;font-weight:650;line-height:1.7;text-align:center;overflow-wrap:anywhere}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.9</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.10</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p>
@@ -505,7 +507,7 @@ function portableLauncher(source,info) {
 
 return {connectionInfo,portableLauncher};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.20.9';
+const LAUNCHER_VERSION = '0.20.10';
 const MINIMUM_VERSION = '0.14.0';
 const FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FILE = 'compatibility.json';
@@ -1325,14 +1327,16 @@ let database;
 function openDatabase() {
   if (!database) database = new Promise((resolve, reject) => {
     const request = indexedDB.open('game-portal-offline-folder-v1', 3);
+    let expired=false;const timeout=setTimeout(()=>{expired=true;reject(new Error('このPCの保存領域から応答がありません。Chromeを開き直して再試行してください。'));},8000);
     request.onupgradeneeded = () => {
+      if(expired){request.transaction.abort();return;}
       if (request.result.objectStoreNames.contains('libraries')) request.result.deleteObjectStore('libraries');
       for (const name of ['settings', 'saves']) if (!request.result.objectStoreNames.contains(name)) request.result.createObjectStore(name);
       request.transaction.objectStore('settings').delete('folder');
     };
-    request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('以前のランチャーを閉じてから再読み込みしてください。'));
-    request.onsuccess = () => { const db = request.result; db.onversionchange = () => { db.close(); database = null; }; resolve(db); };
+    request.onerror = () => {clearTimeout(timeout);reject(request.error);};
+    request.onblocked = () => {expired=true;clearTimeout(timeout);reject(new Error('以前のランチャーを閉じてから再読み込みしてください。'));};
+    request.onsuccess = () => { clearTimeout(timeout);const db = request.result;if(expired){db.close();return;} db.onversionchange = () => { db.close(); database = null; }; resolve(db); };
   }).catch(error => { database = null; throw error; });
   return database;
 }
@@ -1341,7 +1345,8 @@ async function access(name, mode, operation) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(name, mode); let result;
     const request = operation(tx.objectStore(name)); request.onsuccess = () => { result = request.result; };
-    tx.oncomplete = () => resolve(result); tx.onabort = () => reject(tx.error || new Error('このPCへ保存できませんでした。')); tx.onerror = () => {};
+    const timeout=mode==='readonly'?setTimeout(()=>{reject(new Error('このPCの保存情報を読み込めませんでした。もう一度操作してください。'));try{tx.abort();}catch{}},8000):null;
+    tx.oncomplete = () => {clearTimeout(timeout);resolve(result);}; tx.onabort = () => {clearTimeout(timeout);reject(tx.error || new Error('このPCへ保存できませんでした。'));}; tx.onerror = () => {};
   });
 }
 async function cacheHandle(value, remember = true, scope = null) {
@@ -2180,21 +2185,28 @@ $('#enableCrop').onchange=()=>{$('#cropFields').disabled=!$('#enableCrop').check
 for(const id of ['cropZoom','cropX','cropY'])$('#'+id).oninput=renderCropPreview;
 $('#resetCrop').onclick=()=>{$('#cropZoom').value='1';$('#cropX').value='50';$('#cropY').value='50';renderCropPreview();};
 $('#edit').addEventListener('close',()=>{editImageRevision++;resetCropState();});
-async function connect(handle, request = false, restoring = false, shared = false) {
+async function connect(handle, request = false, restoring = false, shared = false, signal = null) {
+  signal?.throwIfAborted();
   if(connectionError)throw new Error(connectionError);
   const mode = editingEnabled || request ? 'readwrite' : 'read';
   const permission = request ? await handle.requestPermission({ mode }) : await handle.queryPermission({ mode });
+  signal?.throwIfAborted();
   if (permission !== 'granted') throw new Error('保管フォルダーへのアクセスを許可してください。');
   // Read and validate before replacing the current folder or cached handle.
   await checkLibraryCompatibility(handle);
   const scannedLibrary=await library.loadLibraryId(handle);
   if(portableConnection&&scannedLibrary!==portableConnection.libraryId)throw new Error('このHTMLの保存先と違います。「'+portableConnection.name+'」のフォルダーを選んでください。');
   const next = await library.loadMetadata(handle), nextGames = await library.scan(handle, next);
+  signal?.throwIfAborted();
   if(await library.loadLibraryId(handle)!==scannedLibrary)throw new Error('読み込み中に保管フォルダーが変わりました。もう一度接続してください。');
+  signal?.throwIfAborted();
   if (!await flushSave()) throw new Error('このPCへのセーブを完了してからフォルダーを切り替えてください。');
-  const initialize=(editingEnabled&&!restoring)||(!scannedLibrary&&await handle.queryPermission({mode:'readwrite'})==='granted');
+  signal?.throwIfAborted();
+  // Timed automatic restoration is read-only; initialization remains an explicit connection operation.
+  const initialize=!signal&&((editingEnabled&&!restoring)||(!scannedLibrary&&await handle.queryPermission({mode:'readwrite'})==='granted'));
   const nextLocalLibrary = initialize ? await library.ensureLibraryId(handle) : scannedLibrary;
   await checkLibraryCompatibility(handle);
+  signal?.throwIfAborted();
   resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; resetSearch();sharedSaveIssues.clear();saveSyncRows();
   let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){cacheError=' 投稿先をこのPCに記憶できませんでした。次回はフォルダーを選び直してください：'+error.message;}
   syncPaused=false;$('#reconnect').hidden = true;
@@ -2729,12 +2741,17 @@ $('#player').addEventListener('cancel', event => { event.preventDefault(); $('#c
 $('#fullscreen').onclick = () => $('#frame').requestFullscreen().catch(e => { $('#playerStatus').textContent = e.message; });
 function initialized() { if(connectionError)status(connectionError);starting = false; document.querySelectorAll('button').forEach(button => { button.disabled = false; }); writeControls(); document.documentElement.dataset.ready = 'true'; }
 if (!window.showDirectoryPicker) { status('このブラウザーはフォルダーへの保存に対応していません。PC版Google Chromeを使用してください。'); initialized(); }
-else Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previous,receipts]) => {
+else {
+const startupAbort=new AbortController();
+const startupTimeout=setTimeout(()=>{startupAbort.abort();status('前回の保存先への自動接続を中止しました。保存先を開き直してください。ヘルプ・設定から操作できます。');initialized();},12000);
+Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previous,receipts]) => {
+  startupAbort.signal.throwIfAborted();
   settingsReceipts=receipts;lastFolderRevision=previous?.revision||'';
   if(previous?.scope&&previous.scope!==folderScope)previous=null;
   if (previous?.name) $('#settingFolder').textContent = '前回：' + previous.name;
-  if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;try{if(await remembered.queryPermission({mode:editingEnabled?'readwrite':'read'})==='granted')await connect(remembered,false,true);else syncStatus('「前回の保存先を開く」を押してアクセスを許可してください。');}catch(error){syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}
-}).catch(error => status('このPCの保存機能を確認してください：' + error.message)).finally(initialized);
+  if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;try{const permission=await remembered.queryPermission({mode:editingEnabled?'readwrite':'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal);}else syncStatus('「前回の保存先を開く」を押してアクセスを許可してください。');}catch(error){if(startupAbort.signal.aborted)return;syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}
+}).catch(error => {if(!startupAbort.signal.aborted)status('このPCの保存機能を確認してください：' + error.message);}).finally(()=>{clearTimeout(startupTimeout);if(!startupAbort.signal.aborted)initialized();});
+}
 
 
 $('#forgetFolder').onclick=()=>action(async()=>{await localState.forgetHandle();return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
