@@ -1,0 +1,4 @@
+# Preserve generated distribution bytes in Code > Download ZIP.
+GAME-PORTAL.html binary
+GAME-PORTAL-WINDOWS.exe binary
+THIRD-PARTY-LICENSES.txt -text

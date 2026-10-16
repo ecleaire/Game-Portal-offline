@@ -9,7 +9,9 @@ const framework=join(process.env.SystemRoot||'C:/Windows','Microsoft.NET','Frame
 const compiler=join(framework,'csc.exe');await access(compiler);await mkdir(build,{recursive:true});
 const source=join(build,'native-launcher.cs');await writeFile(source,(await readFile(join(root,'scripts/windows/native-launcher.cs'),'utf8')).replace('__VERSION__',version));
 execFileSync(compiler,['/nologo','/target:winexe','/optimize+','/utf8output','/out:'+join(output,'GAME-PORTAL-WINDOWS.exe'),'/reference:'+join(framework,'System.Windows.Forms.dll'),'/reference:'+join(framework,'System.Drawing.dll'),'/reference:'+join(framework,'System.Web.Extensions.dll'),source],{stdio:'pipe'});
-const guide=await readFile(join(root,'docs/WINDOWS_EXE.md'),'utf8');await writeFile(join(output,'README-WINDOWS.txt'),guide);
+const guide=(await readFile(join(root,'docs/WINDOWS_EXE.md'),'utf8')).replaceAll('\r\n','\n');await writeFile(join(output,'README-WINDOWS.txt'),guide);
+await writeFile(join(root,'GAME-PORTAL-WINDOWS.exe'),await readFile(join(output,'GAME-PORTAL-WINDOWS.exe')));
+await writeFile(join(root,'README-WINDOWS.txt'),guide);
 const files=await Promise.all(['GAME-PORTAL.html','GAME-PORTAL-WINDOWS.exe','README-WINDOWS.txt','THIRD-PARTY-LICENSES.txt'].map(async name=>new File([await readFile(join(output,name))],name)));
 await writeFile(join(output,'GAME-PORTAL-WINDOWS.zip'),Buffer.from(await(await packageWebFiles(files)).arrayBuffer()));
 console.log('Windows EXE helper built: v'+version+'. HTML remains the main application.');

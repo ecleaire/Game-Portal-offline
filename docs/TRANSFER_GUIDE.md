@@ -2,14 +2,14 @@
 
 ## ランチャーだけ渡す
 
-配布ZIPを相手のPCへコピーして展開し、`GAME-PORTAL.html` をPC版Google Chromeで開いてください。
+GitHubの「Code → Download ZIP」で取得したZIPを展開し、`Game-Portal-offline-html-main` 内の `GAME-PORTAL.html` をPC版Google Chromeで開いてください。展開済みフォルダーを相手のPCへコピーしても使えます。
 HTMLの中に必要な画面・ゲーム実行用ランタイムを同梱しているため、インストール、Node.js、開発ソース、アカウント、APIキー、インターネット接続は不要です。
 この配布ZIPにはゲーム・個人のセーブ・元PCの投稿先設定を含めません。
-初回は「設定」→「フォルダーを選ぶ」で、そのPCから利用できる保管フォルダーを選び、Chromeのアクセスを許可します。
+初回はホームの「保存先フォルダーを選ぶ」、または「設定」→「保存先を選ぶ」で、そのPCから利用できる保管フォルダーを選び、Chromeのアクセスを許可します。
 操作に迷った場合は、画面上部またはゲーム画面の「ヘルプ」で基本手順を確認できます。
 初期状態は閲覧モードです。投稿・編集する人だけ「編集モード」をオンにしてください。
 
-WindowsのEXEゲームも使う場合は `GAME-PORTAL-WINDOWS.zip` を展開し、同じフォルダーの `GAME-PORTAL-WINDOWS.exe` を開きます。メイン画面は同じHTMLです。[EXEゲームの手順](WINDOWS_EXE.md)を参照してください。EXEのセーブはゲーム自身が管理します。
+WindowsのEXEゲームも使う場合は、同じフォルダーの `GAME-PORTAL-WINDOWS.exe` を開きます。「Code → Download ZIP」に起動補助も含まれています。メイン画面は同じHTMLです。[EXEゲームの手順](WINDOWS_EXE.md)を参照してください。EXEのセーブはゲーム自身が管理します。
 
 ## 起動から投稿・プレイまで
 

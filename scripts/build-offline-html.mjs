@@ -24,7 +24,7 @@ for (const file of lock.files) {
   if (bytes.length !== file.bytes || createHash('sha256').update(bytes).digest('hex') !== file.sha256) throw new Error('Runtime checksum mismatch: ' + file.path);
   runtime[file.path] = bytes.toString('base64');
 }
-const source = async path => readFile(join(root, path), 'utf8');
+const source = async path => (await readFile(join(root, path), 'utf8')).replaceAll('\r\n','\n');
 const { version } = JSON.parse(await source('package.json'));
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid application version in package.json');
 const wrap = (name, code, exports) => `const ${name}=(()=>{${code.replace(/^export /gm, '')}\nreturn {${exports}};})();`;
@@ -53,11 +53,14 @@ const script = [
 const html = (await source('offline-html/index.html')).replace('/*__HELP__*/',await source('offline-html/help.html')).replace('__VERSION__', version).replace('/*__STYLE__*/', await source('offline-html/style.css')).replace('__RUNTIME__', JSON.stringify(runtime)).replace('/*__SCRIPT__*/', script);
 await mkdir(output, { recursive: true });
 await writeFile(join(output, 'GAME-PORTAL.html'), html);
+// Code > Download ZIP must work without a build or an Actions artifact.
+await writeFile(join(root, 'GAME-PORTAL.html'), html);
 const readme = await source('docs/OFFLINE_HTML.md');
 const nasGuide = await source('docs/NAS_VALIDATION.md');
 const transferGuide = await source('docs/TRANSFER_GUIDE.md');
 const licenses = lock.files.filter(f => f.path.endsWith('/LICENSE')).map(f => f.path + '\n' + Buffer.from(runtime[f.path], 'base64').toString('utf8')).join('\n\n');
 await writeFile(join(output, 'THIRD-PARTY-LICENSES.txt'), licenses);
+await writeFile(join(root, 'THIRD-PARTY-LICENSES.txt'), licenses);
 await writeFile(join(output, 'README.txt'), readme);
 await writeFile(join(output, 'NAS-VALIDATION.txt'), nasGuide);
 await writeFile(join(output, 'START-HERE.txt'), transferGuide);
