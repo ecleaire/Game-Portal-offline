@@ -9,8 +9,12 @@ function initialLauncherShell(node){
   for(const child of node.childNodes)copy.append(initialLauncherShell(child));return copy;
 }
 const originalLauncher='<!doctype html>\n'+initialLauncherShell(document.documentElement).outerHTML;
-const nativeBridge=nativeTools.nativeConnection(location.href);
-if(nativeBridge)try{history.replaceState(null,'',location.href.split('#')[0]);}catch{}
+let nativeBridge=null;
+try{
+  nativeBridge=nativeTools.nativePageConnection(location.href,history.state,performance.getEntriesByType('navigation')[0]?.type);
+  if(nativeBridge){const page=location.href.split('#')[0];history.replaceState({...history.state,gamePortalNative:{page,fragment:'#native='+new URL(nativeBridge.origin).port+'.'+nativeBridge.token}},'',page);}
+}catch{nativeBridge=nativeTools.nativeConnection(location.href);}
+function clearNativePageConnection(){try{const {gamePortalNative,...state}=history.state||{};history.replaceState(state,'',location.href);}catch{}}
 function launcherSource(){return originalLauncher.replace('__PORTAL_EXPORT_RUNTIME__',()=>exportRuntimeNode.textContent).replace('__PORTAL_EXPORT_APP__',()=>exportAppNode.textContent);}
 function applyTheme(value){const theme=value==='light'?'light':'dark';document.documentElement.dataset.theme=theme;$('#colorTheme').value=theme;}
 applyTheme(document.documentElement.dataset.theme);
@@ -394,6 +398,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   await checkLibraryCompatibility(handle,signal);
   signal?.throwIfAborted();
   resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; resetSearch();sharedSaveIssues.clear();saveSyncRows();
+  if(!handle.nativeReadOnly)clearNativePageConnection();
   let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){cacheError=' 投稿先をこのPCに記憶できませんでした。次回はフォルダーを選び直してください：'+error.message;}
   syncPaused=false;$('#reconnect').hidden = true;
   $('#sharedFolderPath').value=portableConnection?.path||'';try{$('#sharedFolderPath').value=localStorage.getItem('game-portal.folder-path.'+localLibrary)||$('#sharedFolderPath').value;}catch{}

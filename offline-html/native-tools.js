@@ -20,6 +20,14 @@ export function nativeConnection(url) {
   if(parsed.protocol!=='file:'||!match||Number(match[1])<1024||Number(match[1])>65535)return null;
   return {origin:'http://127.0.0.1:'+Number(match[1]),token:match[2]};
 }
+// Reuse only this history entry on reload, never a different page or new navigation.
+export function nativePageConnection(url,state,navigationType) {
+  const direct=nativeConnection(url);
+  if(direct)return direct;
+  const parsed=new URL(url),saved=state?.gamePortalNative;
+  if(parsed.hash||navigationType!=='reload'||!saved||saved.page!==parsed.href||typeof saved.fragment!=='string')return null;
+  return nativeConnection(parsed.href+saved.fragment);
+}
 export async function launchNative(connection,libraryId,game,version) {
   if(!connection)throw new Error('同じフォルダーのGAME-PORTAL-WINDOWS.exeを開いてから、このHTMLでEXEを起動してください。');
   const response=await fetch(connection.origin+'/native/launch',{method:'POST',headers:{'Content-Type':'application/json','X-Game-Portal-Token':connection.token},body:JSON.stringify({libraryId,gameId:game.id,gamePath:game.path,version})});

@@ -136,7 +136,7 @@ body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--a
 
 #folderDrop{min-height:160px;display:grid;place-items:center;padding:28px 20px;border:2px dashed var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 6%,var(--panel));font-size:1.067rem;font-weight:650;line-height:1.7;text-align:center;overflow-wrap:anywhere}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.14</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.15</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -508,7 +508,7 @@ function portableLauncher(source,info) {
 
 return {connectionInfo,portableLauncher};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.20.14';
+const LAUNCHER_VERSION = '0.20.15';
 const MINIMUM_VERSION = '0.14.0';
 const FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FILE = 'compatibility.json';
@@ -695,6 +695,14 @@ function nativeConnection(url) {
   if(parsed.protocol!=='file:'||!match||Number(match[1])<1024||Number(match[1])>65535)return null;
   return {origin:'http://127.0.0.1:'+Number(match[1]),token:match[2]};
 }
+// Reuse only this history entry on reload, never a different page or new navigation.
+function nativePageConnection(url,state,navigationType) {
+  const direct=nativeConnection(url);
+  if(direct)return direct;
+  const parsed=new URL(url),saved=state?.gamePortalNative;
+  if(parsed.hash||navigationType!=='reload'||!saved||saved.page!==parsed.href||typeof saved.fragment!=='string')return null;
+  return nativeConnection(parsed.href+saved.fragment);
+}
 async function launchNative(connection,libraryId,game,version) {
   if(!connection)throw new Error('同じフォルダーのGAME-PORTAL-WINDOWS.exeを開いてから、このHTMLでEXEを起動してください。');
   const response=await fetch(connection.origin+'/native/launch',{method:'POST',headers:{'Content-Type':'application/json','X-Game-Portal-Token':connection.token},body:JSON.stringify({libraryId,gameId:game.id,gamePath:game.path,version})});
@@ -749,7 +757,7 @@ async function nativeFolder(connection,version,signal,{onPendingChange}={}) {
   return root;
 }
 
-return {nativeLayout,validateExe,nativeConnection,launchNative,nativeFolder};})();
+return {nativeLayout,validateExe,nativeConnection,nativePageConnection,launchNative,nativeFolder};})();
 const library=(()=>{const {checkCompatibility,ensureCompatibility}=compatibilityTools;
 const {resolveGameContent}=updateTools;
 const {nativeLayout,validateExe}=nativeTools;
@@ -1898,8 +1906,12 @@ function initialLauncherShell(node){
   for(const child of node.childNodes)copy.append(initialLauncherShell(child));return copy;
 }
 const originalLauncher='<!doctype html>\n'+initialLauncherShell(document.documentElement).outerHTML;
-const nativeBridge=nativeTools.nativeConnection(location.href);
-if(nativeBridge)try{history.replaceState(null,'',location.href.split('#')[0]);}catch{}
+let nativeBridge=null;
+try{
+  nativeBridge=nativeTools.nativePageConnection(location.href,history.state,performance.getEntriesByType('navigation')[0]?.type);
+  if(nativeBridge){const page=location.href.split('#')[0];history.replaceState({...history.state,gamePortalNative:{page,fragment:'#native='+new URL(nativeBridge.origin).port+'.'+nativeBridge.token}},'',page);}
+}catch{nativeBridge=nativeTools.nativeConnection(location.href);}
+function clearNativePageConnection(){try{const {gamePortalNative,...state}=history.state||{};history.replaceState(state,'',location.href);}catch{}}
 function launcherSource(){return originalLauncher.replace('__PORTAL_EXPORT_RUNTIME__',()=>exportRuntimeNode.textContent).replace('__PORTAL_EXPORT_APP__',()=>exportAppNode.textContent);}
 function applyTheme(value){const theme=value==='light'?'light':'dark';document.documentElement.dataset.theme=theme;$('#colorTheme').value=theme;}
 applyTheme(document.documentElement.dataset.theme);
@@ -2283,6 +2295,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   await checkLibraryCompatibility(handle,signal);
   signal?.throwIfAborted();
   resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; resetSearch();sharedSaveIssues.clear();saveSyncRows();
+  if(!handle.nativeReadOnly)clearNativePageConnection();
   let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){cacheError=' 投稿先をこのPCに記憶できませんでした。次回はフォルダーを選び直してください：'+error.message;}
   syncPaused=false;$('#reconnect').hidden = true;
   $('#sharedFolderPath').value=portableConnection?.path||'';try{$('#sharedFolderPath').value=localStorage.getItem('game-portal.folder-path.'+localLibrary)||$('#sharedFolderPath').value;}catch{}
