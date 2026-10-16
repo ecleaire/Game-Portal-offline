@@ -2578,11 +2578,11 @@ function stopPlayer(preserveLoad=false) {
 function updateGameLoadControls(){const button=$('#cancelGameLoad');button.hidden=!gameLoading;button.disabled=!gameLoading;}
 async function playGame(game,{refreshFirst=false}={}){
   if(!await flushSave())return;
-  stopPlayer();const task={game,folder:root,controller:new AbortController(),cancelled:false};gameLoading=task;
+  const wasOpen=$('#player').open;stopPlayer();const task={game,folder:root,controller:new AbortController(),cancelled:false,presented:false};gameLoading=task;
   openedGame=game;$('#frame').hidden=true;$('#playerStatus').textContent='読み込んでいます…';updatePlayerInfo();
   if(!$('#player').open)$('#player').showModal();updateGameLoadControls();
   try{if(refreshFirst){await readTasks.readWithSignal(()=>refresh({signal:task.controller.signal}),task.controller.signal);task.controller.signal.throwIfAborted();const latest=games.find(item=>item.id===game.id&&item.path===game.path);if(!latest)throw new Error('作品が移動・削除されています。ゲーム一覧を確認してください。');game=latest;task.game=latest;}await loadGame(game,task);}
-  catch(error){if(task.cancelled)return;if($('#player').open&&openedGame?.path===game.path){$('#playerStatus').textContent=error.message;$('#retryPlaying').hidden=false;}throw error;}
+  catch(error){if(task.cancelled)return;if(!wasOpen&&!task.presented){$('#player').close();openedGame=null;}if($('#player').open&&openedGame?.path===game.path){$('#playerStatus').textContent=error.message;$('#retryPlaying').hidden=false;}throw error;}
   finally{if(gameLoading===task&&!stopGame){gameLoading=null;updateGameLoadControls();}}
 }
 async function loadGame(game,task) {
@@ -2592,7 +2592,7 @@ async function loadGame(game,task) {
   $('#retryPlaying').hidden=true;
   $('#player').scrollTop=0;
   if(!localLibrary&&!game.settingsError){
-    const folder=root,path=game.path;openedGame=game;$('#frame').hidden=true;$('#saveTools').hidden=true;
+    task.presented=true;const folder=root,path=game.path;openedGame=game;$('#frame').hidden=true;$('#saveTools').hidden=true;
     $('#playerStatus').textContent='準備しています…';if(!$('#player').open)$('#player').showModal();updatePlayerInfo();
     try{
       if(await folder.queryPermission({mode:'readwrite'})!=='granted'&&await folder.requestPermission({mode:'readwrite'})!=='granted')throw new Error('初回だけフォルダーへの保存許可が必要です。「起動を再試行」を押して許可してください。');
@@ -2613,7 +2613,7 @@ async function loadGame(game,task) {
   }
   const session = { libraryId: localLibrary, game, release: await localState.acquirePlaySession(localLibrary, game.id) };
   if(playRevision!==launch){session.release();return;}
-  activePlay = session;openedGame=game;$('#frame').hidden=false;updatePlayerInfo();
+  task.presented=true;activePlay = session;openedGame=game;$('#frame').hidden=false;updatePlayerInfo();
   $('#playerTitle').textContent = game.title; $('#playerStatus').textContent = '読み込んでいます…'; $('#player').showModal();
   const unlock=session.release,loadController=task.controller;let loading=true,releaseRequested=false;
   session.release=()=>{loadController.abort();if(loading)releaseRequested=true;else unlock();};
