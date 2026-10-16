@@ -1,5 +1,7 @@
 import {chromium,expect} from '@playwright/test';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join,dirname,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 let html=await readFile('offline-release/GAME-PORTAL.html','utf8');
@@ -8,10 +10,11 @@ const originalStartupScan=library.scan;
 library.scan=(...args)=>sessionStorage.getItem('startup-test')==='scan'?new Promise(resolve=>{window.releaseStartupScan=async()=>resolve(await originalStartupScan(...args));}):originalStartupScan(...args);
 function initialized() {`);
 const server=createServer((q,r)=>r.end(html));await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
+// Match a normal Chrome profile: Chromium 153 can crash when restoring OPFS handles in an incognito context.
+const profiles=[],contexts=new Set();
 try{
  for(const mode of ['permission','scan','compatibility','database','upgrade']){
-  const context=await browser.newContext(),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const profile=await mkdtemp(join(tmpdir(),'portal-startup-'));profiles.push(profile);const context=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});contexts.add(context);const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await context.addInitScript(()=>{
    if(window!==window.top)return;
    if(window.FileSystemDirectoryHandle){FileSystemDirectoryHandle.prototype.queryPermission=()=>sessionStorage.getItem('startup-test')==='permission'?new Promise(resolve=>{window.releaseStartupPermission=()=>resolve('granted');}):Promise.resolve('granted');FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';}
@@ -38,6 +41,6 @@ try{
    await page.evaluate(async()=>{sessionStorage.removeItem('startup-test');await finishLateDatabase();indexedDB.open=realStartupOpen;});await expect(page.locator('#settings')).toBeVisible();
    if(mode==='upgrade')assert.deepEqual(await page.evaluate(async()=>{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('game-portal-offline-folder-v1',2);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});const result={version:db.version};for(const name of ['settings','saves','libraries'])result[name]=await new Promise((resolve,reject)=>{const r=db.transaction(name).objectStore(name).get('sentinel');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();return result;}),{version:2,settings:'KEEP_settings',saves:'KEEP_saves',libraries:'KEEP_libraries'});
   }
-  assert.deepEqual(errors,[]);await context.close();console.log('Startup recovery passed:',mode);
+  assert.deepEqual(errors,[]);await context.close();contexts.delete(context);console.log('Startup recovery passed:',mode);
  }
-}finally{await browser.close();await new Promise(r=>server.close(r));}
+}finally{for(const context of contexts)await context.close().catch(()=>{});await new Promise(r=>server.close(r));for(const profile of profiles){assert.equal(dirname(profile),resolve(tmpdir()));await rm(profile,{recursive:true,force:true});}}

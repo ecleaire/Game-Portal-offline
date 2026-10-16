@@ -1,12 +1,15 @@
 import {chromium,expect} from '@playwright/test';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join,dirname,resolve} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 const html=await readFile('offline-release/GAME-PORTAL.html');const server=createServer((q,r)=>r.end(html));await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
+// Match a normal Chrome profile: Chromium 153 can crash when restoring OPFS handles in an incognito context.
+const profiles=[],contexts=new Set();
 try{
  for(const scenario of ['read-only-editing','write-denied','prompt','denied']){
-  const context=await browser.newContext(),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const profile=await mkdtemp(join(tmpdir(),'portal-auto-'));profiles.push(profile);const context=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});contexts.add(context);const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await context.addInitScript(()=>{
    if(window!==window.top)return;
    window.readGranted=sessionStorage.getItem('read-grant')!=='prompt';window.writeGranted=sessionStorage.getItem('write-grant')!=='prompt';
@@ -36,6 +39,6 @@ try{
    await expect(page.locator('#folderName')).toHaveText('Remembered');await expect(page.locator('#setupFolder')).toBeHidden();
    assert((await page.evaluate(()=>permissionCalls)).every(call=>call.mode==='read'&&call.active));await page.locator('.game-title-link').click();await page.waitForFunction(()=>!busy);await expect(page.frameLocator('#frame').locator('h1')).toHaveText('Playable');
   }
-  assert.deepEqual(errors,[]);await context.close();console.log('Automatic connection passed:',scenario);
+  assert.deepEqual(errors,[]);await context.close();contexts.delete(context);console.log('Automatic connection passed:',scenario);
  }
-}finally{await browser.close();await new Promise(r=>server.close(r));}
+}finally{for(const context of contexts)await context.close().catch(()=>{});await new Promise(r=>server.close(r));for(const profile of profiles){assert.equal(dirname(profile),resolve(tmpdir()));await rm(profile,{recursive:true,force:true});}}
