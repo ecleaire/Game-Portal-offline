@@ -28,6 +28,35 @@ try{portableConnection=folderSharing.connectionInfo(JSON.parse($('#folderConnect
 try{folderChannel=new BroadcastChannel('game-portal-folder:'+folderScope);folderChannel.onmessage=()=>{void checkSharedFolder();};}catch{}
 
 let root = null, remembered = null, metadata = null, games = [], editing = null, busy = false, localLibrary = null;
+let folderRecovery=null,folderRecoveryPromise=null,folderRecoveryAbort=null;
+const transientFolderError=error=>typeof error.code!=='string'&&['NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(error.name);
+function queueFolderRecovery(error){
+  if(!root||!localLibrary||compatibilityProblem||!transientFolderError(error)||settingsReceipts.length)return;
+  if(folderRecovery?.handle!==root)folderRecovery={handle:root,libraryId:localLibrary,next:performance.now()+15000,delay:15000};
+}
+async function recoverFolderConnection(){
+  const job=folderRecovery;
+  if(!job||folderRecoveryPromise||performance.now()<job.next||starting||busy||syncPromise||folderWatchPromise||closingPlayer||activePlay||openedGame||pendingSave||flushing||settingsReceipts.length||contentTarget?.contentPending||games.some(game=>game.contentPending)||document.hidden||document.querySelector('dialog[open]'))return;
+  if(root!==job.handle||localLibrary!==job.libraryId||compatibilityProblem){folderRecovery=null;return;}
+  const controller=new AbortController();folderRecoveryAbort=controller;
+  job.delay=Math.min(job.delay*2,60000);job.next=performance.now()+job.delay;
+  const previousStatus=$('#status').textContent;
+  folderRecoveryPromise=(async()=>{
+    try{
+      if(await job.handle.queryPermission({mode:'read'})!=='granted'){folderRecovery=null;return;}
+      controller.signal.throwIfAborted();
+      await connectRememberedRead(job.handle,false,{expectedLibrary:job.libraryId,preserveSearch:true,signal:controller.signal});
+      if(folderRecovery===job)folderRecovery=null;
+      if($('#status').textContent===previousStatus)status('');
+      writeControls();
+    }catch(error){
+      if(controller.signal.aborted)return;
+      if(!transientFolderError(error)){folderRecovery=null;syncPaused=true;compatibilityFailure(error);status(error.message);writeControls();}
+    }
+  })();
+  try{await folderRecoveryPromise;}finally{folderRecoveryPromise=null;if(folderRecoveryAbort===controller)folderRecoveryAbort=null;}
+}
+setInterval(()=>{void recoverFolderConnection();},5000);
 window.addEventListener('hashchange',()=>{if(nativeBridge&&(!root||root.nativeReadOnly)&&['','#main','#libraryTitle'].includes(location.hash))try{rememberNativePageConnection(location.href);}catch{}});
 let openedGame = null, stopGame = null, pendingSave = null, saveTimer, flushing = null, activePlay = null, closingPlayer = false;
 let editingEnabled = false, starting = true;
@@ -163,14 +192,14 @@ function folderSharingControls(){
   $('#sharedConnectionHint').textContent=hint?'このHTMLの保存先：'+hint:'';
 }
 async function checkSharedFolder(){
-  const available=()=>!root?.nativeReadOnly&&!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!document.hidden;
+  const available=()=>!root?.nativeReadOnly&&!folderRecoveryPromise&&!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!document.hidden;
   if(folderWatchPromise||!available())return;
   folderWatchPromise=(async()=>{
     try{
       const record=await localState.cacheHandle();if(!available()||!record?.handle||record.scope&&record.scope!==folderScope)return;
       if(record.revision&&record.revision===lastFolderRevision){
         // Another tab may have granted permission since the initial restore.
-        if(!syncPaused&&!compatibilityProblem&&remembered&&!$('#reconnect').hidden&&await remembered.isSameEntry(record.handle)&&await remembered.queryPermission({mode:'read'})==='granted'&&available())await action(()=>connectRememberedRead(remembered),true);
+        if(!folderRecovery&&!syncPaused&&!compatibilityProblem&&remembered&&!$('#reconnect').hidden&&await remembered.isSameEntry(record.handle)&&await remembered.queryPermission({mode:'read'})==='granted'&&available())await action(()=>connectRememberedRead(remembered),true);
         return;
       }
       if(root&&await root.isSameEntry(record.handle)){lastFolderRevision=record.revision;return;}
@@ -183,7 +212,7 @@ async function checkSharedFolder(){
       });
     }catch(error){lastFolderRevision='';status('保存先の共有を確認できません：'+error.message);}
   })();
-  try{await folderWatchPromise;}finally{folderWatchPromise=null;}
+  try{await folderWatchPromise;}finally{folderWatchPromise=null;void recoverFolderConnection();}
 }
 setInterval(()=>{void checkSharedFolder();},5000);
 window.addEventListener('focus',()=>{void checkSharedFolder();});
@@ -247,6 +276,7 @@ function writeControls() {
 }
 async function action(fn, reconnecting = false, prioritizePlay = false) {
   if (busy) return; busy = true;
+  folderRecoveryAbort?.abort();
   if(prioritizePlay)syncController?.abort();
   document.body.setAttribute('aria-busy','true');document.body.classList.add('working');
   document.querySelectorAll('button:not([data-close]):not(#closePlayer):not(#cancelUsage)').forEach(b => b.disabled = true);
@@ -259,7 +289,7 @@ async function action(fn, reconnecting = false, prioritizePlay = false) {
     if(syncPromise){try{await syncPromise;}catch(error){if(!reconnecting)throw error;}}
     const result=await fn();status(typeof result==='string'?result:'');
   }
-  catch (e) { compatibilityFailure(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;status(e.name === 'AbortError' ? '選択をキャンセルしました。' : e.message || '操作できませんでした。');if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
+  catch (e) { compatibilityFailure(e);queueFolderRecovery(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;status(e.name === 'AbortError' ? '選択をキャンセルしました。' : e.message || '操作できませんでした。');if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
   finally { busy = false;document.body.setAttribute('aria-busy','false');document.body.classList.remove('working'); document.querySelectorAll('button').forEach(b => b.disabled = false);document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=false); writeControls(); }
 }
 async function refresh() {
@@ -321,10 +351,10 @@ $('#syncSaves').onclick=()=>requestSaveSync(()=>syncAllSaves());
 $('#openSharedSaves').onclick=()=>{$('#settings').showModal();$('#sharedSavePanel').scrollIntoView({block:'start'});};
 let lastHomeActivity=performance.now(),lastHomeSync=0,idleSyncController=null;
 function homeIsIdle(){return performance.now()-lastHomeActivity>=HOME_IDLE_MS&&!activePlay&&!stopGame&&!openedGame&&!pendingSave&&!flushing&&!settingsReceipts.length&&!document.querySelector('dialog[open]');}
-function noteHomeActivity(){lastHomeActivity=performance.now();idleSyncController?.abort();}
+function noteHomeActivity(){lastHomeActivity=performance.now();idleSyncController?.abort();folderRecoveryAbort?.abort();}
 for(const event of ['pointerdown','pointermove','keydown','wheel','input','focusin'])document.addEventListener(event,noteHomeActivity,{capture:true,passive:true});
 async function syncLibrary({idle=false}={}){
-  if(!root||starting||busy||syncPaused||syncPromise||closingPlayer||document.hidden||document.querySelector('dialog[open]:not(#player)'))return;
+  if(!root||starting||busy||syncPaused||syncPromise||folderRecoveryPromise||closingPlayer||document.hidden||document.querySelector('dialog[open]:not(#player)'))return;
   if(idle&&!homeIsIdle())return;
   const folder=root,libraryId=localLibrary,controller=new AbortController();syncController=controller;
   if(idle)idleSyncController=controller;
@@ -343,7 +373,7 @@ async function syncLibrary({idle=false}={}){
       if(changed){const limit=renderLimit;resetCards();renderLimit=limit;await render();updatePlayerInfo();writeControls();}
       if(idle){controller.signal.throwIfAborted();await syncAllSaves(controller.signal);}
       syncStatus('共有フォルダー確認済み：'+new Date().toLocaleTimeString('ja-JP')+(changed?'（変更を反映しました）':''));
-    }catch(error){if(root!==folder||controller.signal.aborted&&error===controller.signal.reason)return;compatibilityFailure(error);syncPaused=true;$('#reconnect').hidden=false;syncStatus('自動確認を停止しました。再読み込み・再接続で再開：'+error.message);if(!busy)writeControls();}
+    }catch(error){if(root!==folder||controller.signal.aborted&&error===controller.signal.reason)return;compatibilityFailure(error);syncPaused=true;queueFolderRecovery(error);$('#reconnect').hidden=false;syncStatus((folderRecovery?'保存先との接続を確認しています。接続が戻ると自動で再開します：':'自動確認を停止しました。再読み込み・再接続で再開：')+error.message);if(!busy)writeControls();}
   })();
   try{await syncPromise;}finally{syncPromise=null;if(syncController===controller)syncController=null;if(idleSyncController===controller)idleSyncController=null;}
 }
@@ -378,7 +408,7 @@ $('#enableCrop').onchange=()=>{$('#cropFields').disabled=!$('#enableCrop').check
 for(const id of ['cropZoom','cropX','cropY'])$('#'+id).oninput=renderCropPreview;
 $('#resetCrop').onclick=()=>{$('#cropZoom').value='1';$('#cropX').value='50';$('#cropY').value='50';renderCropPreview();};
 $('#edit').addEventListener('close',()=>{editImageRevision++;resetCropState();});
-async function connect(handle, request = false, restoring = false, shared = false, signal = null) {
+async function connect(handle, request = false, restoring = false, shared = false, signal = null, {expectedLibrary=null,preserveSearch=false}={}) {
   signal?.throwIfAborted();
   if(connectionError)throw new Error(connectionError);
   const mode = restoring ? 'read' : editingEnabled || request ? 'readwrite' : 'read';
@@ -388,6 +418,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   // Read and validate before replacing the current folder or cached handle.
   await checkLibraryCompatibility(handle,signal);
   const scannedLibrary=await library.loadLibraryId(handle);
+  if(expectedLibrary&&scannedLibrary!==expectedLibrary)throw new Error('保存先のIDが変わりました。設定からフォルダーを確認してください。');
   if(portableConnection&&scannedLibrary!==portableConnection.libraryId)throw new Error('このHTMLの保存先と違います。「'+portableConnection.name+'」のフォルダーを選んでください。');
   const next = await library.loadMetadata(handle), nextGames = await library.scan(handle, next);
   signal?.throwIfAborted();
@@ -400,7 +431,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   const nextLocalLibrary = initialize ? await library.ensureLibraryId(handle) : scannedLibrary;
   await checkLibraryCompatibility(handle,signal);
   signal?.throwIfAborted();
-  resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; resetSearch();sharedSaveIssues.clear();saveSyncRows();
+  resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; if(!preserveSearch){resetSearch();sharedSaveIssues.clear();saveSyncRows();}folderRecovery=null;
   if(!handle.nativeReadOnly)clearNativePageConnection();
   let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){cacheError=' 投稿先をこのPCに記憶できませんでした。次回はフォルダーを選び直してください：'+error.message;}
   syncPaused=false;$('#reconnect').hidden = true;
@@ -770,7 +801,8 @@ $('#chooseFolder').onclick = () => {
   let selection;
   try{
     if(!window.showDirectoryPicker)throw new Error('フォルダー選択に対応したPC版Chromeを使用してください。');
-    selection=Promise.resolve(window.showDirectoryPicker({mode:editingEnabled?'readwrite':'read',id:'game-portal-library'})).then(handle=>({handle}),error=>({error}));
+    const startIn=[root,remembered].find(handle=>handle&&!handle.nativeReadOnly);
+    selection=Promise.resolve(window.showDirectoryPicker({mode:editingEnabled?'readwrite':'read',id:'game-portal-library',...(startIn?{startIn}:{})})).then(handle=>({handle}),error=>({error}));
   }catch(error){selection=Promise.resolve({error});}
   return openFolderSelection(selection);
 };
@@ -798,10 +830,11 @@ $('#emptyState').ondrop=event=>{
   event.preventDefault();
 };
 const reconnectHint='ホーム画面をクリックして、Chromeのアクセス確認を許可してください。';
-async function connectRememberedRead(handle,shared=false){
-  const controller=new AbortController();let timer;
-  try{await Promise.race([connect(handle,false,true,shared,controller.signal),new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('保存先への接続を中止しました。もう一度接続するか、設定から保存先を選び直してください。'));},12000);})]);$('#settings').close();if($('#status').textContent===reconnectHint)status('');}
-  finally{clearTimeout(timer);}
+async function connectRememberedRead(handle,shared=false,options={}){
+  const controller=new AbortController(),abort=()=>controller.abort(options.signal.reason);let timer;
+  if(options.signal?.aborted)abort();else options.signal?.addEventListener('abort',abort,{once:true});
+  try{await Promise.race([connect(handle,false,true,shared,controller.signal,options),new Promise((_,reject)=>{timer=setTimeout(()=>{const error=new Error('保存先への接続を中止しました。もう一度接続するか、設定から保存先を選び直してください。');error.name='TimeoutError';controller.abort(error);reject(error);},12000);})]);controller.signal.throwIfAborted();if(!options.signal)$('#settings').close();if($('#status').textContent===reconnectHint)status('');}
+  finally{clearTimeout(timer);options.signal?.removeEventListener('abort',abort);}
 }
 $('#reconnect').onclick = () => {
   if(busy||starting||!remembered)return;
