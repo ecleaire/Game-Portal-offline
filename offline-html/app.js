@@ -244,6 +244,7 @@ async function action(fn, reconnecting = false, prioritizePlay = false) {
   document.body.setAttribute('aria-busy','true');document.body.classList.add('working');
   document.querySelectorAll('button:not([data-close]):not(#closePlayer):not(#cancelUsage)').forEach(b => b.disabled = true);
   if(root?.nativeReadOnly)for(const id of ['helpButton','settingsButton'])$('#'+id).disabled=false;
+  nativeReadControls();
   document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=true);
   document.querySelectorAll('#edit input,#edit textarea,#enableEditing').forEach(input=>input.disabled=true);
   status('処理しています…');
@@ -952,7 +953,7 @@ Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previ
   if(previous?.scope&&previous.scope!==folderScope)previous=null;
   if (previous?.name) $('#settingFolder').textContent = '前回：' + previous.name;
   if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;writeControls();try{const permission=await remembered.queryPermission({mode:'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal);}else {syncStatus(reconnectHint);status(reconnectHint);}}catch(error){if(startupAbort.signal.aborted)return;syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}
-}).catch(error => {if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{clearTimeout(startupTimeout);if(!startupAbort.signal.aborted)initialized();});
+}).catch(error => {if(nativeBridge&&!root){editingEnabled=false;$('#enableEditing').checked=false;}if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{clearTimeout(startupTimeout);if(!startupAbort.signal.aborted)initialized();});
 }
 
 
