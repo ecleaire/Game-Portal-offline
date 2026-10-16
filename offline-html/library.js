@@ -1,6 +1,7 @@
 import { checkCompatibility, ensureCompatibility } from './compatibility.js';
 import { resolveGameContent } from './updates.js';
 import {nativeLayout,validateExe} from './native-tools.js';
+import {readWithSignal} from './read-task.js';
 const MAX_FILES = 500, MAX_BYTES = 200 * 1024 * 1024;
 export function safePath(value) {
   if (typeof value !== 'string' || !value || value.length > 1000 || value.split('/').some(p => !p || p === '.' || p === '..' || /[\\:\x00-\x1f<>"|?*]/.test(p) || /[. ]$/.test(p) || /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i.test(p))) throw new Error('安全に扱えないファイル名です。');
@@ -244,11 +245,14 @@ export async function scan(root, metadata, {signal} = {}) {
   for (const game of games) if (ids.get(game.id) > 1) { game.identityConflict = true; game.settingsError = '同じ作品IDのゲームが複数あります。別作品として追加する場合は「投稿」を使用してください。'; }
   return games.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
 }
-export async function readTree(folder, preloaded = new Map(), {fileBacked = false} = {}) {
+export async function readTree(folder, preloaded = new Map(), {fileBacked = false,signal} = {}) {
+  signal?.throwIfAborted();
+  const read=operation=>readWithSignal(operation,signal);
   const entries = []; let bytes = 0, visited = 0;
   async function walk(dir, prefix = '', depth = 0) {
     if(depth>20)throw new Error('ゲームのフォルダー階層が深すぎます。書き出したゲームだけを選んでください。');
     for await (const entry of dir.values()) {
+      signal?.throwIfAborted();
       if(++visited>10000)throw new Error('フォルダー内の項目が多すぎます。書き出したゲームだけを選んでください。');
       if (entry.name.startsWith('.') || entry.name === '__MACOSX') continue;
       const path = prefix + entry.name; safePath(path);
@@ -266,31 +270,33 @@ export async function readTree(folder, preloaded = new Map(), {fileBacked = fals
   if(entries.some(({entry})=>typeof entry.getFileInfo==='function')){
     let reserved=0,index=0,failed;
     await Promise.all(Array.from({length:Math.min(4,entries.length)},async()=>{
-      while(!failed&&index<entries.length){
+      while(!failed&&!signal?.aborted&&index<entries.length){
         const {path,entry}=entries[index++];
-        try{const ready=preloaded.get(path),size=ready?ready.byteLength:typeof entry.getFileInfo==='function'?(await entry.getFileInfo()).size:0;
+        try{const ready=preloaded.get(path),size=ready?ready.byteLength:typeof entry.getFileInfo==='function'?(await read(()=>entry.getFileInfo())).size:0;
           if(!Number.isSafeInteger(size)||size<0)throw new Error('ファイルのサイズを確認できません。');reserved+=size;
           if(reserved>MAX_BYTES)throw new Error('ゲームは500ファイル・展開後200MB以内にしてください。');
         }catch(error){failed ||= error;}
       }
     }));
+    signal?.throwIfAborted();
     if(failed)throw failed;
   }
   // Reserve bytes before allocating buffers; preserve traversal order.
   const contents = new Array(entries.length); let next = 0, failure;
   await Promise.all(Array.from({length: Math.min(4, entries.length)}, async () => {
-    while (!failure && next < entries.length) {
+    while (!failure && !signal?.aborted && next < entries.length) {
       const index = next++, {path, entry} = entries[index];
       try {
-        const ready = preloaded.get(path), file = ready ? null : await entry.getFile();
+        const ready = preloaded.get(path), file = ready ? null : await read(()=>entry.getFile());
         bytes += ready ? ready.byteLength : file.size;
         if (bytes > MAX_BYTES) throw new Error('ゲームは500ファイル・展開後200MB以内にしてください。');
         // Keep large assets file-backed. Only HTML/CSS need rewriting as text.
         // File snapshots are acquired anew for every launch, never cached.
-        contents[index] = ready || (fileBacked && !/\.(?:html?|css)$/i.test(path) ? file : new Uint8Array(await file.arrayBuffer()));
+        contents[index] = ready || (fileBacked && !/\.(?:html?|css)$/i.test(path) ? file : new Uint8Array(await read(()=>file.arrayBuffer())));
       } catch (error) { failure ||= error; }
     }
   }));
+  signal?.throwIfAborted();
   if (failure) throw failure;
   return new Map(entries.map(({path}, index) => [path, contents[index]]));
 }

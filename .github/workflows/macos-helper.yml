@@ -6,6 +6,9 @@ on:
       - 'scripts/build-macos.mjs'
       - 'tests/native-folder-browser.mjs'
       - 'tests/offline-html/folder-comfort-browser.mjs'
+      - 'tests/offline-html/loading-cancel-browser.mjs'
+      - 'offline-html/read-task.js'
+      - 'offline-html/library.js'
       - 'offline-html/native-tools.js'
       - 'offline-html/app.js'
       - 'offline-html/index.html'
@@ -34,6 +37,7 @@ jobs:
       - run: npx playwright install chromium
       - run: node tests/native-folder-browser.mjs
       - run: node tests/offline-html/folder-comfort-browser.mjs
+      - run: node tests/offline-html/loading-cancel-browser.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-MAC-universal-${{ matrix.os }}
