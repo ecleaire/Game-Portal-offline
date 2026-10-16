@@ -11,7 +11,7 @@ const browser=await chromium.launchPersistentContext(join(temp,'profile'),{execu
 const body=version=>`<h1>${version}</h1><script>document.body.dataset.version='${version}';document.body.dataset.previous=localStorage.getItem('level')||'none';localStorage.setItem('level','keep');</script>`;
 try{
  const context=browser,page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));const origin='http://127.0.0.1:'+server.address().port;
- await context.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});
+ await context.addInitScript(()=>{if(window!==window.top)return;try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});
  await page.goto(origin);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
  const picker=async target=>target.evaluate(async()=>{window.testRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('update-library',{create:true});window.showDirectoryPicker=async()=>window.testRoot;});
  await picker(page);await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);await page.locator('#settingsButton').click();await page.locator('#enableEditing').check();await page.waitForFunction(()=>!busy);await page.locator('#settings [data-close]').click();

@@ -3,13 +3,14 @@ import {readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 let html=await readFile('offline-release/GAME-PORTAL.html','utf8');
-html=html.replace('function initialized() {',`const originalStartupScan=library.scan;
+html=html.replace('function initialized() {',`const originalStartupCompatibility=compatibilityTools.checkCompatibility;compatibilityTools.checkCompatibility=(...args)=>sessionStorage.getItem('startup-test')==='compatibility'?new Promise((resolve,reject)=>{window.releaseStartupCompatibility=()=>{const error=new Error('Late incompatible old folder');error.code='LIBRARY_INCOMPATIBLE';reject(error);};}):originalStartupCompatibility(...args);
+const originalStartupScan=library.scan;
 library.scan=(...args)=>sessionStorage.getItem('startup-test')==='scan'?new Promise(resolve=>{window.releaseStartupScan=async()=>resolve(await originalStartupScan(...args));}):originalStartupScan(...args);
 function initialized() {`);
 const server=createServer((q,r)=>r.end(html));await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
 try{
- for(const mode of ['permission','scan','database','upgrade']){
+ for(const mode of ['permission','scan','compatibility','database','upgrade']){
   const context=await browser.newContext(),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await context.addInitScript(()=>{
    if(window!==window.top)return;
@@ -21,7 +22,7 @@ try{
   await page.locator('#setupFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('.card')).toHaveCount(1);
   if(mode==='upgrade')await page.evaluate(async()=>{await new Promise((resolve,reject)=>{const r=indexedDB.deleteDatabase('game-portal-offline-folder-v1');r.onsuccess=resolve;r.onerror=()=>reject(r.error);});const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('game-portal-offline-folder-v1',2);r.onupgradeneeded=()=>{for(const name of ['settings','saves','libraries'])r.result.createObjectStore(name);};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});await new Promise((resolve,reject)=>{const tx=db.transaction(['settings','saves','libraries'],'readwrite');for(const name of ['settings','saves','libraries'])tx.objectStore(name).put('KEEP_'+name,'sentinel');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});db.close();});
   await page.evaluate(mode=>sessionStorage.setItem('startup-test',mode),mode);
-  await page.reload();
+  await page.reload();await expect(page.locator('#helpButton')).toBeEnabled();await page.locator('#helpButton').click();await expect(page.locator('#help')).toBeVisible();await page.locator('#help [data-close]').first().click();
   await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:20000});
   await expect(page.locator('#helpButton')).toBeEnabled();await page.locator('#helpButton').click();await expect(page.locator('#help')).toBeVisible();await page.locator('#help [data-close]').first().click();
   await page.locator('#settingsButton').click();await expect(page.locator('#settings')).toBeVisible();await expect(page.locator('#chooseFolder')).toBeEnabled();
@@ -30,8 +31,8 @@ try{
   if(!['database','upgrade'].includes(mode)){
    await page.evaluate(async()=>{sessionStorage.removeItem('startup-test');window.testNew=await(await navigator.storage.getDirectory()).getDirectoryHandle('New',{create:true});await library.writeFile(testNew,'new.html','<h1>New game</h1>');window.showDirectoryPicker=async()=>testNew;});
    await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#folderName')).toHaveText('New');
-   await page.evaluate(async mode=>{if(mode==='permission')releaseStartupPermission();else await releaseStartupScan();},mode);
-   await page.waitForTimeout(100);await expect(page.locator('#folderName')).toHaveText('New');await expect(page.locator('.game-title-link')).toHaveText('new');
+   await page.evaluate(async mode=>{if(mode==='permission')releaseStartupPermission();else if(mode==='compatibility')releaseStartupCompatibility();else await releaseStartupScan();},mode);
+   await page.waitForTimeout(100);await expect(page.locator('#folderName')).toHaveText('New');await expect(page.locator('#compatibilityNotice')).toBeHidden();assert.equal(await page.evaluate(()=>syncPaused),false);await expect(page.locator('.game-title-link')).toHaveText('new');
    await page.locator('.game-title-link').click();await page.waitForFunction(()=>!busy);await expect(page.frameLocator('#frame').locator('h1')).toHaveText('New game');
   }else{
    await page.evaluate(async()=>{sessionStorage.removeItem('startup-test');await finishLateDatabase();indexedDB.open=realStartupOpen;});await expect(page.locator('#settings')).toBeVisible();
