@@ -194,7 +194,7 @@ try {
   await openGame('Tiny');await expect(frame.locator('#pyxel-prompt')).toBeVisible({timeout:90000});await frame.locator('#canvas').click();await expect(frame.locator('body')).toHaveAttribute('data-pyxel','running',{timeout:30000});assert.equal(await page.evaluate(()=>pyxelRuntime===window.firstRuntimeObject),true);assert.equal(await frame.locator('body').evaluate(()=>typeof Uint8Array.fromBase64),'undefined');await page.getByRole('button',{name:'← ゲーム一覧',exact:true}).click();await page.evaluate(()=>{Uint8Array.fromBase64=window.nativeFromBase64;Uint8Array.prototype.toBase64=window.nativeToBase64;});
   // Existing installations keep their title/tags/cover when first saved to a sidecar.
   const folderExport=join(temp,'FolderGame');await mkdir(folderExport);await writeFile(join(folderExport,'index.html'),'<h1>Folder game</h1>');
-  await page.locator('#postButton').click();await page.locator('#postDirectory').setInputFiles(folderExport);
+  await page.locator('#postButton').click();await expect(page.locator('#post')).toBeVisible();await page.locator('#postDirectory').setInputFiles(folderExport);
   await page.locator('#confirmPost').click();
   await expect(page.locator('#edit')).toBeVisible();await expect(page.locator('#editTitle')).toHaveValue('FolderGame');await expect(page.locator('#postEditNotice')).toBeVisible();
   await page.waitForFunction(()=>!busy);await page.locator('#edit [data-close]').click();await expect(card('FolderGame')).toBeVisible();
