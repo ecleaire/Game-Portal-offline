@@ -63,3 +63,8 @@ body.working::before{content:'';position:fixed;top:0;left:0;right:0;height:3px;b
 /* Preserve reachable controls when text, toolbars or alerts consume space. */
 .playerbar{flex-wrap:wrap}.playerbar>strong{flex:1 1 180px;max-width:100%}.playerbar>.buttons{flex:1 1 520px;min-width:0;max-width:100%}
 #edit{overflow-y:auto;scrollbar-gutter:stable}#edit .editor-content{min-height:min(96px,24dvh)}
+
+.settings-editing .check{min-height:48px;padding:12px;gap:14px;border:2px solid var(--line);border-radius:10px;font-size:1.05rem;font-weight:700;background:var(--bg)}
+.settings-editing .check input{width:26px;height:26px;margin:0;accent-color:var(--accent)}
+.settings-editing .check:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel))}
+.settings-editing .check:focus-within{outline:2px solid var(--accent);outline-offset:3px}

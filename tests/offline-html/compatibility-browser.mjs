@@ -23,7 +23,7 @@ try{
  async function open(path='/'){
    const target=path==='/'?page:await context.newPage();target.on('pageerror',e=>errors.push(e.message));
    await target.goto(origin+path);await expect(target.locator('html')).toHaveAttribute('data-ready','true');
-   await target.evaluate(async()=>{$('#rememberFolder').checked=false;const directory=await(await navigator.storage.getDirectory()).getDirectoryHandle('shared',{create:true});window.showDirectoryPicker=async()=>directory;});
+   await target.evaluate(async()=>{const directory=await(await navigator.storage.getDirectory()).getDirectoryHandle('shared',{create:true});window.showDirectoryPicker=async()=>directory;});
    return target;
  }
  await open();await page.evaluate(async()=>{const dir=await showDirectoryPicker();await library.writeFile(dir,'game.html','<body><script>localStorage.setItem("level","keep")</script>Game</body>');await library.writeFile(dir,'.gameportal/library-id.json',JSON.stringify({schema:1,id:'1'.repeat(32)}));});
