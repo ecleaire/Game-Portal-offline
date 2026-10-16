@@ -275,14 +275,7 @@ Chromeの閲覧データ削除・プロファイル変更・HTMLの配置先変�
 
 ## 開発・配布ビルド
 
-```sh
-npm ci
-npm run offline:prepare
-npm run offline:build
-npm run offline:test
-```
-
-`offline:prepare` は固定バージョンの公式配布物を取得し、`offline-html/runtime-lock.json` のSHA-256を検証します。初回ビルド準備のみネット接続が必要です。Node.js 22以上を使用し、Node.js 24でプロキシを使う環境では `NODE_USE_ENV_PROXY=1` を設定してください。取得済みデータは `.tools/offline-runtime`、変更したキャッシュは `OFFLINE_RUNTIME_CACHE` で指定します。通常のビルドはネット取得を行いません。出力は `offline-release/GAME-PORTAL-HTML.zip` と単体HTMLです。ランタイムのライセンス表示もZIPへ含めます。この専用プロジェクトは、オンライン版のソース・公開設定・データベースへの依存を持ちません。
+ソースの変更・ビルド・検証・公開前の確認は[開発手順](DEVELOPMENT.md)を参照してください。使うだけの場合はビルド不要です。
 
 ## 投稿先の共有・自動確認
 

@@ -17,19 +17,4 @@ GitHubの「Code → Download ZIP」からダウンロードできます。
 詳細な操作手順はHTML内の「ヘルプ」で確認できます。
 WindowsのEXEゲームは同じフォルダーの `GAME-PORTAL-WINDOWS.exe` を開きます。[詳しい手順](docs/WINDOWS_EXE.md)
 
-## 開発
-
-Node.js 22以上を使用します。
-
-```sh
-npm ci
-npm run prepare:runtime
-npm test
-npm run build
-npx playwright install chromium
-npm run test:browser
-```
-
-Windows用の起動補助は `npm run build:windows`、検証は `npm run test:native` で実行します。
-
-[詳しい使い方](docs/OFFLINE_HTML.md) · [別PCへの受け渡し](docs/TRANSFER_GUIDE.md) · [変更履歴](CHANGELOG.md)
+[詳しい案内](docs/README.md) · [変更履歴](CHANGELOG.md)
