@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFile,writeFile,mkdir,mkdtemp,rm,symlink,open} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,mkdtemp,rm,symlink,open,unlink} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
@@ -21,6 +21,9 @@ try{
  assert.equal((await api('info','',{'X-Game-Portal-Token':'0'.repeat(64)})).status,403);assert.equal((await api('info','',{Origin:'https://example.invalid'})).status,403);
  for(const path of ['../GAME-PORTAL.html','/etc/passwd','作品/../index.html','作品\\index.html'])assert.equal((await api('read',path)).status,400);
  assert.equal((await api('write','作品/index.html')).status,400);
+ await writeFile(join(disk,'作品','empty.bin'),'');assert.equal((await(await api('stat','作品/empty.bin')).json()).size,0);
+ const empty=await api('read','作品/empty.bin',{}, {limit:0});assert.equal(empty.status,200);assert.equal((await empty.arrayBuffer()).byteLength,0);assert.equal((await api('read','作品/index.html',{}, {limit:0})).status,400);
+ assert.equal((await api('info','',{}, {limit:0})).status,400,'read budget is not accepted for non-read operations');
  for(const limit of [-1,true,0.5,'20',201*1024*1024])assert.equal((await api('read','作品/index.html',{}, {limit})).status,400,'invalid byte budget rejected');
  const imagePath=join(disk,'作品','image.svg'),image=await readFile(imagePath),imageSize=(await(await api('stat','作品/image.svg')).json()).size;assert.equal(imageSize,image.length);
  assert.equal((await api('read','作品/image.svg',{}, {limit:imageSize})).status,200);await writeFile(imagePath,Buffer.concat([image,Buffer.from(' ')]));assert.equal((await api('read','作品/image.svg',{}, {limit:imageSize})).status,400,'growth after preflight rejected');await writeFile(imagePath,image);
@@ -30,6 +33,12 @@ try{
  await page.addInitScript(()=>{if(window!==top)return;window.showDirectoryPicker=async()=>{throw Error('Picker must not open');};localStorage.setItem('game-portal.offline-editing','true');});
  await page.goto(pathToFileURL(html).href+'#native='+new URL(info.origin).port+'.'+info.token);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:20000});await expect(page.locator('.card')).toHaveCount(1);assert.equal(await page.evaluate(()=>localLibrary),libraryId);assert.equal(await page.evaluate(()=>location.hash),'');
  await page.locator('#settingsButton').click();await expect(page.locator('#nativeFolderNotice')).toBeVisible();await expect(page.locator('#enableEditing')).toBeDisabled();await expect(page.locator('#syncSaves')).toBeDisabled();await page.locator('#settings [data-close]').click();
+ // New reads reflect replacement/shrink; existing File snapshots stay immutable.
+ const probe=join(disk,'probe.bin');await writeFile(probe,'abc');await page.evaluate(async()=>{window.nativeProbe=await root.getFileHandle('probe.bin');await window.nativeProbe.getFileInfo();window.nativeSnapshot=await window.nativeProbe.getFile();});
+ await writeFile(probe,'XYZ');assert.equal(await page.evaluate(async()=>await(await window.nativeProbe.getFile()).text()),'XYZ');assert.equal(await page.evaluate(()=>window.nativeSnapshot.text()),'abc');
+ await writeFile(probe,'q');assert.equal(await page.evaluate(async()=>await(await window.nativeProbe.getFile()).text()),'q');
+ await unlink(probe);assert.equal(await page.evaluate(async()=>{try{await window.nativeProbe.getFile();return 'unexpected';}catch(error){return error.name;}}),'NotFoundError');
+ await writeFile(probe,'new');assert.equal(await page.evaluate(async()=>await(await window.nativeProbe.getFile()).text()),'new');assert.equal(await page.evaluate(()=>root.pendingReads),0);await unlink(probe);
  await page.locator('.game-title-link').click();await expect(page.frameLocator('#frame').locator('h1')).toHaveText('Native auto game');await expect(page.frameLocator('#frame').locator('img')).toHaveJSProperty('naturalWidth',20);await page.waitForFunction(()=>!busy);
  await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);assert.equal((await page.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id)))['native-test'],'played');
  assert.equal(await page.evaluate(token=>launcherSource().includes(token),info.token),false);
@@ -66,5 +75,5 @@ try{
   const chosen=folder('replacement',{'replacement.html':'<h1>Replacement game</h1>'},{'.gameportal':folder('.gameportal',{'library-id.json':JSON.stringify({schema:1,id:'d'.repeat(32)})})});window.showDirectoryPicker=async()=>chosen;
  });
  await page.locator('#settingsButton').click();await expect(page.locator('#enableEditing')).not.toBeChecked();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('.card')).toHaveCount(1);await page.locator('.game-title-link').click();await expect(page.frameLocator('#frame').locator('h1')).toHaveText('Replacement game');await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);assert.deepEqual(errors,[]);
- console.log('Native auto-folder/recovery passed: no picker, real HTML/assets/save, read-only guards, authenticated paths/IDs, cancel and timeout/retry, helper exit, bad-config startup, help/settings and manual replacement/play.');
+ console.log('Native auto-folder/recovery passed: empty/exact-bound reads, immutable snapshots, replacement/shrink/delete/restore, no picker, real HTML/assets/save, size preflight, auth/IDs, cancellation/retry, helper exit and manual replacement/play.');
 }finally{if(context)await context.close();if(helper){helper.kill();await new Promise(r=>helper.exitCode!==null?r():helper.once('exit',r));}await rm(temp,{recursive:true,force:true});}

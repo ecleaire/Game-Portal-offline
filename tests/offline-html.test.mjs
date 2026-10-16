@@ -31,6 +31,11 @@ test('native game size preflight rejects oversized resources before materializin
   await assert.rejects(readTree(folder([file('index.html',1),file('b.pck',150*1024*1024)]),new Map([['index.html',{byteLength:60*1024*1024}]])),/200MB/);
   assert.equal(reads,0);
 });
+
+test('native size accounting accepts the exact byte boundary without intermediate buffers',async()=>{
+  let reads=0;const entries=['a.wasm','b.pck'].map(name=>({kind:'file',name,getFileInfo:async()=>({size:100*1024*1024}),getFile:async()=>{reads++;return {size:100*1024*1024,arrayBuffer:()=>{throw Error('File-backed resources must stay lazy');}};}}));
+  const files=await readTree({async *values(){yield* entries;}},new Map(),{fileBacked:true});assert.equal(reads,2);assert.equal(files.size,2);assert.equal([...files.values()].reduce((sum,file)=>sum+file.size,0),200*1024*1024);
+});
 import {searchGames} from '../offline-html/search.js';
 import {checkUpload,cropRect} from '../offline-html/improvements.js';
 import {analyzeDependencies,inspectUploadDependencies} from '../offline-html/dependencies.js';
