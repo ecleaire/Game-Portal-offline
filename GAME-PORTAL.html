@@ -66,7 +66,7 @@ body.working::before{content:'';position:fixed;top:0;left:0;right:0;height:3px;b
 .playerbar{flex-wrap:wrap}.playerbar>strong{flex:1 1 180px;max-width:100%}.playerbar>.buttons{flex:1 1 520px;min-width:0;max-width:100%}
 #edit{overflow-y:auto;scrollbar-gutter:stable}#edit .editor-content{min-height:min(96px,24dvh)}
 </style></head><body>
-<header><div class="brand"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.2</span></div><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><div class="brand"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.3</span></div><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p>
@@ -121,8 +121,8 @@ body.working::before{content:'';position:fixed;top:0;left:0;right:0;height:3px;b
         <details><summary>サムネイル・設定を元に戻す</summary><p>JPG・PNGの指定がおすすめです。「プレイ画面を撮影」と切り抜きは補助として使えます。変更を戻したい場合は、編集画面の「設定履歴」から以前の名前・タグ・画像などを復元できます。</p></details>
         <h4>ゲームを探す</h4><p>検索欄にキーワードを入力します。検索欄を押すと出る<strong>「くわしくさがす」</strong>では形式・作ったソフト・タグも組み合わせられます。「絞り込みを解除」で条件を戻します。</p>
       </section>
-      <section id="helpWindows" class="help-section" tabindex="-1"><h3>Windows EXEゲーム</h3>
-        <p class="help-lead">メイン画面はHTMLです。EXEの起動にだけWindows用の補助を使います。</p>
+      <section id="helpWindows" class="help-section" tabindex="-1"><h3>Windows EXEゲーム対応（ベータ版）</h3>
+        <p class="help-lead">メイン画面はHTMLです。EXE対応はベータ版です。起動にだけWindows用の補助を使います。</p>
         <ol><li>HTMLと同じフォルダーの<strong>GAME-PORTAL-WINDOWS.exe</strong>を開きます。</li><li>単体EXEは「ファイルを選ぶ」。DLL・素材がある場合は「フォルダーを選ぶ」で一式を追加します。ZIPは先に展開します。</li><li>カードを開き、<strong>「EXEを起動」</strong>を押します。初回は補助側でもHTMLと同じ保管フォルダーを選びます。</li></ol>
         <p>Windowsの別ウィンドウで動きます。信頼できるゲームだけ実行してください。セーブはゲーム自身が管理し、HTMLのセーブ履歴・画面撮影の対象外です。</p>
         <details><summary>フォルダーのまとめ方・更新・再接続</summary><ul><li>選ぶフォルダーの直下に主な起動用EXEを1つ置きます。Godotの同名consoleとUnity CrashHandlerは付属として扱います。合計200MB・500ファイル以内です。</li><li>更新はゲーム終了後、同じ場所のEXEと素材を交換します。作品情報JSONとゲーム固有セーブは残します。</li><li>接続が外れたら、タスクトレイのGAME PORTALから「HTMLを開く」を選びます。補助を終了しても起動中のゲームは終了しません。</li></ul></details>
@@ -437,7 +437,7 @@ function portableLauncher(source,info) {
 
 return {connectionInfo,portableLauncher};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.20.2';
+const LAUNCHER_VERSION = '0.20.3';
 const MINIMUM_VERSION = '0.14.0';
 const FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FILE = 'compatibility.json';
@@ -1205,7 +1205,7 @@ async function checkUpload(input, library, preview, localResources) {
   const single=files.length===1&&!files[0].webkitRelativePath;
   const paths=library.uploadPaths(files);
   const native=single?/\.exe$/i.test(files[0].name)?{entry:paths[0]}:null:nativeLayout(paths);
-  if(native){await validateExe(files[paths.indexOf(native.entry)]);return {kind:'exe',entry:native.entry,bytes,expandedBytes:bytes,count:files.length,missing:[],external:[],unverified:['Windows版の起動補助で実行します。必要なDLL・素材はフォルダーごと追加してください。EXEのセーブはゲーム自身が管理します。'],checkedFiles:1};}
+  if(native){await validateExe(files[paths.indexOf(native.entry)]);return {kind:'exe',entry:native.entry,bytes,expandedBytes:bytes,count:files.length,missing:[],external:[],unverified:['Windows起動補助（ベータ版）で実行します。必要なDLL・素材はフォルダーごと追加してください。EXEのセーブはゲーム自身が管理します。'],checkedFiles:1};}
   let contents,entry,expandedBytes=bytes;
   if(single){
     const file=files[0];if(!/\.(html?|zip|pyxapp)$/i.test(file.name))throw Error('HTML・ZIP・PYXAPPを選択してください。');

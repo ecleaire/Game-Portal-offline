@@ -144,7 +144,7 @@ internal static class PortalNative {
             if(ready!=null)File.WriteAllText(ready,Serialize(new{origin=Origin,token=Token}),new UTF8Encoding(false));
             if(Headless){Accept();return;}
             Application.EnableVisualStyles();Dispatcher=new Control();var handle=Dispatcher.Handle;
-            using(var tray=new NotifyIcon()){tray.Icon=SystemIcons.Application;tray.Text="GAME PORTAL Windows起動補助";tray.Visible=true;var menu=new ContextMenuStrip();menu.Items.Add("HTMLを開く",null,(s,e)=>OpenPortal());menu.Items.Add("終了",null,(s,e)=>Application.ExitThread());tray.ContextMenuStrip=menu;tray.DoubleClick+=(s,e)=>OpenPortal();
+            using(var tray=new NotifyIcon()){tray.Icon=SystemIcons.Application;tray.Text="GAME PORTAL Windows起動補助（ベータ版）";tray.Visible=true;var menu=new ContextMenuStrip();menu.Items.Add("HTMLを開く",null,(s,e)=>OpenPortal());menu.Items.Add("終了",null,(s,e)=>Application.ExitThread());tray.ContextMenuStrip=menu;tray.DoubleClick+=(s,e)=>OpenPortal();
                 var thread=new Thread(Accept);thread.IsBackground=true;thread.Start();OpenPortal();Application.Run();Listener.Stop();tray.Visible=false;}
         }catch(Exception error){if(!Headless)MessageBox.Show(error.Message,"GAME PORTAL",MessageBoxButtons.OK,MessageBoxIcon.Error);Environment.ExitCode=1;}
     }

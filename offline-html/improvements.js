@@ -7,7 +7,7 @@ export async function checkUpload(input, library, preview, localResources) {
   const single=files.length===1&&!files[0].webkitRelativePath;
   const paths=library.uploadPaths(files);
   const native=single?/\.exe$/i.test(files[0].name)?{entry:paths[0]}:null:nativeLayout(paths);
-  if(native){await validateExe(files[paths.indexOf(native.entry)]);return {kind:'exe',entry:native.entry,bytes,expandedBytes:bytes,count:files.length,missing:[],external:[],unverified:['Windows版の起動補助で実行します。必要なDLL・素材はフォルダーごと追加してください。EXEのセーブはゲーム自身が管理します。'],checkedFiles:1};}
+  if(native){await validateExe(files[paths.indexOf(native.entry)]);return {kind:'exe',entry:native.entry,bytes,expandedBytes:bytes,count:files.length,missing:[],external:[],unverified:['Windows起動補助（ベータ版）で実行します。必要なDLL・素材はフォルダーごと追加してください。EXEのセーブはゲーム自身が管理します。'],checkedFiles:1};}
   let contents,entry,expandedBytes=bytes;
   if(single){
     const file=files[0];if(!/\.(html?|zip|pyxapp)$/i.test(file.name))throw Error('HTML・ZIP・PYXAPPを選択してください。');

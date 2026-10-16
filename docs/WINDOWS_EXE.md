@@ -1,4 +1,6 @@
-# Windows EXEゲーム
+# Windows EXEゲーム対応（ベータ版）
+
+**EXEゲーム対応・Windows起動補助はベータ版です。**
 
 メイン画面は **GAME-PORTAL.html** です。Webゲームは従来どおりHTMLだけで使えます。
 
