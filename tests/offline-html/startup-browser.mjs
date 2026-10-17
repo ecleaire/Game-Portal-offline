@@ -29,7 +29,7 @@ try{
   await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:20000});
   await expect(page.locator('#helpButton')).toBeEnabled();await page.locator('#helpButton').click();await expect(page.locator('#help')).toBeVisible();await page.locator('#help [data-close]').first().click();
   await page.locator('#settingsButton').click();await expect(page.locator('#settings')).toBeVisible();await expect(page.locator('#chooseFolder')).toBeEnabled();
-  await page.locator('#folderSelectionHelp summary').click();assert((await page.locator('#folderDrop').boundingBox()).height>=160);
+  await page.locator('#folderSelectionHelp > summary').click();assert((await page.locator('#folderDrop').boundingBox()).height>=160);
   await expect(page.locator('#status')).toContainText(['database','upgrade'].includes(mode)?'保存機能':'自動接続を中止');
   if(!['database','upgrade'].includes(mode)){
    await page.evaluate(async()=>{sessionStorage.removeItem('startup-test');window.testNew=await(await navigator.storage.getDirectory()).getDirectoryHandle('New',{create:true});await library.writeFile(testNew,'new.html','<h1>New game</h1>');window.showDirectoryPicker=async()=>testNew;});

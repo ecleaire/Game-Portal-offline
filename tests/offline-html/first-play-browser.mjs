@@ -40,7 +40,7 @@ try{
  });
  assert.equal(await page.evaluate(()=>dropFolderForTest([savedPickerRoot])),true);
  await page.waitForFunction(()=>!busy);await expect(page.locator('#settings')).toBeHidden();assert.equal(await page.evaluate(()=>root.name),'restored-grant');await page.evaluate(()=>syncPromise=null);
- await page.locator('#settingsButton').click();await page.locator('#folderSelectionHelp').locator('summary').click();
+ await page.locator('#settingsButton').click();await page.locator('#folderSelectionHelp').locator(':scope > summary').click();
  await page.evaluate(()=>dropFolderForTest([{kind:'file',name:'game.html'}]));await page.waitForFunction(()=>!busy);await expect(page.locator('#status')).toContainText('ファイルではなく');assert.equal(await page.evaluate(()=>root.name),'restored-grant');
  await page.evaluate(()=>dropFolderForTest([savedPickerRoot,savedPickerRoot]));await page.waitForFunction(()=>!busy);await expect(page.locator('#status')).toContainText('フォルダーを1つ');
  // A native selection also recovers after a previous sync abort instead of being reported as cancelled.
