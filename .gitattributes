@@ -2,7 +2,7 @@
 GAME-PORTAL.html binary linguist-generated=true
 GAME-PORTAL-WINDOWS.exe binary linguist-generated=true
 GAME-PORTAL.exe binary linguist-generated=true
-DESKTOP-LICENSES.txt -text
+DESKTOP-LICENSES.txt -text -whitespace
 GAME-PORTAL-MAC binary linguist-generated=true
 GAME-PORTAL-MAC.command text eol=lf
 README-WINDOWS.txt -text
