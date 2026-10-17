@@ -456,6 +456,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   syncPaused=false;$('#reconnect').hidden = true;
   $('#sharedFolderPath').value=portableConnection?.path||'';try{$('#sharedFolderPath').value=localStorage.getItem('game-portal.folder-path.'+localLibrary)||$('#sharedFolderPath').value;}catch{}
   metadata = next; games = nextGames; $('#folderName').textContent = handle.name; $('#settingFolder').textContent = handle.name;
+  $('#folderSelectionError').hidden=true;$('#folderSelectionErrorText').textContent='';
   await render(); if(!signal)$('#settings').close();syncStatus(('共有フォルダーの自動確認：有効（ホームで3分操作がないとき）')+cacheError);
 }
 async function filterByGameTag(tag){
