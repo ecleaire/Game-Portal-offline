@@ -46,7 +46,7 @@ const script = [
   wrap('improvements', (await source('offline-html/improvements.js')).replace("import { inspectUploadDependencies } from './dependencies.js';",'const {inspectUploadDependencies}=dependencyTools;').replace("import {nativeLayout,validateExe} from './native-tools.js';",'const {nativeLayout,validateExe}=nativeTools;'), 'checkUpload,cropRect'),
   wrap('searchTools', await source('offline-html/search.js'), 'searchGames'),
   wrap('localState', await source('offline-html/local-state.js'), 'cacheHandle,forgetHandle,loadSettingsReceipts,trackSettingsReceipt,loadLocalSave,writeLocalSave,acquirePlaySession,validSave,validSaveBackups,loadSaveBackups,backupLocalSave,restoreLocalSaveBackup,saveDeviceId,loadSaveSync,commitSaveSync'),
-  wrap('sharedSaves', await source('offline-html/shared-saves.js'), 'syncSave,saveText,saveHeads,validSnapshot,validClock'),
+  wrap('sharedSaves', (await source('offline-html/shared-saves.js')).replace("import {readWithSignal} from './read-task.js';",'const {readWithSignal}=readTasks;'), 'syncSave,saveText,saveHeads,validSnapshot,validClock'),
   wrap('usageTools', await source('offline-html/usage.js'), 'measureLibraryUsage'),
   wrap('syncTools', await source('offline-html/sync.js'), 'libraryViewKey'),
   wrap('player', await source('offline-html/player.js'), 'startPlayer,decodeBase64,encodeBase64'),

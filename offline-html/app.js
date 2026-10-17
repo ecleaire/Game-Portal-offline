@@ -402,25 +402,27 @@ async function syncLibrary({idle=false}={}){
   if(!root||starting||busy||syncPaused||syncPromise||folderRecoveryPromise||closingPlayer||document.hidden||document.querySelector('dialog[open]:not(#player)'))return;
   if(idle&&!homeIsIdle())return;
   const folder=root,libraryId=localLibrary,controller=new AbortController();syncController=controller;
+  const read=operation=>readTasks.readWithSignal(operation,controller.signal);
+  const deadline=setTimeout(()=>controller.abort(new DOMException('自動確認の読み取りが応答しません。接続を確認し、保存先を選び直してください。','TimeoutError')),30000);
   if(idle)idleSyncController=controller;
   syncPromise=(async()=>{
     try{
-      await checkLibraryCompatibility(folder);
+      await read(()=>checkLibraryCompatibility(folder,controller.signal));
       controller.signal.throwIfAborted();
-      const nextId=await library.loadLibraryId(folder);
+      const nextId=await read(()=>library.loadLibraryId(folder));
       if(libraryId&&nextId!==libraryId)throw new Error('保管フォルダーのIDが変わりました。フォルダーを指定し直してください。');
-      const nextMetadata=await library.loadMetadata(folder),nextGames=await library.scan(folder,nextMetadata,{signal:controller.signal});
+      const nextMetadata=await read(()=>library.loadMetadata(folder)),nextGames=await read(()=>library.scan(folder,nextMetadata,{signal:controller.signal}));
       controller.signal.throwIfAborted();
-      if(await library.loadLibraryId(folder)!==nextId)throw new Error('読み込み中に保管フォルダーが変わりました。');
+      if(await read(()=>library.loadLibraryId(folder))!==nextId)throw new Error('読み込み中に保管フォルダーが変わりました。');
       if(root!==folder||busy||document.hidden||document.querySelector('dialog[open]:not(#player)')||idle&&!homeIsIdle())return;
       const changed=syncTools.libraryViewKey(games)!==syncTools.libraryViewKey(nextGames)||localLibrary!==nextId;
       metadata=nextMetadata;games=nextGames;localLibrary=nextId;
       if(changed){const limit=renderLimit;resetCards();renderLimit=limit;await render();updatePlayerInfo();writeControls();}
       if(idle){controller.signal.throwIfAborted();await syncAllSaves(controller.signal);}
       syncStatus('共有フォルダー確認済み：'+new Date().toLocaleTimeString('ja-JP')+(changed?'（変更を反映しました）':''));
-    }catch(error){if(root!==folder||controller.signal.aborted&&error===controller.signal.reason)return;compatibilityFailure(error);syncPaused=true;queueFolderRecovery(error);$('#reconnect').hidden=false;syncStatus((folderRecovery?'保存先との接続を確認しています。接続が戻ると自動で再開します：':'自動確認を停止しました。再読み込み・再接続で再開：')+error.message);if(!busy)writeControls();}
+    }catch(error){if(root!==folder||controller.signal.aborted&&error===controller.signal.reason&&error?.name!=='TimeoutError')return;compatibilityFailure(error);syncPaused=true;queueFolderRecovery(error);$('#reconnect').hidden=false;syncStatus((folderRecovery?'保存先との接続を確認しています。接続が戻ると自動で再開します：':'自動確認を停止しました。再読み込み・再接続で再開：')+error.message);if(!busy)writeControls();}
   })();
-  try{await syncPromise;}finally{syncPromise=null;if(syncController===controller)syncController=null;if(idleSyncController===controller)idleSyncController=null;}
+  try{await syncPromise;}finally{clearTimeout(deadline);syncPromise=null;if(syncController===controller)syncController=null;if(idleSyncController===controller)idleSyncController=null;}
 }
 async function syncWhenHomeIdle(){
   if(!homeIsIdle()||performance.now()-lastHomeSync<HOME_IDLE_MS||!root||starting||busy||syncPaused||syncPromise||closingPlayer||document.hidden)return;

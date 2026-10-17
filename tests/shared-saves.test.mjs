@@ -60,3 +60,25 @@ test('conflict choices detect externally changed contents even when the snapshot
   const f=fixture(),a=client('1'.repeat(32),{v:'A'}),b=client('2'.repeat(32),{v:'B'});await f.run(a);const conflict=await f.run(b),[name]=f.dir().files.keys(),record=JSON.parse(f.dir().files.get(name));record.data={v:'externally changed'};f.dir().files.set(name,JSON.stringify(record));
   await assert.rejects(f.run(b,{resolution:{revision:record.revision,fingerprint:conflict.fingerprint}}),/変わりました/);assert.deepEqual(b.peek().data,{v:'B'});
 });
+
+test('canceling stalled shared-save reads settles before the disk responds and never imports late data',async()=>{
+  for(const stage of ['identity','directory','enumeration','file','text']){
+    const f=fixture(),a=client('1'.repeat(32),{v:'remote'}),b=client('2'.repeat(32));await f.run(a);
+    let release,entered;const started=new Promise(resolve=>entered=resolve),gate=new Promise(resolve=>release=resolve);
+    const stall=async()=>{entered();await gate;};
+    if(stage==='identity'){const original=f.tools.loadLibraryId;f.tools.loadLibraryId=async()=>{await stall();return original();};}
+    else if(stage==='directory'){const original=f.root.getDirectoryHandle;f.root.getDirectoryHandle=async function(...args){await stall();return original.apply(this,args);};}
+    else{const dir=f.dir(),original=dir.values;dir.values=async function*(){if(stage==='enumeration')await stall();for await(const entry of original.call(this)){const get=entry.getFile;entry.getFile=async()=>{if(stage==='file')await stall();const file=await get();if(stage==='text')file.text=async()=>{await stall();return f.dir().files.get(entry.name);};return file;};yield entry;}};}
+    const controller=new AbortController(),work=f.run(b,{signal:controller.signal}),settled=work.then(()=>false,error=>error.name==='AbortError');await started;controller.abort();
+    const canceled=await Promise.race([settled,new Promise(resolve=>setTimeout(()=>resolve(false),100))]);release();await settled;assert.equal(canceled,true,stage+' read must stop waiting');assert.deepEqual(b.peek().data,{});assert.deepEqual(b.backups,[]);
+  }
+});
+
+test('cancellation drains a publication already started but prevents a new intent after device lookup',async()=>{
+  const f=fixture(),a=client('1'.repeat(32),{v:'keep'});let release,entered;
+  const gate=new Promise(resolve=>release=resolve),started=new Promise(resolve=>entered=resolve);f.setHook(async()=>{entered();await gate;});
+  const controller=new AbortController(),work=f.run(a,{signal:controller.signal}),settled=work.then(()=>true,()=>true);await started;controller.abort();
+  assert.equal(await Promise.race([settled,new Promise(resolve=>setTimeout(()=>resolve(false),100))]),false,'in-flight publication must keep waiting for confirmation');
+  release();await work;assert.equal(a.peek().state.pending,null);assert.deepEqual(a.peek().data,{v:'keep'});assert.equal(f.dir().files.size,1);
+  const other=fixture(),b=client('2'.repeat(32),{v:'local'}),abort=new AbortController();b.saveDeviceId=async()=>{abort.abort();return '2'.repeat(32);};await assert.rejects(other.run(b,{signal:abort.signal}),error=>error.name==='AbortError');assert.equal(b.peek().state.pending,null);assert.equal(other.dir(),undefined);
+});

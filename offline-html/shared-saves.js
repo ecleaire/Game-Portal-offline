@@ -1,5 +1,6 @@
 // Immutable, per-game snapshots: concurrent PCs publish different filenames.
 // Vector clocks detect concurrent progress without trusting wall-clock times.
+import {readWithSignal} from './read-task.js';
 const id=/^[a-f0-9]{32}$/;
 export const saveText=data=>JSON.stringify(Object.fromEntries(Object.keys(data).sort().map(key=>[key,data[key]])));
 export function validClock(clock){return !!clock&&typeof clock==='object'&&!Array.isArray(clock)&&Object.keys(clock).length<=128&&Object.entries(clock).every(([key,n])=>id.test(key)&&Number.isSafeInteger(n)&&n>0);}
@@ -8,15 +9,17 @@ const combine=records=>{const clock={};for(const record of records)for(const [ke
 export function validSnapshot(value,libraryId,gameId,validSave){return !!value&&value.schema===1&&value.libraryId===libraryId&&value.gameId===gameId&&id.test(value.revision)&&id.test(value.deviceId)&&validClock(value.clock)&&value.clock[value.deviceId]>0&&typeof value.createdAt==='string'&&Number.isFinite(Date.parse(value.createdAt))&&validSave(value.data);}
 export function saveHeads(records){return records.filter(a=>!records.some(b=>a!==b&&covers(b.clock,a.clock)&&!covers(a.clock,b.clock)));}
 const cancelled=signal=>signal?.throwIfAborted();
-async function checkRoot(root,libraryId,tools){if(await tools.loadLibraryId(root)!==libraryId)throw Error('セーブの共有先IDが変わりました。フォルダーを再接続してください。');}
+async function checkRoot(root,libraryId,tools,signal){if(await readWithSignal(()=>tools.loadLibraryId(root),signal)!==libraryId)throw Error('セーブの共有先IDが変わりました。フォルダーを再接続してください。');}
 async function directory(root,gameId,create=false){try{return await(await(await root.getDirectoryHandle('.gameportal',{create})).getDirectoryHandle('shared-saves',{create})).getDirectoryHandle(gameId,{create});}catch(error){if(!create&&error.name==='NotFoundError')return null;throw error;}}
 async function readRecords(dir,libraryId,gameId,local,signal){
   const records=[];let total=0,count=0;if(!dir)return records;
-  for await(const entry of dir.values()){
+  const read=operation=>readWithSignal(operation,signal),iterator=dir.values()[Symbol.asyncIterator]();
+  for(;;){
+    const next=await read(()=>iterator.next());if(next.done)break;const entry=next.value;
     cancelled(signal);if(entry.kind!=='file'||!/^([a-f0-9]{32})\.json$/.test(entry.name))throw Error('共有セーブに不明なファイルがあります。元データを残して確認してください。');
     if(++count>256)throw Error('共有セーブの記録が多すぎます。フォルダーをバックアップして確認してください。');
-    const file=await entry.getFile();total+=file.size;if(file.size>510000||total>16*1024*1024)throw Error('共有セーブの容量が大きすぎます。');
-    let record;try{record=JSON.parse(await file.text());}catch{throw Error('共有セーブが壊れているか保存途中です。保存したPCで同期を再試行してください。');}
+    const file=await read(()=>entry.getFile());total+=file.size;if(file.size>510000||total>16*1024*1024)throw Error('共有セーブの容量が大きすぎます。');
+    const text=await read(()=>file.text());let record;try{record=JSON.parse(text);}catch{throw Error('共有セーブが壊れているか保存途中です。保存したPCで同期を再試行してください。');}
     if(!validSnapshot(record,libraryId,gameId,local.validSave)||entry.name!==record.revision+'.json')throw Error('共有セーブの形式・作品IDを確認してください。');
     records.push(record);
   }
@@ -24,8 +27,9 @@ async function readRecords(dir,libraryId,gameId,local,signal){
 }
 export async function syncSave(root,libraryId,gameId,tools,local,{signal,pullOnly=false,resolution=null}={}){
   if(!id.test(libraryId)||!id.test(gameId))throw Error('セーブのライブラリ・作品IDを確認してください。');
-  cancelled(signal);await checkRoot(root,libraryId,tools);
-  let current=await local.loadSaveSync(libraryId,gameId),dir=await directory(root,gameId);
+  const read=operation=>readWithSignal(operation,signal);
+  cancelled(signal);await checkRoot(root,libraryId,tools,signal);
+  let current=await read(()=>local.loadSaveSync(libraryId,gameId)),dir=await read(()=>directory(root,gameId));
   const finish=async()=>{
     // Persisted intent makes an uncertain close retry the SAME snapshot only.
     const record=current.state.pending,text=JSON.stringify(record),name=record.revision+'.json';
@@ -43,6 +47,7 @@ export async function syncSave(root,libraryId,gameId,tools,local,{signal,pullOnl
   cancelled(signal);
   const records=await readRecords(dir,libraryId,gameId,local,signal),heads=saveHeads(records),remoteClock=combine(records),clock=combine([...records,{clock:current.state.clock}]),dataText=saveText(current.data),base=current.state.base;
   const fingerprint=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(records.toSorted((a,b)=>a.revision.localeCompare(b.revision))))))].map(n=>n.toString(16).padStart(2,'0')).join('');
+  cancelled(signal);
   if(resolution&&resolution.fingerprint!==fingerprint)throw Error('ほかのPCでセーブが変わりました。もう一度確認してください。');
   const distinct=new Set(heads.map(r=>saveText(r.data))),remote=heads[0],dirty=base===null?Object.keys(current.data).length>0:dataText!==base;
   const rolledBack=!!remote&&dataText!==saveText(remote.data)&&covers(current.state.clock,remoteClock)&&!covers(remoteClock,current.state.clock);
@@ -52,17 +57,19 @@ export async function syncSave(root,libraryId,gameId,tools,local,{signal,pullOnl
   if(resolution){
     if(resolution.revision!=='local'){const selected=heads.find(r=>r.revision===resolution.revision);if(!selected)throw Error('選択したセーブが変わりました。');chosen=selected.data;}
   }else if(remote&&(!dirty||dataText===saveText(remote.data))){
-    cancelled(signal);await checkRoot(root,libraryId,tools);
+    cancelled(signal);await checkRoot(root,libraryId,tools,signal);
     cancelled(signal);
     await local.commitSaveSync(libraryId,gameId,current,{schema:1,base:saveText(remote.data),clock,pending:null},remote.data);
     return {state:dataText===saveText(remote.data)?'unchanged':'downloaded'};
   }else if(!dirty)return {state:'unchanged'};
   if(pullOnly)return {state:'local'};
   cancelled(signal);
-  if(await root.queryPermission({mode:'readwrite'})!=='granted')throw Error('セーブを共有する保存許可が必要です。設定の「今すぐセーブを同期」を押してください。');
+  if(await read(()=>root.queryPermission({mode:'readwrite'}))!=='granted')throw Error('セーブを共有する保存許可が必要です。設定の「今すぐセーブを同期」を押してください。');
   const deviceId=await local.saveDeviceId();clock[deviceId]=(clock[deviceId]||0)+1;
+  cancelled(signal);
   const record={schema:1,libraryId,gameId,revision:crypto.randomUUID().replaceAll('-',''),deviceId,clock,createdAt:new Date().toISOString(),data:chosen};
   if(!validSnapshot(record,libraryId,gameId,local.validSave))throw Error('セーブの共有履歴が上限に達しました。元データを残して確認してください。');
+  // After persisting this intent, drain publication/verification even if canceled.
   await local.commitSaveSync(libraryId,gameId,current,{...current.state,pending:record},chosen);
   current=await local.loadSaveSync(libraryId,gameId);await finish();
   // Remove only observed ancestors after verified publication, retaining ten
