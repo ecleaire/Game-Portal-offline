@@ -2,9 +2,9 @@ import Foundation
 import Network
 import Security
 import CoreFoundation
+import Darwin
 #if MOJAVE
 import AppKit
-import Darwin
 let mojaveApp = Bundle.main.bundleURL.pathExtension == "app" && !CommandLine.arguments.contains("--headless")
 final class MojaveMenu: NSObject, NSApplicationDelegate {
     var item: NSStatusItem?;var open: ((String?) -> Void)?;var choose: (() -> Void)?
@@ -28,18 +28,12 @@ func object(_ data: Data) throws -> [String:Any] {
     guard let value=try JSONSerialization.jsonObject(with:data) as? [String:Any] else { throw PortalError("設定を確認してください。") }; return value
 }
 func read(_ url: URL, _ limit: Int) throws -> Data {
-#if MOJAVE
-    let descriptor=Darwin.open(url.path,O_RDONLY|O_NOFOLLOW);guard descriptor>=0 else{throw NSError(domain:NSPOSIXErrorDomain,code:Int(errno))};defer{Darwin.close(descriptor)}
-    var before=stat();guard fstat(descriptor,&before)==0,before.st_size>=0,before.st_size<=Int64(limit) else{throw PortalError("ファイルが大きすぎるか、読み取れません。")}
+    // A FIFO can block in open() before size checks or cancellation can run.
+    let descriptor=Darwin.open(url.path,O_RDONLY|O_NOFOLLOW|O_NONBLOCK);guard descriptor>=0 else{throw NSError(domain:NSPOSIXErrorDomain,code:Int(errno))};defer{Darwin.close(descriptor)}
+    var before=stat();guard fstat(descriptor,&before)==0,(before.st_mode & mode_t(S_IFMT)) == mode_t(S_IFREG),before.st_size>=0,before.st_size<=Int64(limit) else{throw PortalError("通常のファイルではないか、大きすぎるため読み取れません。")}
     var data=Data(),buffer=[UInt8](repeating:0,count:65536)
     while data.count<Int(before.st_size){let count=Darwin.read(descriptor,&buffer,min(buffer.count,Int(before.st_size)-data.count));if count<0{if errno==EINTR{continue};throw NSError(domain:NSPOSIXErrorDomain,code:Int(errno))};guard count>0 else{throw PortalError("読み込み中にファイルが変わりました。")};data.append(contentsOf:buffer.prefix(count))}
     var after=stat();guard fstat(descriptor,&after)==0,after.st_size==before.st_size else{throw PortalError("読み込み中にファイルが変わりました。もう一度試してください。")};return data
-#else
-    let file=try FileHandle(forReadingFrom:url); defer { try? file.close() }
-    let size=try file.seekToEnd();guard size<=UInt64(limit) else {throw PortalError("ファイルが大きすぎます。")};try file.seek(toOffset:0)
-    let data=try file.read(upToCount:Int(size)) ?? Data()
-    guard data.count==Int(size),try file.seekToEnd()==size else {throw PortalError("読み込み中にファイルが変わりました。もう一度試してください。")};return data
-#endif
 }
 func bound(_ root: URL, _ path: String) throws -> URL {
     var current=root
@@ -181,10 +175,10 @@ do {
         let url=path.isEmpty ? root : try bound(root,path)
         switch action {
         case "list":
-            let urls=try fm.contentsOfDirectory(at:url,includingPropertiesForKeys:[.isDirectoryKey,.isSymbolicLinkKey]);guard urls.count<=10000 else{throw PortalError("フォルダー内の項目が多すぎます。")}
-            var entries=[[String:String]]();for child in urls{let values=try child.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey]);if values.isSymbolicLink != true {entries.append(["name":child.lastPathComponent,"kind":values.isDirectory == true ? "directory":"file"])}}
+            let urls=try fm.contentsOfDirectory(at:url,includingPropertiesForKeys:[.isDirectoryKey,.isRegularFileKey,.isSymbolicLinkKey]);guard urls.count<=10000 else{throw PortalError("フォルダー内の項目が多すぎます。")}
+            var entries=[[String:String]]();for child in urls{let values=try child.resourceValues(forKeys:[.isDirectoryKey,.isRegularFileKey,.isSymbolicLinkKey]);if values.isSymbolicLink != true && (values.isDirectory == true || values.isRegularFile == true) {entries.append(["name":child.lastPathComponent,"kind":values.isDirectory == true ? "directory":"file"])}}
             reply(connection,200,try json(["entries":entries]))
-        case "stat":let values=try url.resourceValues(forKeys:[.isDirectoryKey,.fileSizeKey]);reply(connection,200,try json(["kind":values.isDirectory == true ? "directory":"file","size":values.isDirectory == true ? 0:values.fileSize ?? 0]))
+        case "stat":let values=try url.resourceValues(forKeys:[.isDirectoryKey,.isRegularFileKey,.fileSizeKey]);guard values.isDirectory == true || values.isRegularFile == true else{throw PortalError("通常のファイルではないため読み取れません。")};reply(connection,200,try json(["kind":values.isDirectory == true ? "directory":"file","size":values.isDirectory == true ? 0:values.fileSize ?? 0]))
         case "read":
             guard !path.isEmpty else{throw PortalError("ファイルを指定してください。")}
             var limit=200*1024*1024
@@ -206,8 +200,12 @@ do {
                 if let split=buffer.range(of:Data("\r\n\r\n".utf8)){
                     guard split.lowerBound<=16384, let header=String(data:buffer[..<split.lowerBound],encoding:.utf8) else{throw PortalError("リクエストが大きすぎます。")}
                     let lengths=header.components(separatedBy:"\r\n").filter{$0.lowercased().hasPrefix("content-length:")}
-                    let length=lengths.first.flatMap{Int($0.split(separator:":",maxSplits:1)[1].trimmingCharacters(in:.whitespaces))} ?? 0
-                    guard length>=0 && length<=16384 else{throw PortalError("リクエストが大きすぎます。")}
+                    var length=0
+                    if let first=lengths.first {
+                        let fields=first.split(separator:":",maxSplits:1,omittingEmptySubsequences:false)
+                        guard fields.count==2,let parsed=Int(fields[1].trimmingCharacters(in:.whitespaces)),parsed>=0,parsed<=16384 else{throw PortalError("リクエストの長さが不正です。")}
+                        length=parsed
+                    }
                     if buffer.count>=split.upperBound+length {deadline.cancel();deadline=DispatchWorkItem{connection.cancel()};worker.asyncAfter(deadline:.now()+125,execute:deadline);try handle(connection,buffer);return}
                 }else if buffer.count>16384{throw PortalError("リクエストが大きすぎます。")}
                 if complete || error != nil{connection.cancel()}else{receive()}
