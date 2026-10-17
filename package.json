@@ -18,7 +18,9 @@
     "build:windows": "node scripts/build-windows.mjs",
     "test:native": "node tests/windows-native.mjs",
     "build:macos": "node scripts/build-macos.mjs",
-    "test:native-folder": "node tests/native-folder-browser.mjs"
+    "test:native-folder": "node tests/native-folder-browser.mjs",
+    "build:desktop": "node scripts/build-desktop.mjs",
+    "test:desktop": "node tests/desktop-files.mjs && node tests/desktop-browser.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"

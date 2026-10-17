@@ -5,6 +5,8 @@
 ゲームをフォルダーにまとめて、ブラウザーで遊べるオフラインランチャーです。
 Windows・MacのPC版Google Chromeで使えます。
 
+**Windowsデスクトップ試作版を追加しました。** `GAME-PORTAL.exe` を開き、初回に保存先を選びます。次回からはアプリ側で前回の保存先へ接続します。[使い方・試作版の範囲](docs/DESKTOP.md)
+
 ## はじめる
 
 **[ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)**

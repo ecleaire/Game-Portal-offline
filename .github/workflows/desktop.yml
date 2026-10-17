@@ -1,0 +1,29 @@
+name: Build and test Windows desktop prototype
+on:
+  push:
+    paths: ['desktop/**', 'scripts/build-desktop.mjs', 'scripts/verify-desktop.mjs', 'scripts/windows/native-launcher.cs', 'tests/desktop*', 'GAME-PORTAL.html', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: node scripts/build-desktop.mjs --prepare
+      - run: node scripts/verify-desktop.mjs
+      - run: node tests/desktop-files.mjs
+      - run: node tests/desktop-browser.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GAME-PORTAL-desktop-prototype
+          path: |
+            GAME-PORTAL.exe
+            DESKTOP-LICENSES.txt
+          if-no-files-found: error

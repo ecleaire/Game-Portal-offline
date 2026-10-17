@@ -27,3 +27,4 @@ if(!architectures.has(0x01000007)||!architectures.has(0x0100000c))throw Error('M
 const macCommand=await readFile('GAME-PORTAL-MAC.command','utf8');if(!macCommand.startsWith('#!/bin/zsh\n')||macCommand.includes('\r'))throw Error('Mac entry point must retain Unix line endings.');
 try{const helper=await readFile('offline-release/GAME-PORTAL-WINDOWS.exe');if(digest(helper)!==digest(await readFile('GAME-PORTAL-WINDOWS.exe')))throw Error('Root Windows helper differs from the tested build.');}catch(error){if(error.code!=='ENOENT')throw error;}
 console.log('Code ZIP distribution verified: root HTML v'+version+', matching build and licenses, Windows helper, Intel/Apple silicon macOS 12+ helper, no personal folder connection.');
+await import('./verify-desktop.mjs');

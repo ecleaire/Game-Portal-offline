@@ -26,6 +26,8 @@ npm run test:native
 
 Windows補助のビルドには.NET FrameworkのC#コンパイラーが必要です。
 
+Windowsデスクトップ本体の試作版は[デスクトップ版の開発手順](DESKTOP.md#開発する人へ)を参照してください。HTML版とは別に `node scripts/build-desktop.mjs --prepare` で生成します。画面やデスクトップ用ソースを変えた場合はEXEを再ビルドし、`node scripts/verify-desktop.mjs` と `npm run test:desktop` で確認します。
+
 Mac補助はmacOS上で、Xcodeのコマンドラインツールを使ってビルドします。
 
 ```sh
@@ -40,6 +42,7 @@ Intel・Appleシリコン共通のバイナリーを生成し、macOS 12以降�
 | 場所 | 内容 |
 | --- | --- |
 | 最上位の `GAME-PORTAL.html` | Code ZIPからそのまま開く配布HTML |
+| 最上位の `GAME-PORTAL.exe` / `DESKTOP-LICENSES.txt` | Windowsデスクトップ本体の試作版とライセンス |
 | 最上位の `GAME-PORTAL-WINDOWS.exe` / `README-WINDOWS.txt` | Windows起動補助と案内 |
 | 最上位の `GAME-PORTAL-MAC` / `GAME-PORTAL-MAC.command` | Mac起動補助と起動用スクリプト |
 | 最上位の `GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。個人の設定ファイルはGitへ含めません。 |
