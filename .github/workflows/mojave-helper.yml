@@ -20,6 +20,9 @@ jobs:
       - run: node scripts/verify-mojave.mjs
       - run: node scripts/prepare-mojave-test.mjs
       - run: node tests/mojave-esr-browser.mjs
+      - run: node tests/mojave-esr-browser.mjs
+        env:
+          PORTAL_MOJAVE_EDITION: player
       - run: npx playwright install firefox
       - run: node tests/native-folder-browser.mjs
         env:
@@ -30,6 +33,9 @@ jobs:
           PORTAL_NATIVE_EXE: GAME-PORTAL-MOJAVE
           PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
           PORTAL_EXPECT_BROWSER: '116.'
+      - run: node tests/offline-html/editions-browser.mjs
+        env:
+          PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-MOJAVE-Intel
