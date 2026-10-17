@@ -18,6 +18,10 @@ try{
   browser=await chromium.connectOverCDP('http://127.0.0.1:'+port);let page;for(let n=0;n<150;n++){page=browser.contexts()[0]?.pages().find(p=>p.url().includes('gameportal.desktop.invalid'));if(page)break;await delay(100);}assert(page);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('.card')).toHaveCount(1);
   await expect(page.locator('#postButton')).toBeHidden();assert.equal(await page.evaluate(()=>editingEnabled),false);
+  await page.locator('#settingsButton').click();await page.locator('#folderDrop').scrollIntoViewIfNeeded();
+  const drop=await page.locator('#folderDrop').boundingBox(),cdp=await browser.contexts()[0].newCDPSession(page);
+  for(const type of ['dragEnter','dragOver','drop'])await cdp.send('Input.dispatchDragEvent',{type,x:drop.x+drop.width/2,y:drop.y+drop.height/2,data:{items:[],files:[disk],dragOperationsMask:2}});
+  await page.waitForFunction(()=>!busy);await expect(page.locator('#settings')).toBeHidden();await expect(page.locator('.card')).toHaveCount(1);await cdp.detach();
   // Exercise the native boundary directly, bypassing UI and JS edition guards.
   const rejected=await page.evaluate(async()=>{
    const token=root.desktopToken;let id=1000000;const rpc=data=>new Promise(resolve=>{const request=++id;const receive=e=>{if(e.data.id!==request)return;chrome.webview.removeEventListener('message',receive);resolve(e.data);};chrome.webview.addEventListener('message',receive);chrome.webview.postMessage({id:request,root:token,...data});});

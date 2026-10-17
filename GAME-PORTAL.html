@@ -1983,7 +1983,7 @@ function failedAutomaticConnection(){
 }
 function cancelFolderConnection(){
   const reason=new DOMException('接続待ちを中止しました。設定から保存先を選び直せます。','NativeReadCancelled');
-  pauseAutomaticConnection();startupConnection?.abort(reason);nativeReadAbort?.abort(reason);manualConnection?.abort(reason);root?.cancelReads?.();nativeTools.cancelFolderReads?.();
+  pauseAutomaticConnection();if(starting)startupConnection?.abort(reason);nativeReadAbort?.abort(reason);manualConnection?.abort(reason);root?.cancelReads?.();nativeTools.cancelFolderReads?.();
   if(starting)initialized();status('接続待ちを中止しました。設定から保存先を選び直せます。');
 }
 const transientFolderError=error=>typeof error.code!=='string'&&['NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(error.name);
@@ -2863,7 +2863,7 @@ $('#reconnect').onclick = () => {
 };
 let automaticPermissionAttempted=false;
 function requestRememberedFromHome(event){
-  if(!event.isTrusted||automaticPermissionAttempted||starting||busy||!remembered||remembered.nativeReadOnly||activePlay||pendingSave||flushing||settingsReceipts.length||contentTarget?.contentPending||games.some(game=>game.contentPending)||compatibilityProblem||$('#reconnect').hidden||document.querySelector('dialog[open]')||event.target.closest('button,a,input,select,textarea,summary'))return;
+  if(!event.isTrusted||automaticConnectionPaused||automaticPermissionAttempted||starting||busy||!remembered||remembered.nativeReadOnly||activePlay||pendingSave||flushing||settingsReceipts.length||contentTarget?.contentPending||games.some(game=>game.contentPending)||compatibilityProblem||$('#reconnect').hidden||document.querySelector('dialog[open]')||event.target.closest('button,a,input,select,textarea,summary'))return;
   if(event.type==='keydown'&&!['Enter',' '].includes(event.key))return;
   if(event.type==='pointerdown'&&event.button!==0)return;
   if(!document.querySelector('main').contains(event.target)&&event.target!==document.body)return;

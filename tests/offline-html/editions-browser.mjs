@@ -30,6 +30,14 @@ try{
   await page.locator('#search').fill('missing');await expect(page.locator('.card')).toHaveCount(0);await page.locator('#search').fill('Game');await expect(page.locator('.card')).toHaveCount(1);
   await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('.card')).toHaveCount(1);assert.equal(await page.evaluate(()=>editingEnabled),false);
  }
+ // Player layout: light/dark, desktop/narrow screens, essential dialogs only.
+ for(const theme of ['dark','light'])for(const width of [320,390,640,1280]){
+  await page.setViewportSize({width,height:720});await page.evaluate(theme=>applyTheme(theme),theme);
+  for(const id of [null,'settings','help','player']){
+   const fits=await page.evaluate(id=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();if(id)document.getElementById(id).showModal();const d=id&&document.getElementById(id);return document.documentElement.scrollWidth<=innerWidth+1&&(!d||d.scrollWidth<=d.clientWidth+1);},id);assert(fits,theme+' '+width+' '+id);
+  }
+ }
+ await page.evaluate(()=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();});
  await page.goto(url+'/creator');await expect(page.locator('html')).toHaveAttribute('data-ready','true');assert.equal(await page.evaluate(()=>editingEnabled),true);
  assert.deepEqual(errors,[]);console.log('Editions passed: three player connect/play/save/search/reload cycles; stored editing preference ignored, mutation entry points denied, creator remains editable, player help contains no creation controls.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}
