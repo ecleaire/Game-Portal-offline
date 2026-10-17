@@ -11,7 +11,7 @@ if(launcherEdition==='player'){
   };
   for(const key of ['ensureLibraryId','saveMetadata','saveGameSettings','retrySettingsSave','postGame'])library[key]=deny;
   for(const key of ['replaceGameContent','restoreGameContent'])updateTools[key]=deny;
-  maintenance.restoreSettingsHistory=deny;
+  maintenance.restoreSettingsHistory=deny;informationTools.applyInformationImport=deny;
   $('#enableEditing').disabled=true;
 }
 // Keep only the initial UI shell; copy the bundled runtime lazily on export.
@@ -87,6 +87,7 @@ setInterval(()=>{void recoverFolderConnection();},5000);
 window.addEventListener('hashchange',()=>{if(nativeBridge&&(!root||root.nativeReadOnly)&&['','#main','#libraryTitle'].includes(location.hash))try{rememberNativePageConnection(location.href);}catch{}});
 let openedGame = null, stopGame = null, pendingSave = null, saveTimer, flushing = null, activePlay = null, closingPlayer = false;
 let editingEnabled = false, starting = true;
+let informationState=null,informationController=null,importedInformationThumbnail=undefined,informationImageRevision=0;
 let inspectionRoot = null, inspectionReport = null, selectedHistory = null, capturedImage = null;
 let usageReport=null,usageController=null,usageLimit=60;
 let postSelection = [], editImageRevision = 0;
@@ -185,13 +186,13 @@ const cardCache=new Map();
 function resetCards(){for(const url of imageURLs)URL.revokeObjectURL(url);imageURLs=[];cardCache.clear();renderLimit=60;}
 let editBaseline = '';
 function editValues() {
-  return JSON.stringify(['editTitle','editEnvironment','editTags','editDescription','editInstructions','cropZoom','cropX','cropY'].map(id=>$('#'+id).value).concat($('#clearImage').checked,$('#enableCrop').checked,[...$('#editImage').files].map(f=>[f.name,f.size,f.lastModified]),$('#newTag').value));
+  return JSON.stringify([...['editTitle','editEnvironment','editTags','editDescription','editInstructions','cropZoom','cropX','cropY'].map(id=>$('#'+id).value),$('#clearImage').checked,$('#enableCrop').checked,[...$('#editImage').files].map(f=>[f.name,f.size,f.lastModified]),$('#newTag').value,informationImageRevision]);
 }
 function hasEditChanges(){return $('#edit').open && editValues()!==editBaseline;}
 function updateEditDirty(){
   $('#editDirty').hidden=!hasEditChanges();
   const current=JSON.parse(editValues()),before=JSON.parse(editBaseline||'[]');
-  for(const [name,indexes] of Object.entries({Basic:[0,1,2,11],Description:[3,4],Image:[5,6,7,8,9,10]})){
+  for(const [name,indexes] of Object.entries({Basic:[0,1,2,11],Description:[3,4],Image:[5,6,7,8,9,10,12]})){
     const dirty=!!editBaseline&&indexes.some(i=>JSON.stringify(current[i])!==JSON.stringify(before[i]));
     const tab=$('#tab'+name);tab.dataset.dirty=String(dirty);tab.setAttribute('aria-description',dirty?'未保存の変更があります':'');
   }
@@ -324,7 +325,7 @@ async function action(fn, reconnecting = false, prioritizePlay = false) {
   folderRecoveryAbort?.abort();
   if(prioritizePlay)syncController?.abort();
   document.body.setAttribute('aria-busy','true');document.body.classList.add('working');
-  document.querySelectorAll('button:not([data-close]):not(#closePlayer):not(#cancelUsage)').forEach(b => b.disabled = true);
+  document.querySelectorAll('button:not([data-close]):not(#closePlayer):not(#cancelUsage):not(#cancelInformation):not(#cancelGameInformation)').forEach(b => b.disabled = true);
   if(root?.nativeReadOnly||nativeReadAbort)for(const id of ['helpButton','settingsButton'])$('#'+id).disabled=false;
   nativeReadControls();
   document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=true);
@@ -589,6 +590,7 @@ async function render() {
 }
 function editGame(game) {
   if (!editingEnabled || game.settingsError) return;
+  importedInformationThumbnail=undefined;informationImageRevision=0;$('#gameInformationNotice').textContent='';
   autoEnvironmentTag=game.tags.includes(game.developmentEnvironment)?game.developmentEnvironment:'';
   $('#newTag').value='';$('#newTagStatus').textContent='';
   editing = game; $('#editEnvironment').value = game.developmentEnvironment; $('#editSettingsPath').textContent = game.path + '.gameportal.json'; $('#editTitle').value = game.title; $('#editTags').value = game.tags.join(', '); $('#editImage').value = ''; $('#clearImage').checked = false; renderTagChoices(); $('#edit').showModal();
@@ -984,8 +986,8 @@ function renderPostCheck(result){
   for(const warning of warnings.slice(0,30)){const item=document.createElement('li');item.textContent=warning.slice(0,1000);$('#postWarningList').append(item);}if(warnings.length>30){const item=document.createElement('li');item.textContent='ほか'+(warnings.length-30)+'件。未確認の参照は実行して確認してください。';$('#postWarningList').append(item);}
 }
 $('#postButton').onclick = () => { if (editingEnabled && root) {postCheckRevision++;postSelection=[];postCheck=null;$('#postDetails').open=false;$('#postTechnicalCheck').textContent='';$('#postWarnings').hidden=true;$('#postWarnings').open=false;$('#postCheck').textContent='選択後に起動ファイルと不足ファイルを確認します。';$('#postFiles').value='';$('#postDirectory').value='';updatePostSelection();$('#post').showModal();status('');} };
-document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => {const dialog=button.closest('dialog');if(busy&&['post','edit','capture','history','saveVerification','updateContent','saveBackups'].includes(dialog.id)){status('処理中です。完了するまでお待ちください。');return;}if(dialog.id==='edit'&&!confirmEditClose())return;dialog.close();});
-document.querySelectorAll('#post,#edit,#capture,#history,#saveVerification,#updateContent,#saveBackups').forEach(dialog=>dialog.addEventListener('cancel',event=>{if(busy||(dialog.id==='edit'&&!confirmEditClose()))event.preventDefault();}));
+document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => {const dialog=button.closest('dialog');if(busy&&['post','edit','capture','history','saveVerification','updateContent','saveBackups','information'].includes(dialog.id)){status('処理中です。完了するまでお待ちください。');return;}if(dialog.id==='edit'&&!confirmEditClose())return;dialog.close();});
+document.querySelectorAll('#post,#edit,#capture,#history,#saveVerification,#updateContent,#saveBackups,#information').forEach(dialog=>dialog.addEventListener('cancel',event=>{if(busy||(dialog.id==='edit'&&!confirmEditClose()))event.preventDefault();}));
 for (const id of ['postFiles', 'postDirectory']) $( '#' + id).onchange = event => {
   if(busy)return;const selected=[...event.target.files];if(!selected.length)return;
   postSelection=selected;postCheck=null;$('#postTechnicalCheck').textContent='';$(id==='postFiles'?'#postDirectory':'#postFiles').value='';updatePostSelection();
@@ -1072,7 +1074,7 @@ $('#editImage').onchange=async()=>{
 };
 $('#clearImage').onchange=()=>{
   editImageRevision++;imageProcessing=false;imageError='';$('#editImage').setCustomValidity('');$('#imageStatus').textContent='';if($('#clearImage').checked){$('#editImage').value='';$('#editImagePreview').hidden=true;resetCropState();}
-  else {$('#editImagePreview').hidden=typeof editing?.thumbnail!=='string';if(typeof editing?.thumbnail==='string')$('#editImagePreview').src=editing.thumbnail;}
+  else {const image=importedInformationThumbnail===undefined?editing?.thumbnail:importedInformationThumbnail;$('#editImagePreview').hidden=typeof image!=='string';if(typeof image==='string')$('#editImagePreview').src=image;}
   $('#imageStatus').textContent=$('#clearImage').checked?'保存するとサムネイルを外します。チェックを外すと元の画像に戻ります。':'';
   updateEditDirty();
   if(!busy)writeControls();
@@ -1081,7 +1083,7 @@ $('#editForm').noValidate=true;
 $('#editForm').onsubmit = event => { event.preventDefault();if(busy)return;addEnvironmentTag();if($('#newTag').value.trim()&&!addCustomTag()){selectEditTab('Basic');return;}updateFormCounters();if(imageProcessing||imageError){selectEditTab('Image');status(imageError||'画像の読み込み完了をお待ちください。');return;}if(editing&&pendingSettings(editing.path)){status('再保存せず、先に保存結果を確認してください。');return;}const invalid=[...event.target.elements].find(e=>e.willValidate&&!e.validity.valid);if(invalid){const panel=invalid.closest('[role=tabpanel]');if(panel)selectEditTab(panel.id.replace('panel',''));event.target.reportValidity();return;}
   const values={title:$('#editTitle').value,tags:library.tagsFrom($('#editTags').value),developmentEnvironment:$('#editEnvironment').value,description:$('#editDescription').value,instructions:$('#editInstructions').value},imageFile=$('#editImage').files[0],clear=$('#clearImage').checked,adjustment={enabled:$('#enableCrop').checked,zoom:$('#cropZoom').value,x:$('#cropX').value,y:$('#cropY').value};action(async () => {
   if (!editingEnabled) throw new Error('設定で追加・編集を有効にしてください。');
-  let image = clear ? null : editing.thumbnail;
+  let image = clear ? null : importedInformationThumbnail===undefined?editing.thumbnail:importedInformationThumbnail;
   const file = imageFile;
   const asDataURL = blob => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); });
   if (file) image = await asDataURL(await thumbnail(file,true,adjustment));

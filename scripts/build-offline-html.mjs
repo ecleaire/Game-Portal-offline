@@ -43,6 +43,7 @@ const script = [
   wrap('updateTools', await source('offline-html/updates.js'), 'canUpdateGame,resolveGameContent,replaceGameContent,restoreGameContent,verifyContentUpdate,inspectGameContent,describeContentStorage'),
   wrap('nativeTools', await source('offline-html/native-tools.js'), 'nativeLayout,validateExe,nativeConnection,nativePageConnection,launchNative,nativeFolder'),
   wrap('library', (await source('offline-html/library.js')).replace("import {readWithSignal} from './read-task.js';",'const {readWithSignal}=readTasks;').replace("import { checkCompatibility, ensureCompatibility } from './compatibility.js';",'const {checkCompatibility,ensureCompatibility}=compatibilityTools;').replace("import { resolveGameContent } from './updates.js';",'const {resolveGameContent}=updateTools;').replace("import {nativeLayout,validateExe} from './native-tools.js';",'const {nativeLayout,validateExe}=nativeTools;').replace('export {validateExe};',''), 'safePath,uploadPaths,getFile,writeFile,loadLibraryId,ensureLibraryId,loadMetadata,saveMetadata,parseGameSettings,loadGameSettings,saveGameSettings,setSettingsSaveObserver,verifySettingsSave,retrySettingsSave,tagsFrom,gameId,scan,readTree,postGame,validatePyxapp,embeddedPyxel,validateExe'),
+  wrap('informationTools', (await source('offline-html/information-transfer.js')).replace("import {checkCompatibility,LAUNCHER_VERSION} from './compatibility.js';",'const {checkCompatibility,LAUNCHER_VERSION}=compatibilityTools;').replace("import {readWithSignal} from './read-task.js';",'const {readWithSignal}=readTasks;'), 'INFORMATION_LIMIT,parseInformationArchive,createInformationArchive,informationFilename,planInformationImport,applyInformationImport'),
   wrap('maintenance', (await source('offline-html/maintenance.js')).replace("import { canUpdateGame,inspectGameContent } from './updates.js';",'const {canUpdateGame,inspectGameContent}=updateTools;'), 'localResources,inspectLibrary,loadSettingsHistory,restoreSettingsHistory'),
   wrap('dependencyTools', await source('offline-html/dependencies.js'), 'analyzeDependencies,inspectUploadDependencies'),
   wrap('improvements', (await source('offline-html/improvements.js')).replace("import { inspectUploadDependencies } from './dependencies.js';",'const {inspectUploadDependencies}=dependencyTools;').replace("import {nativeLayout,validateExe} from './native-tools.js';",'const {nativeLayout,validateExe}=nativeTools;'), 'checkUpload,cropRect'),
@@ -53,6 +54,7 @@ const script = [
   wrap('syncTools', await source('offline-html/sync.js'), 'libraryViewKey'),
   wrap('player', await source('offline-html/player.js'), 'startPlayer,decodeBase64,encodeBase64'),
   await source('offline-html/app.js'),
+  await source('offline-html/information-ui.js'),
 ].join('\n').replaceAll('</script', '<\\/script');
 const html = (await source('offline-html/index.html')).replace('/*__HELP__*/',await source('offline-html/help.html')).replace('__VERSION__', version).replace('/*__STYLE__*/', await source('offline-html/style.css')).replace('__RUNTIME__', JSON.stringify(runtime)).replace('/*__SCRIPT__*/', script);
 await mkdir(output, { recursive: true });
