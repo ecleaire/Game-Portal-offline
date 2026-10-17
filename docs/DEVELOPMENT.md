@@ -37,6 +37,8 @@ npm run test:native-folder
 
 Intel・Appleシリコン共通のバイナリーを生成し、macOS 12以降を対象にします。Windowsでフォルダー自動接続を検証するときも `npm run test:native-folder` を実行してください。
 
+Mojave用 `.app` はIntel Mac上で `node scripts/build-mojave.mjs` を実行して生成します。`node scripts/verify-mojave.mjs` でIntel・macOS 10.14の最低条件、内蔵HTML・ライセンス・ソースのハッシュを照合します。macOS上のCIでは署名検査と実Firefox ESR 115での一覧・HTML／ZIP・セーブ保持・再読み込みも検証します。新しいmacOS上の検証であり、Mojave実機での検証とは区別してください。Firefoxの取得は `node scripts/prepare-mojave-test.mjs`、検証は `node tests/mojave-esr-browser.mjs` です。
+
 ## 公開するファイル
 
 | 場所 | 内容 |
@@ -45,6 +47,8 @@ Intel・Appleシリコン共通のバイナリーを生成し、macOS 12以降�
 | 最上位の `GAME-PORTAL.exe` / `DESKTOP-LICENSES.txt` | Windowsデスクトップ本体の試作版とライセンス |
 | 最上位の `GAME-PORTAL-WINDOWS.exe` / `README-WINDOWS.txt` | Windows起動補助と案内 |
 | 最上位の `GAME-PORTAL-MAC` / `GAME-PORTAL-MAC.command` | Mac起動補助と起動用スクリプト |
+| 最上位の `GAME-PORTAL-MOJAVE.app` | Mojave用アプリ。実行ファイル・HTML・ライセンス・ビルド情報・署名を含むbundle全体を公開します。 |
+| 最上位の `GAME-PORTAL-MOJAVE` / `GAME-PORTAL-MOJAVE.command` | Mojave用の開発・確認用起動方法 |
 | 最上位の `GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。個人の設定ファイルはGitへ含めません。 |
 | 最上位の `THIRD-PARTY-LICENSES.txt` | 同梱ランタイムのライセンス |
 | `offline-html/` / `assets/` | HTML・画面・実行処理のソース |

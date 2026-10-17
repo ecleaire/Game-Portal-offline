@@ -7,6 +7,8 @@ Windows・MacのPC版Google Chromeで使えます。
 
 **Windowsデスクトップ試作版を追加しました。** `GAME-PORTAL.exe` を開き、初回に保存先を選びます。次回からはアプリ側で前回の保存先へ接続します。フォルダーのドラッグや、設定のパス入力でも接続できます。[使い方・試作版の範囲](docs/DESKTOP.md)
 
+macOS Mojave 10.14.6のIntel Macでは **`GAME-PORTAL-MOJAVE.app`** を開きます。このMacで動くGoogle Chrome、またはFirefox ESR 115が別途必要です。[プレイ専用の試作版・使い方](docs/MOJAVE.md)
+
 ## はじめる
 
 **[ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)**

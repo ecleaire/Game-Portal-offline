@@ -9,7 +9,7 @@ const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 // Only project-owned source directories and explicit root files. Never traverse
 // caches, credentials, git history, local validation data or uploaded games.
-const paths = ['README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes', 'package.json', 'package-lock.json', 'GAME-PORTAL-MAC.command', 'GAME-PORTAL-FOLDER.example.txt'];
+const paths = ['README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes', 'package.json', 'package-lock.json', 'GAME-PORTAL-MAC.command', 'GAME-PORTAL-MOJAVE.command', 'GAME-PORTAL-FOLDER.example.txt'];
 async function collect(path) {
   for (const entry of (await readdir(join(root, path), { withFileTypes: true })).sort((a,b)=>a.name.localeCompare(b.name, 'en'))) {
     const next = path + '/' + entry.name;
@@ -22,7 +22,7 @@ async function collect(path) {
   }
 }
 for (const path of ['offline-html', 'assets', 'scripts', 'tests', '.github', 'desktop']) await collect(path);
-for(const name of ['README.md','DEVELOPMENT.md','OFFLINE_HTML.md','TRANSFER_GUIDE.md','NAS_VALIDATION.md','WINDOWS_EXE.md','AUTO_CONNECT.md','DESKTOP.md'])paths.push('docs/'+name);
+for(const name of ['README.md','DEVELOPMENT.md','OFFLINE_HTML.md','TRANSFER_GUIDE.md','NAS_VALIDATION.md','WINDOWS_EXE.md','AUTO_CONNECT.md','DESKTOP.md','MOJAVE.md'])paths.push('docs/'+name);
 const files = [], entries = [];
 for (const path of paths.sort()) {
   const bytes = await readFile(join(root, path));
