@@ -32,6 +32,7 @@ try{
    assert.equal((await api('stat','blocked.html')).status,400,'special nodes are not game files');assert(!(await(await api('list')).json()).entries.some(entry=>entry.name==='blocked.html'),'special nodes are omitted from the game list');
   }finally{await unlink(fifo);}
   assert.equal((await api('read','作品')).status,400,'a directory cannot be read as game bytes');assert.equal((await api('info')).status,200,'normal reads survive rejected nodes');
+  console.log('Mac IO recovery passed: empty/blank/invalid lengths rejected, FIFO read/stat/list rejected within deadline, directory read rejected, normal API remains usable.');
  }
  assert.equal((await api('info','',{'X-Game-Portal-Token':'0'.repeat(64)})).status,403);assert.equal((await api('info','',{Origin:'https://example.invalid'})).status,403);
  for(const path of ['../GAME-PORTAL.html','/etc/passwd','作品/../index.html','作品\\index.html'])assert.equal((await api('read',path)).status,400);
