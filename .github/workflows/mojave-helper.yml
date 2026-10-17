@@ -17,6 +17,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/build-mojave.mjs
+      - run: node scripts/verify-mojave.mjs
       - run: npx playwright install firefox
       - run: node tests/native-folder-browser.mjs
         env:

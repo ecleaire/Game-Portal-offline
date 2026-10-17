@@ -44,6 +44,7 @@ func bound(_ root: URL, _ path: String) throws -> URL {
 func validID(_ value: Any?) -> String? { guard let id=value as? String, id.range(of:"^[a-f0-9]{32}$",options:.regularExpression) != nil else{return nil};return id }
 func schema(_ value: Any?) -> Bool { guard let number=value as? NSNumber else{return false};return CFGetTypeID(number) != CFBooleanGetTypeID() && number.doubleValue==1 }
 func checkLibrary(_ root: URL, _ expected: String? = nil) throws -> String {
+    let rootValues=try root.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey]);guard rootValues.isDirectory == true && rootValues.isSymbolicLink != true else{throw PortalError("保存先フォルダーへの接続を確認してください。")}
     let value=try object(read(bound(root,".gameportal/library-id.json"),1024))
     guard schema(value["schema"]), let id=validID(value["id"]), expected == nil || expected == id else { throw PortalError("保存先のIDを確認してください。HTMLから初回設定を済ませた保存先を指定します。") }
     let compatibility=root.appendingPathComponent(".gameportal/compatibility.json")
@@ -95,14 +96,17 @@ do {
     }
     }
     #if MOJAVE
-    if !headless && !fm.fileExists(atPath:config.path) && !fm.fileExists(atPath:sharedConfig.path) {
+    if !headless {
+      configureRoot()
+      if root == nil {
       let preference="GamePortalMojaveFolder:"+html.deletingLastPathComponent().path
       if let saved=UserDefaults.standard.dictionary(forKey:preference),let path=saved["path"] as? String,let expected=validID(saved["libraryId"]),let id=try? checkLibrary(URL(fileURLWithPath:path),expected){root=URL(fileURLWithPath:path);libraryID=id}
       else {
         NSApplication.shared.setActivationPolicy(.accessory);NSApplication.shared.activate(ignoringOtherApps:true)
-        let dialog=NSOpenPanel();dialog.title="ゲームの保存先フォルダーを選んでください";dialog.canChooseFiles=false;dialog.canChooseDirectories=true;dialog.allowsMultipleSelection=false
+        let dialog=NSOpenPanel();dialog.title="ゲームの保存先フォルダーを選んでください";dialog.message=configurationError ?? "Windows版で初期設定したゲームの保管フォルダーを選んでください。";dialog.canChooseFiles=false;dialog.canChooseDirectories=true;dialog.allowsMultipleSelection=false
         guard dialog.runModal() == .OK,let selected=dialog.url else{exit(0)}
         let id=try checkLibrary(selected);root=selected;libraryID=id;UserDefaults.standard.set(["path":selected.path,"libraryId":id],forKey:preference)
+      }
       }
     }
     #endif
