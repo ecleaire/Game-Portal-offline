@@ -7,7 +7,7 @@ for(const edition of ['creator','player']){
  if(html.includes(Buffer.from('<html lang="ja" data-edition="player">'))!==(edition==='player'))throw Error('Edition role mismatch');
  for(const suffix of ['MAC','MOJAVE']){
   const name=(edition==='player'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-')+suffix,base=name+'.app/Contents/',info=await readFile(base+'Info.plist','utf8');
-  if(!info.includes('<key>GamePortalEdition</key><string>'+edition+'</string>')||!info.includes('<string>'+version+'</string>'))throw Error('Mac app edition/version differs: '+name);
+  if(!info.includes('<key>LSUIElement</key>')||!info.includes('<key>GamePortalEdition</key><string>'+edition+'</string>')||!info.includes('<string>'+version+'</string>'))throw Error('Mac app edition/version differs: '+name);
   if(!(await readFile(base+'Resources/GAME-PORTAL.html')).equals(html))throw Error('Mac app embeds incorrect edition HTML: '+name);
   if(!(await readFile(base+'Resources/THIRD-PARTY-LICENSES.txt')).equals(await readFile('THIRD-PARTY-LICENSES.txt')))throw Error('Mac app license differs: '+name);
   const binary=await readFile(base+'MacOS/GAME-PORTAL-'+suffix);
