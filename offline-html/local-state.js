@@ -27,11 +27,48 @@ async function access(name, mode, operation) {
   });
 }
 export async function cacheHandle(value, remember = true, scope = null) {
-  if(!value)return access('settings','readonly',store=>store.get('folder'));
+  if(!value)return scope===null?access('settings','readonly',store=>store.get('folder')):scopedFolder(scope);
   const record={name:value.name,revision:crypto.randomUUID(),scope,...(remember?{handle:value}:{})};
-  await access('settings','readwrite',store=>store.put(record,'folder'));return record;
+  if(scope===null)await access('settings','readwrite',store=>store.put(record,'folder'));
+  else await scopedFolder(scope,record);
+  return record;
 }
-export async function forgetHandle() { return access('settings','readwrite',store=>store.delete('folder')); }
+export async function forgetHandle(scope = null) {
+  if(scope!==null)return scopedFolder(scope,null,true);
+  return access('settings','readwrite',store=>{
+    const scan=store.openKeyCursor();scan.onsuccess=()=>{const cursor=scan.result;if(!cursor)return;const key=cursor.key;if(Array.isArray(key)&&key.length===2&&key[0]==='folder'&&typeof key[1]==='string')store.delete(key);cursor.continue();};
+    return store.delete('folder');
+  });
+}
+async function scopedFolder(scope,record=null,forget=false){
+  if(typeof scope!=='string')throw new Error('保存先の記憶を確認してください。');
+  const db=await openDatabase(),writing=!!record||forget;
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('settings',writing?'readwrite':'readonly'),store=tx.objectStore('settings'),key=['folder',scope];
+    let legacy,scoped,result,error;
+    const timeout=writing?null:setTimeout(()=>{reject(new Error('このPCの保存先を読み込めませんでした。もう一度操作してください。'));try{tx.abort();}catch{}},8000);
+    const fail=cause=>{error=cause;try{tx.abort();}catch{clearTimeout(timeout);reject(cause);}};
+    try{
+      const previous=store.get('folder');
+      previous.onsuccess=()=>{
+        legacy=previous.result;
+        try{
+          if(record){
+            // Keep the previous path when upgrading from a single-slot cache.
+            // Preserve the legacy slot too, so older open copies can still notify peers.
+            if(legacy&&typeof legacy.scope==='string'&&legacy.scope!==scope)store.put(legacy,['folder',legacy.scope]);
+            store.put(record,key);store.put(record,'folder');result=record;
+          }else if(forget){
+            store.delete(key);if(!legacy?.scope||legacy.scope===scope)store.delete('folder');
+          }
+        }catch(cause){fail(cause);}
+      };
+      if(!writing){const request=store.get(key);request.onsuccess=()=>{scoped=request.result;};}
+    }catch(cause){fail(cause);}
+    tx.oncomplete=()=>{clearTimeout(timeout);resolve(writing?result:legacy&&(!legacy.scope||legacy.scope===scope)?legacy:scoped||null);};
+    tx.onabort=()=>{clearTimeout(timeout);reject(error||tx.error||new Error('保存先の記憶を更新できませんでした。'));};tx.onerror=()=>{};
+  });
+}
 function validReceipt(v){return v&&v.schema===1&&/^[0-9a-f]{32}$/.test(v.libraryId)&&/^[0-9a-f]{32}$/.test(v.id)&&typeof v.gamePath==='string'&&v.gamePath.length>0&&v.gamePath.length<=1000&&/^[0-9a-f-]+\.json$/.test(v.historyName)&&/^[0-9a-f]{64}$/.test(v.expectedHash)&&(v.beforeHash===null||/^[0-9a-f]{64}$/.test(v.beforeHash))&&['edit','capture','restore','post'].includes(v.kind)&&(v.uploadFolder===null||/^game-[0-9a-f-]+$/.test(v.uploadFolder));}
 export async function loadSettingsReceipts(){const value=await access('settings','readonly',s=>s.get('save-receipts'));if(value===undefined)return [];if(!Array.isArray(value)||value.length>1000||!value.every(validReceipt))throw new Error('このPCの保存確認記録を確認してください。');return value;}
 export async function trackSettingsReceipt(attempt,remove=false,replaces=null){

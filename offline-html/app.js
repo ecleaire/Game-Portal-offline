@@ -1,5 +1,6 @@
 const $ = selector => document.querySelector(selector);
-const editionLabel=document.createElement('span');editionLabel.className='app-edition';editionLabel.textContent=launcherEdition==='player'?'プレイ専用':'クリエイター';$('#homeLink').append(editionLabel);
+const editionLabel=$('#homeLink .app-edition')||document.createElement('span');editionLabel.className='app-edition';editionLabel.textContent=launcherEdition==='player'?'プレイ専用':'クリエイター';$('#homeLink').append(editionLabel);
+for(const duplicate of document.querySelectorAll('#homeLink .app-edition'))if(duplicate!==editionLabel)duplicate.remove();
 if(launcherEdition==='player'){
   const deny=()=>{throw new DOMException('ゲームの追加・変更はクリエイター版で行ってください。','NotAllowedError');};
   const writeSave=library.writeFile;
@@ -229,7 +230,7 @@ async function checkSharedFolder(){
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
   folderWatchPromise=(async()=>{
     try{
-      const record=await read(()=>localState.cacheHandle());if(!available()||!record?.handle||record.scope&&record.scope!==folderScope)return;
+      const record=await read(()=>localState.cacheHandle(null,true,folderScope));if(!available()||!record?.handle||record.scope&&record.scope!==folderScope)return;
       if(record.revision&&record.revision===lastFolderRevision){
         // Another tab may have granted permission since the initial restore.
         if(!folderRecovery&&!syncPaused&&!compatibilityProblem&&remembered&&!$('#reconnect').hidden&&await read(()=>remembered.isSameEntry(record.handle))&&await read(()=>remembered.queryPermission({mode:'read'}))==='granted'&&available())await connectRememberedRead(remembered,false,{signal:controller.signal});
@@ -484,12 +485,13 @@ async function connect(handle, request = false, restoring = false, shared = fals
   nativeRetry=false;
   automaticConnectionPaused=false;automaticConnectionFailures=0;
   if(!handle.nativeReadOnly)clearNativePageConnection();
-  let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){cacheError=' 投稿先をこのPCに記憶できませんでした。次回はフォルダーを選び直してください：'+error.message;}
+  let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){cacheError=' 保存先をこのPCに記憶できませんでした。次回は保存先を確認し、必要に応じて選び直してください：'+error.message;}
   syncPaused=false;$('#reconnect').hidden = true;
   $('#sharedFolderPath').value=portableConnection?.path||'';try{$('#sharedFolderPath').value=localStorage.getItem('game-portal.folder-path.'+localLibrary)||$('#sharedFolderPath').value;}catch{}
   metadata = next; games = nextGames; $('#folderName').textContent = handle.name; $('#settingFolder').textContent = handle.name;
   $('#folderSelectionError').hidden=true;$('#folderSelectionErrorText').textContent='';
   await render(); if(!signal)$('#settings').close();syncStatus(('共有フォルダーの自動確認：有効（ホームで3分操作がないとき）')+cacheError);
+  return cacheError.trim();
 }
 async function filterByGameTag(tag){
   if(busy||closingPlayer)return;
@@ -858,7 +860,8 @@ function openFolderSelection(selection) {
     const controller=new AbortController();manualConnection=controller;nativeReadControls();
     const timer=setTimeout(()=>controller.abort(new DOMException('保存先から応答がありません。選び直すか、もう一度ドラッグしてください。','TimeoutError')),30000);
     const finishReading=()=>{clearTimeout(timer);if(manualConnection===controller)manualConnection=null;nativeReadControls();};
-    try{await connect(handle,false,false,false,controller.signal,{readOnlySelection:true,manualSelection:true,finishReading});}catch(error){
+    let connectionMessage='';
+    try{connectionMessage=await connect(handle,false,false,false,controller.signal,{readOnlySelection:true,manualSelection:true,finishReading});}catch(error){
       $('#folderSelectionHelp').open=true;
       if(!$('#settings').open)$('#settings').showModal();
       if(error.name==='AbortError')throw new Error('フォルダーは選択されましたが、接続処理が中断しました。保存先への接続とアクセス権を確認してください。詳細：'+error.message);
@@ -866,6 +869,7 @@ function openFolderSelection(selection) {
     }finally{finishReading();}
     $('#settings').close();
     $('#folderSelectionHelp').open=false;$('#folderSelectionError').hidden=true;$('#folderSelectionErrorText').textContent='';
+    return connectionMessage;
   },true);
 }
 $('#chooseFolder').onclick = () => {
@@ -1078,15 +1082,21 @@ startupAbort.signal.addEventListener('abort',()=>clearTimeout(startupTimeout),{o
 Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previous,receipts]) => {
   startupAbort.signal.throwIfAborted();
   settingsReceipts=receipts;lastFolderRevision=previous?.revision||'';
-  if(nativeBridge){const handle=await nativeTools.nativeFolder(nativeBridge,compatibilityTools.LAUNCHER_VERSION,startupAbort.signal,{onPendingChange:nativeReadControls});startupAbort.signal.throwIfAborted();if(handle){editingEnabled=false;$('#enableEditing').checked=false;await connect(handle,false,true,false,startupAbort.signal);return;}}
   if(previous?.scope&&previous.scope!==folderScope)previous=null;
+  // Prefer this page's explicitly selected, already permitted browser folder.
+  // A failed or read-only helper must not discard the full browser connection.
+  if(nativeBridge&&previous?.scope===folderScope&&previous?.handle&&!previous.handle.nativeDesktop&&!previous.handle.nativeReadOnly){
+    const granted=await readTasks.readWithSignal(()=>previous.handle.queryPermission({mode:'read'}),startupAbort.signal);
+    if(granted==='granted'){await connect(previous.handle,false,true,false,startupAbort.signal);return;}
+  }
+  if(nativeBridge){const handle=await nativeTools.nativeFolder(nativeBridge,compatibilityTools.LAUNCHER_VERSION,startupAbort.signal,{onPendingChange:nativeReadControls});startupAbort.signal.throwIfAborted();if(handle){editingEnabled=false;$('#enableEditing').checked=false;await connect(handle,false,true,false,startupAbort.signal);return;}}
   if (previous?.name) $('#settingFolder').textContent = '前回：' + previous.name;
   if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;writeControls();try{const permission=await remembered.queryPermission({mode:'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal);}else {syncStatus(reconnectHint);status(reconnectHint);}}catch(error){if(startupAbort.signal.aborted)return;queueFolderRecovery(error);syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}
 }).catch(error => {if(nativeBridge&&!root){nativeRetry=true;editingEnabled=false;$('#enableEditing').checked=false;}if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。再試行するか、「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{clearTimeout(startupTimeout);if(!startupAbort.signal.aborted)initialized();});
 }
 
 
-$('#forgetFolder').onclick=()=>action(async()=>{await localState.forgetHandle();return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
+$('#forgetFolder').onclick=()=>action(async()=>{await localState.forgetHandle(folderScope);return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
 
 document.addEventListener('visibilitychange',noteHomeActivity);
 
