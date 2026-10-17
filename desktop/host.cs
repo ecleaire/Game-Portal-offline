@@ -39,7 +39,7 @@ internal sealed class DesktopForm : Form {
     readonly WebView2 view=new WebView2();readonly DesktopFiles files;readonly string profile,initialLibrary,ready;readonly int port;readonly bool testing;
     readonly byte[] page=DesktopProgram.Resource("GAME-PORTAL-DESKTOP.html");int nativeGames;
     internal DesktopForm(string profile,string library,int port,string ready,bool testing){
-        this.profile=profile;this.initialLibrary=library;this.port=port;this.ready=ready;this.testing=testing;files=new DesktopFiles(profile);
+        this.profile=profile;this.initialLibrary=library;this.port=port;this.ready=ready;this.testing=testing;files=new DesktopFiles(profile,AppDomain.CurrentDomain.BaseDirectory);
         Text="GAME PORTAL デスクトップ試作版 __DESKTOP_VERSION__";Width=1280;Height=900;MinimumSize=new System.Drawing.Size(640,480);StartPosition=FormStartPosition.CenterScreen;
         if(testing){Opacity=0;ShowInTaskbar=false;}view.Dock=DockStyle.Fill;Controls.Add(view);Shown+=async(sender,eventArgs)=>await Initialize();
         FormClosing+=OnClosing;

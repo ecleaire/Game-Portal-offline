@@ -15,6 +15,7 @@ export function desktopPage(html,bootstrap,licenses=''){
   // Keep the sandbox and let exports detect that service workers are unavailable.
   replace('function webBootstrap(nonce) {',"function webBootstrap(nonce) {\n  try { void navigator.serviceWorker; } catch { delete Object.getPrototypeOf(navigator).serviceWorker; }");
   replace('<div id="folderDrop" class="notice" role="group" aria-label="保存先フォルダーをドラッグして接続">保存先フォルダーをここへドラッグ</div>','<div id="folderDrop" class="notice" role="group" aria-label="保存先フォルダーをドラッグして接続">保存先フォルダーをここへドラッグ</div><label for="desktopFolderPath">保存先のパス</label><div class="buttons desktop-path"><input id="desktopFolderPath" type="text" autocomplete="off" spellcheck="false" placeholder="例：&#92;&#92;NAS&#92;共有&#92;ゲーム" aria-label="保存先フォルダーのパス"><button id="desktopConnectPath" class="secondary">このパスに接続</button></div><p class="hint">エクスプローラーのアドレス欄からコピーして貼り付けられます。</p>');
+  replace('<p class="hint">エクスプローラーのアドレス欄からコピーして貼り付けられます。</p>','<p class="hint">エクスプローラーのアドレス欄からコピーして貼り付けられます。</p><p id="desktopSharedConnection" class="hint" hidden></p>');
   replace('</style>','#exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}.desktop-path{margin-top:8px}.desktop-path input{flex:1 1 240px;min-width:0;width:100%}</style>');
   html=html.replaceAll('このPCのChrome','このアプリ').replaceAll('このブラウザー内','このアプリ内');
   const escaped=licenses.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');

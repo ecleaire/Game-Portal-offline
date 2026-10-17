@@ -2,6 +2,10 @@ import Foundation
 import Network
 import Security
 import CoreFoundation
+#if MOJAVE
+import AppKit
+import Darwin
+#endif
 
 // macOS 12+, universal Intel / Apple silicon. No external runtime installation.
 let version = "__VERSION__"
@@ -14,10 +18,18 @@ func object(_ data: Data) throws -> [String:Any] {
     guard let value=try JSONSerialization.jsonObject(with:data) as? [String:Any] else { throw PortalError("設定を確認してください。") }; return value
 }
 func read(_ url: URL, _ limit: Int) throws -> Data {
+#if MOJAVE
+    let descriptor=Darwin.open(url.path,O_RDONLY|O_NOFOLLOW);guard descriptor>=0 else{throw NSError(domain:NSPOSIXErrorDomain,code:Int(errno))};defer{Darwin.close(descriptor)}
+    var before=stat();guard fstat(descriptor,&before)==0,before.st_size>=0,before.st_size<=Int64(limit) else{throw PortalError("ファイルが大きすぎるか、読み取れません。")}
+    var data=Data(),buffer=[UInt8](repeating:0,count:65536)
+    while data.count<Int(before.st_size){let count=Darwin.read(descriptor,&buffer,min(buffer.count,Int(before.st_size)-data.count));if count<0{if errno==EINTR{continue};throw NSError(domain:NSPOSIXErrorDomain,code:Int(errno))};guard count>0 else{throw PortalError("読み込み中にファイルが変わりました。")};data.append(contentsOf:buffer.prefix(count))}
+    var after=stat();guard fstat(descriptor,&after)==0,after.st_size==before.st_size else{throw PortalError("読み込み中にファイルが変わりました。もう一度試してください。")};return data
+#else
     let file=try FileHandle(forReadingFrom:url); defer { try? file.close() }
     let size=try file.seekToEnd();guard size<=UInt64(limit) else {throw PortalError("ファイルが大きすぎます。")};try file.seek(toOffset:0)
     let data=try file.read(upToCount:Int(size)) ?? Data()
     guard data.count==Int(size),try file.seekToEnd()==size else {throw PortalError("読み込み中にファイルが変わりました。もう一度試してください。")};return data
+#endif
 }
 func bound(_ root: URL, _ path: String) throws -> URL {
     var current=root
@@ -57,10 +69,20 @@ do {
     }
     guard fm.fileExists(atPath:html.path) else {throw PortalError("同じフォルダーにGAME-PORTAL.htmlを置いてください。")}
     let config=html.deletingLastPathComponent().appendingPathComponent("GAME-PORTAL-FOLDER.txt")
+    let sharedConfig=html.deletingLastPathComponent().appendingPathComponent("GAME-PORTAL-CONNECTION.json")
     var root: URL?=nil, libraryID: String?=nil, configurationError: String?=nil
     let configurationLock=NSLock()
     func configureRoot() {
       configurationError=nil
+    if fm.fileExists(atPath:sharedConfig.path) {
+      do {
+        let info=try object(read(sharedConfig,8192));guard schema(info["schema"]),info["kind"] as? String == "relative",let path=info["path"] as? String,!path.isEmpty,path.count<=1000,!path.hasPrefix("/"),!path.contains("\\"),!path.contains(":"),!path.contains("\0"),!path.contains("\n"),!path.contains("\r"),path.split(separator:"/",omittingEmptySubsequences:false).count<=32,let expected=validID(info["libraryId"]) else{throw PortalError("共有接続設定を確認してください。")}
+        let url=html.deletingLastPathComponent().appendingPathComponent(path).standardizedFileURL
+        let values=try url.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey]);guard values.isDirectory == true && values.isSymbolicLink != true else{throw PortalError("共有の保存先にアクセスできません。FinderでNASの接続を確認してください。")}
+        libraryID=try checkLibrary(url,expected);root=url
+      } catch {configurationError="共有の保存先へ接続できません："+((error as? PortalError)?.message ?? error.localizedDescription)}
+      return
+    }
     if fm.fileExists(atPath:config.path) {
       do {
         guard let raw=String(data:try read(config,8192),encoding:.utf8) else {throw PortalError("保存先設定はUTF-8で保存してください。")}
@@ -72,6 +94,18 @@ do {
       } catch { configurationError="自動接続の設定を確認してください。GAME-PORTAL-FOLDER.txtを修正して再試行できます："+((error as? PortalError)?.message ?? error.localizedDescription) }
     }
     }
+    #if MOJAVE
+    if !headless && !fm.fileExists(atPath:config.path) && !fm.fileExists(atPath:sharedConfig.path) {
+      let preference="GamePortalMojaveFolder:"+html.deletingLastPathComponent().path
+      if let saved=UserDefaults.standard.dictionary(forKey:preference),let path=saved["path"] as? String,let expected=validID(saved["libraryId"]),let id=try? checkLibrary(URL(fileURLWithPath:path),expected){root=URL(fileURLWithPath:path);libraryID=id}
+      else {
+        NSApplication.shared.setActivationPolicy(.accessory);NSApplication.shared.activate(ignoringOtherApps:true)
+        let dialog=NSOpenPanel();dialog.title="ゲームの保存先フォルダーを選んでください";dialog.canChooseFiles=false;dialog.canChooseDirectories=true;dialog.allowsMultipleSelection=false
+        guard dialog.runModal() == .OK,let selected=dialog.url else{exit(0)}
+        let id=try checkLibrary(selected);root=selected;libraryID=id;UserDefaults.standard.set(["path":selected.path,"libraryId":id],forKey:preference)
+      }
+    }
+    #endif
     func configuredFolder() -> (URL?,String?,String?) {
       configurationLock.lock();defer {configurationLock.unlock()}
       if root == nil {configureRoot()}
@@ -155,7 +189,14 @@ do {
             port=listener.port!.rawValue
             do{
                 if let ready=ready {try json(["origin":"http://127.0.0.1:\(port)","token":token]).write(to:ready)}
-                if !headless {let task=Process();task.executableURL=URL(fileURLWithPath:"/usr/bin/open");task.arguments=[html.absoluteString+"#native=\(port).\(token)"];try task.run();print("GAME PORTAL：このウィンドウを閉じると自動接続が終了します。")}
+                if !headless {let task=Process();task.executableURL=URL(fileURLWithPath:"/usr/bin/open")
+                #if MOJAVE
+                guard let firefox=NSWorkspace.shared.urlForApplication(withBundleIdentifier:"org.mozilla.firefox") else{throw PortalError("Firefox ESR 115を先にインストールしてください。https://www.firefox.com/download/all/desktop-esr/")}
+                task.arguments=["-a",firefox.path,html.absoluteString+"#native=\(port).\(token)"]
+                #else
+                task.arguments=[html.absoluteString+"#native=\(port).\(token)"]
+                #endif
+                try task.run();print("GAME PORTAL：このウィンドウを閉じると自動接続が終了します。")}
             }catch{fputs("\(error)\n",stderr);exit(1)}
         case .failed(let error):fputs("\(error)\n",stderr);exit(1)
         default:break

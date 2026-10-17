@@ -13,3 +13,7 @@ AGENTS.md
 
 # Personal auto-connection path is never part of a distribution.
 GAME-PORTAL-FOLDER.txt
+
+# Personal shared connection configuration next to the app.
+GAME-PORTAL-CONNECTION.json
+GAME-PORTAL-CONNECTION.json.*.tmp

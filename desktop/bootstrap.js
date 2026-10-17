@@ -36,7 +36,7 @@ const desktopHost=(()=>{
     });
     return h;
   }
-  function record(value){if(!value)return null;return {...value,scope:location.pathname,handle:handle(value,'',value.name,'directory')};}
+  function record(value){if(!value)return null;const notice=document.getElementById('desktopSharedConnection');if(notice){notice.textContent=value.connectionHint||'';notice.hidden=!notice.textContent;}return {...value,scope:location.pathname,handle:handle(value,'',value.name,'directory')};}
   async function current(){return record(await rpc('restore'));}
   window.showDirectoryPicker=async()=>{const selected=record(await rpc('select'));if(!selected)throw new DOMException('フォルダーを選びませんでした。','AbortError');return selected.handle;};
   localState.cacheHandle=async value=>{if(value)await rpc('remember',{root:value.desktopToken});return current();};

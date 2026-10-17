@@ -12,9 +12,9 @@ internal sealed class DesktopFiles {
     readonly Dictionary<string,Lease> leases=new Dictionary<string,Lease>();
     readonly Dictionary<string,Root> roots=new Dictionary<string,Root>();
     readonly object gate=new object();
-    readonly string config;
+    readonly string config,applicationDirectory;readonly DesktopSharedConnection shared;
     internal readonly JavaScriptSerializer Json=new JavaScriptSerializer {MaxJsonLength=2100000};
-    internal DesktopFiles(string profile){Directory.CreateDirectory(profile);config=System.IO.Path.Combine(profile,"folder.json");}
+    internal DesktopFiles(string profile,string applicationDirectory=null){Directory.CreateDirectory(profile);config=System.IO.Path.Combine(profile,"folder.json");this.applicationDirectory=applicationDirectory==null?null:NormalizeRoot(applicationDirectory);if(this.applicationDirectory!=null)shared=new DesktopSharedConnection(this,this.applicationDirectory);}
     internal static string Secret(){using(var random=RandomNumberGenerator.Create()){byte[] bytes=new byte[32];random.GetBytes(bytes);return BitConverter.ToString(bytes).Replace("-","").ToLowerInvariant();}}
     internal string Serialize(object value){lock(Json)return Json.Serialize(value);}
     internal Dictionary<string,object> Parse(string text){lock(Json)return Json.Deserialize<Dictionary<string,object>>(text);}
@@ -56,13 +56,13 @@ internal sealed class DesktopFiles {
         string idFile=System.IO.Path.Combine(root.Path,".gameportal","library-id.json");
         if(root.Id==null&&root.InitializingId&&File.Exists(idFile)&&new FileInfo(idFile).Length==0)id=null;else id=LibraryId(root.Path);
         if(root.Id!=null&&id!=root.Id)throw new IOException("保存先のIDが変わりました。元の保存先を確認してください。");if(root.Id==null&&id!=null)root.Id=id;return root;}
-    internal object Record(Root root){return root==null?null:new {name=new DirectoryInfo(root.Path).Name,token=root.Token,secret=root.Secret,revision=root.Token};}
+    internal object Record(Root root){return root==null?null:new {name=new DirectoryInfo(root.Path).Name,token=root.Token,secret=root.Secret,revision=root.Token,connectionHint=shared==null?"":shared.Message};}
     internal Root Restore(){
-        if(!File.Exists(config))return null;
+        if(!File.Exists(config))return shared==null?null:shared.Restore();
         if(new FileInfo(config).Length>8192)throw new IOException("このPCの保存先の記憶を確認してください。");
-        var saved=Parse(File.ReadAllText(config,Encoding.UTF8));object schema;string path=Text(saved,"path"),id=Text(saved,"id");if(!saved.TryGetValue("schema",out schema)||!(schema is int)||(int)schema!=1||path.Length==0||id.Length>0&&!ValidId(id))throw new IOException("このPCの保存先の記憶を確認してください。");return Register(path,id.Length==0?null:id);
+        var saved=Parse(File.ReadAllText(config,Encoding.UTF8));object schema;string path=Text(saved,"path"),id=Text(saved,"id");if(!saved.TryGetValue("schema",out schema)||!(schema is int)||(int)schema!=1||path.Length==0||id.Length>0&&!ValidId(id))throw new IOException("このPCの保存先の記憶を確認してください。");if(applicationDirectory!=null&&Text(saved,"application").Length>0&&!String.Equals(Text(saved,"application"),applicationDirectory,StringComparison.OrdinalIgnoreCase))return shared.Restore();return Register(path,id.Length==0?null:id);
     }
-    internal void Remember(Root root){root=Get(root.Token);string text=Serialize(new {schema=1,path=root.Path,id=root.Id??""});Atomic(config,new MemoryStream(Encoding.UTF8.GetBytes(text)),8192);}
+    internal void Remember(Root root){root=Get(root.Token);string text=Serialize(new {schema=1,path=root.Path,id=root.Id??"",application=applicationDirectory??""});Atomic(config,new MemoryStream(Encoding.UTF8.GetBytes(text)),8192);if(shared!=null)shared.Remember(root);}
     internal void Forget(){if(File.Exists(config))File.Delete(config);}
     internal bool HasWriters {get{lock(gate)return leases.Count>0;}}
     internal object BeginWrite(Root root,string path){

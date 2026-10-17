@@ -1,0 +1,29 @@
+name: Build Mojave play helper
+on:
+  push:
+    paths: ['scripts/macos/**', 'scripts/build-mojave.mjs', 'tests/native-folder-browser.mjs', 'GAME-PORTAL.html', '.github/workflows/mojave-helper.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mojave:
+    runs-on: macos-15-intel
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: node scripts/build-mojave.mjs
+      - run: npx playwright install firefox
+      - run: node tests/native-folder-browser.mjs
+        env:
+          PORTAL_NATIVE_EXE: GAME-PORTAL-MOJAVE
+          PORTAL_BROWSER: firefox
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GAME-PORTAL-MOJAVE-Intel
+          path: GAME-PORTAL-MOJAVE
+          if-no-files-found: error

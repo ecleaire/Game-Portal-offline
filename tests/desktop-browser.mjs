@@ -7,8 +7,8 @@ import {createServer} from 'node:net';
 import {setTimeout as delay} from 'node:timers/promises';
 import {chromium,expect} from '@playwright/test';
 if(process.platform!=='win32'){console.log('Desktop WebView2 test requires Windows.');process.exit(0);}
-const temp=await mkdtemp(join(tmpdir(),'portal-desktop-')),disk=join(temp,'ゲーム # +'),profile=join(temp,'profile'),id='a'.repeat(32),exe=join(temp,'standalone','GAME-PORTAL.exe');
-let processHandle,browser,page;const desktopLogs=[];
+const temp=await mkdtemp(join(tmpdir(),'portal-desktop-')),disk=join(temp,'standalone','ゲーム # +'),id='a'.repeat(32),exe=join(temp,'standalone','GAME-PORTAL.exe');
+let profile=join(temp,'profile'),processHandle,browser,page;const desktopLogs=[];
 async function start(initial){
  const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));
  const ready=join(temp,'ready-'+port+'.json');processHandle=spawn(exe,['--profile',profile,'--debug-port',String(port),'--ready-file',ready,'--test-mode',...(initial?['--library',disk]:[])],{windowsHide:true,stdio:'pipe'});
@@ -38,6 +38,8 @@ try{
  // Game sandboxes cannot use the top-level host messaging capability.
  await page.getByRole('link',{name:'Desktop added',exact:true}).click();await expect(page.frameLocator('#frame').locator('h1')).toHaveText('Native upload');const child=page.frames().find(f=>f!==page.mainFrame());assert.equal(await child.evaluate(()=>{try{return typeof parent.desktopHost;}catch{return 'blocked';}}),'blocked');await child.evaluate(token=>{try{chrome.webview.postMessage({id:444,op:'remove',root:token,path:'game.html'});}catch{}},await page.evaluate(()=>root.desktopToken));await delay(200);assert((await readFile(join(disk,'game.html'),'utf8')).includes('Desktop play'));await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);
  assert.deepEqual(errors,[]);await close();for(let n=0;n<3;n++){await start(false);await expect(page.locator('.card')).toHaveCount(2);assert.equal(await page.evaluate(()=>localLibrary),id);assert.equal(await page.evaluate(()=>editingEnabled),true);assert.equal(await page.evaluate(async()=> (await localState.loadLocalSave(localLibrary,games.find(g=>g.path==='game.html').id))['desktop-save']),'retained');await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('.card')).toHaveCount(2);await close();}
+ const shared=JSON.parse(await readFile(join(temp,'standalone','GAME-PORTAL-CONNECTION.json'),'utf8'));assert.equal(shared.libraryId,id);assert.equal(shared.path,'ゲーム # +');assert(!JSON.stringify(shared).includes(temp));
+ profile=join(temp,'other-pc-profile');await start(false);await expect(page.locator('.card')).toHaveCount(2);assert.equal(await page.evaluate(()=>localLibrary),id);assert.equal(await page.evaluate(()=>editingEnabled),false);assert.equal(await page.evaluate(async()=> (await localState.loadLocalSave(localLibrary,games.find(g=>g.path==='game.html').id))?.['desktop-save']),undefined,'personal save is not copied with a connection');await close();profile=join(temp,'profile');
  // Native games use the same identity/compatibility validation and their own working directory.
  const fixture=join(disk,'native-fixture');await mkdir(fixture);const source=join(temp,'fixture.cs');await writeFile(source,'using System.IO;using System.Threading;class Fixture{static void Main(){File.WriteAllText("started.txt",File.ReadAllText("support.dat"));Thread.Sleep(3000);}}');
  execFileSync(join(process.env.SystemRoot,'Microsoft.NET','Framework64','v4.0.30319','csc.exe'),['/nologo','/target:winexe','/out:'+join(fixture,'fixture.exe'),source],{stdio:'pipe'});await writeFile(join(fixture,'support.dat'),'desktop-native-working-directory');

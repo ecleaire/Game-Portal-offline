@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
 import {spawn} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
-import {chromium,expect} from '@playwright/test';
+import {chromium,firefox,expect} from '@playwright/test';
 if(!['win32','darwin'].includes(process.platform)){console.log('Native folder test requires Windows/macOS.');process.exit(0);}
 const temp=await mkdtemp(join(tmpdir(),'portal-autofolder-')),disk=join(temp,'任意の名前 🕹 # +'),html=join(temp,'GAME-PORTAL.html'),ready=join(temp,'ready.json');
 const libraryId='a'.repeat(32),{version}=JSON.parse(await readFile('package.json','utf8'));
@@ -14,7 +14,8 @@ try{
  await mkdir(join(disk,'.gameportal'),{recursive:true});await mkdir(join(disk,'作品'));await writeFile(join(disk,'.gameportal','library-id.json'),JSON.stringify({schema:1,id:libraryId}));
  await writeFile(join(disk,'作品','index.html'),'<!doctype html><h1>Native auto game</h1><img src="image.svg"><script>localStorage.setItem("native-test","played");</script>');await writeFile(join(disk,'作品','image.svg'),'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="red"/></svg>');
  await writeFile(html,await readFile('GAME-PORTAL.html'));await writeFile(join(temp,'GAME-PORTAL-FOLDER.txt'),'\uFEFF./'+disk.split(/[\\/]/).at(-1)+'\n');
- const exe=resolve(process.platform==='win32'?'GAME-PORTAL-WINDOWS.exe':'GAME-PORTAL-MAC');
+ if(process.platform==='darwin'){await writeFile(join(temp,'GAME-PORTAL-CONNECTION.json'),JSON.stringify({schema:1,kind:'relative',path:disk.split(/[\\/]/).at(-1),libraryId}));await writeFile(join(temp,'GAME-PORTAL-FOLDER.txt'),'./wrong-legacy-path');}
+ const exe=resolve(process.env.PORTAL_NATIVE_EXE||(process.platform==='win32'?'GAME-PORTAL-WINDOWS.exe':'GAME-PORTAL-MAC'));
  helper=spawn(exe,['--headless','--html',html,'--ready-file',ready],{windowsHide:true,stdio:'pipe'});let output='';helper.stderr.on('data',data=>output+=data);
  let info;for(let n=0;n<200;n++){try{info=JSON.parse(await readFile(ready,'utf8'));break;}catch{if(helper.exitCode!==null)throw Error('Helper exited: '+output);await delay(100);}}assert(info,'Helper readiness');
  const api=(action,path='',headers={},extra={})=>fetch(info.origin+'/native/folder',{method:'POST',headers:{Origin:'null','Content-Type':'application/json','X-Game-Portal-Token':info.token,...headers},body:JSON.stringify({version,action,path,...extra})});
@@ -29,7 +30,7 @@ try{
  assert.equal((await api('read','作品/image.svg',{}, {limit:imageSize})).status,200);await writeFile(imagePath,Buffer.concat([image,Buffer.from(' ')]));assert.equal((await api('read','作品/image.svg',{}, {limit:imageSize})).status,400,'growth after preflight rejected');await writeFile(imagePath,image);
  const missing=await api('stat','missing.html');assert.equal(missing.status,400);assert.equal((await missing.json()).name,'NotFoundError');
  const outside=join(temp,'outside');await mkdir(outside);await writeFile(join(outside,'secret.txt'),'do not expose');await symlink(outside,join(disk,'linked'),process.platform==='win32'?'junction':'dir');assert.equal((await api('read','linked/secret.txt')).status,400);
- context=await chromium.launchPersistentContext(join(temp,'profile'),{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
+ context=await (process.env.PORTAL_BROWSER==='firefox'?firefox:chromium).launchPersistentContext(join(temp,'profile'),{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.addInitScript(()=>{if(window!==top)return;window.showDirectoryPicker=async()=>{throw Error('Picker must not open');};localStorage.setItem('game-portal.offline-editing','true');});
  await page.goto(pathToFileURL(html).href+'#native='+new URL(info.origin).port+'.'+info.token);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:20000});await expect(page.locator('.card')).toHaveCount(1);assert.equal(await page.evaluate(()=>localLibrary),libraryId);assert.equal(await page.evaluate(()=>location.hash),'');
  // Refresh keeps the helper connection without a picker or a capability in the URL.
@@ -73,7 +74,7 @@ try{
  await writeFile(join(disk,'.gameportal','library-id.json'),JSON.stringify({schema:1,id:libraryId}));helper.kill();await new Promise(r=>(helper.exitCode!==null||helper.signalCode!==null)?r():helper.once('exit',r));
  await page.locator('#refresh').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#status')).toContainText('起動補助');await expect(page.locator('#settingsButton')).toBeEnabled();
  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('#status')).toContainText('設定');await expect(page.locator('#settingsButton')).toBeEnabled();await expect(page.locator('#helpButton')).toBeEnabled();
- await writeFile(join(temp,'GAME-PORTAL-FOLDER.txt'),'./missing-library');const ready2=join(temp,'ready2.json');helper=spawn(exe,['--headless','--html',html,'--ready-file',ready2],{windowsHide:true,stdio:'pipe'});
+ await rm(join(temp,'GAME-PORTAL-CONNECTION.json'),{force:true});await writeFile(join(temp,'GAME-PORTAL-FOLDER.txt'),'./missing-library');const ready2=join(temp,'ready2.json');helper=spawn(exe,['--headless','--html',html,'--ready-file',ready2],{windowsHide:true,stdio:'pipe'});
  let info2;for(let n=0;n<200;n++){try{info2=JSON.parse(await readFile(ready2,'utf8'));break;}catch{if(helper.exitCode!==null)throw Error('Bad-config helper must still start');await delay(100);}}assert(info2);
  await page.goto(pathToFileURL(html).href+'?retry#native='+new URL(info2.origin).port+'.'+info2.token);await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('#status')).toContainText('設定');await page.locator('#helpButton').click();await expect(page.locator('#help')).toBeVisible();await page.locator('#help [data-close]').click();
  // Retry waiting can be stopped before a handle exists; late reads cannot connect.

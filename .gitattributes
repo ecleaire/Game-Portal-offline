@@ -5,5 +5,7 @@ GAME-PORTAL.exe binary linguist-generated=true
 DESKTOP-LICENSES.txt -text -whitespace
 GAME-PORTAL-MAC binary linguist-generated=true
 GAME-PORTAL-MAC.command text eol=lf
+GAME-PORTAL-MOJAVE binary linguist-generated=true
+GAME-PORTAL-MOJAVE.command text eol=lf
 README-WINDOWS.txt -text
 THIRD-PARTY-LICENSES.txt -text
