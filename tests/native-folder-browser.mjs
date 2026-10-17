@@ -3,7 +3,8 @@ import {readFile,writeFile,mkdir,mkdtemp,rm,symlink,open,unlink} from 'node:fs/p
 import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
-import {spawn} from 'node:child_process';
+import {spawn,execFileSync} from 'node:child_process';
+import {createConnection} from 'node:net';
 import {setTimeout as delay} from 'node:timers/promises';
 import {chromium,firefox,expect} from '@playwright/test';
 if(!['win32','darwin'].includes(process.platform)){console.log('Native folder test requires Windows/macOS.');process.exit(0);}
@@ -19,6 +20,19 @@ try{
  helper=spawn(exe,['--headless','--html',html,'--ready-file',ready],{windowsHide:true,stdio:'pipe'});let output='';helper.stderr.on('data',data=>output+=data);
  let info;for(let n=0;n<200;n++){try{info=JSON.parse(await readFile(ready,'utf8'));break;}catch{if(helper.exitCode!==null)throw Error('Helper exited: '+output);await delay(100);}}assert(info,'Helper readiness');
  const api=(action,path='',headers={},extra={})=>fetch(info.origin+'/native/folder',{method:'POST',headers:{Origin:'null','Content-Type':'application/json','X-Game-Portal-Token':info.token,...headers},body:JSON.stringify({version,action,path,...extra})});
+ if(process.platform==='darwin'){
+  // Malformed local requests must be rejected without terminating the app.
+  for(const value of ['', 'not-a-number']){
+   const response=await new Promise((resolve,reject)=>{let output='';const socket=createConnection({host:'127.0.0.1',port:Number(new URL(info.origin).port)},()=>socket.write('POST /native/folder HTTP/1.1\r\nHost: 127.0.0.1:'+new URL(info.origin).port+'\r\nContent-Length: '+value+'\r\n\r\n'));socket.setTimeout(3000,()=>socket.destroy(Error('Malformed request stalled')));socket.on('data',bytes=>output+=bytes);socket.on('error',reject);socket.on('end',()=>resolve(output));});
+   assert.match(response,/^HTTP\/1\.1 4\d\d /,'malformed Content-Length must return an error, not crash');assert.equal((await api('info')).status,200,'helper survives malformed input');
+  }
+  const fifo=join(disk,'blocked.html');execFileSync('mkfifo',[fifo]);
+  try{
+   const response=await fetch(info.origin+'/native/folder',{method:'POST',signal:AbortSignal.timeout(3000),headers:{Origin:'null','Content-Type':'application/json','X-Game-Portal-Token':info.token},body:JSON.stringify({version,action:'read',path:'blocked.html'})});assert.equal(response.status,400,'a FIFO must be rejected without waiting for a writer');
+   assert.equal((await api('stat','blocked.html')).status,400,'special nodes are not game files');assert(!(await(await api('list')).json()).entries.some(entry=>entry.name==='blocked.html'),'special nodes are omitted from the game list');
+  }finally{await unlink(fifo);}
+  assert.equal((await api('read','作品')).status,400,'a directory cannot be read as game bytes');assert.equal((await api('info')).status,200,'normal reads survive rejected nodes');
+ }
  assert.equal((await api('info','',{'X-Game-Portal-Token':'0'.repeat(64)})).status,403);assert.equal((await api('info','',{Origin:'https://example.invalid'})).status,403);
  for(const path of ['../GAME-PORTAL.html','/etc/passwd','作品/../index.html','作品\\index.html'])assert.equal((await api('read',path)).status,400);
  assert.equal((await api('write','作品/index.html')).status,400);
