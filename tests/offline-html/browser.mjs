@@ -125,9 +125,16 @@ try {
   await page.locator('#captureButton').click();await expect(page.locator('#playerStatus')).toContainText('撮影できるゲーム画面がありません');await expect(page.locator('#player')).toBeVisible();
   await expect(frame.locator('body')).toHaveAttribute('data-previous','saved'); await expect(frame.locator('body')).toHaveAttribute('data-parent','blocked'); await expect(frame.locator('body')).toHaveAttribute('data-network','blocked');
   await expect(frame.locator('body')).toHaveAttribute('data-compiler','7');
+  await frame.locator('body').evaluate(()=>{localStorage.propertySave=42;localStorage.setItem('temporary-property','remove');delete localStorage['temporary-property'];});
+  assert.equal(await frame.locator('body').evaluate(()=>localStorage.getItem('propertySave')),'42','property-style Storage writes must use the persistent save snapshot');
+  assert.equal(await frame.locator('body').evaluate(()=>localStorage.getItem('temporary-property')),null,'property deletion must remove a stored key');
   await page.getByRole('button',{name:'← ゲーム一覧',exact:true}).click();
   await openGame('My portable game');
   await expect(frame.locator('body')).toHaveAttribute('data-previous','saved');
+  assert.equal(await frame.locator('body').evaluate(()=>localStorage.propertySave),'42','property-style save survives reopening');
+  assert(await frame.locator('body').evaluate(()=>Object.keys(localStorage).includes('propertySave')),'enumerating Storage includes saved properties');
+  assert.equal(await frame.locator('body').evaluate(()=>{try{localStorage.largeProperty='あ'.repeat(180000);return 'allowed';}catch(error){return error.name;}}),'QuotaExceededError','named writes enforce the save limit');
+  assert.equal(await frame.locator('body').evaluate(()=>localStorage.getItem('largeProperty')),null,'rejected named writes leave the previous save intact');
   assert.equal(await frame.locator('body').evaluate(()=>{try{localStorage.setItem('large','あ'.repeat(180000));return 'allowed';}catch(error){return error.name;}}),'QuotaExceededError');
   if(!await page.locator('#exportSave').isVisible())await page.locator('#playerMoreTools summary').click();
   const exported = page.waitForEvent('download'); await page.getByRole('button',{name:'セーブ書き出し',exact:true}).click();

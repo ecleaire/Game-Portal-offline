@@ -46,7 +46,17 @@ function webBootstrap(nonce) {
         setItem: (key, value) => { const next = { ...data, [key]: String(value) }; if (Object.keys(next).length > 1000 || new TextEncoder().encode(JSON.stringify(next)).length > 500000) throw new DOMException('保存容量を超えました。', 'QuotaExceededError'); data[key] = String(value); send(); },
         removeItem: key => { delete data[key]; send(); }, clear: () => { for (const key of Object.keys(data)) delete data[key]; send(); },
         key: index => Object.keys(data)[index] ?? null, get length() { return Object.keys(data).length; } };
-      Object.defineProperty(window, 'localStorage', { value: api });
+      // Storage also supports storage.score = value and delete storage.score.
+      // Keep methods separate from saved keys, including __proto__ and getItem.
+      const storage=new Proxy(Object.create(api),{
+        get:(target,key,receiver)=>Reflect.has(target,key)?Reflect.get(target,key,receiver):typeof key==='string'?data[key]:undefined,
+        set:(target,key,value)=>{if(typeof key!=='string')return Reflect.set(target,key,value);if(key!=='length')api.setItem(key,value);return true;},
+        deleteProperty:(target,key)=>{if(typeof key!=='string')return Reflect.deleteProperty(target,key);api.removeItem(key);return true;},
+        has:(target,key)=>Reflect.has(target,key)||Object.hasOwn(data,key),
+        ownKeys:target=>[...new Set([...Object.keys(data).filter(key=>key!=='length'),...Reflect.ownKeys(target)])],
+        getOwnPropertyDescriptor:(target,key)=>Reflect.getOwnPropertyDescriptor(target,key)||(typeof key==='string'&&key!=='length'&&Object.hasOwn(data,key)?{value:data[key],writable:true,enumerable:true,configurable:true}:undefined)
+      });
+      Object.defineProperty(window, 'localStorage', { value: storage });
       window.offlineReady = () => port.postMessage({ type: 'ready' });
     };
     try {

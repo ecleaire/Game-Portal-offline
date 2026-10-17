@@ -65,7 +65,9 @@ internal sealed class DesktopForm : Form {
             var uri=new Uri(e.Request.Uri);
             if(uri.GetLeftPart(UriPartial.Path)==DesktopProgram.AppUrl&&e.Request.Method=="GET") {e.Response=view.CoreWebView2.Environment.CreateWebResourceResponse(new MemoryStream(page,false),200,"OK","Content-Type: text/html; charset=utf-8\r\nCache-Control: no-store");return;}
             if(uri.Host!="gameportal.desktop.invalid"||uri.Scheme!="https"||!uri.AbsolutePath.StartsWith("/io/"))throw new UnauthorizedAccessException("外部への接続は許可していません。");
-            var query=System.Web.HttpUtility.ParseQueryString(uri.Query);var root=files.Get(query["root"]??"");string path=query["path"]??"",secret;
+            // Authenticate without filesystem IO on the UI thread. Read/commit
+            // validate the library identity in their background worker below.
+            var query=System.Web.HttpUtility.ParseQueryString(uri.Query);var root=files.Known(query["root"]??"");string path=query["path"]??"",secret;
             try{secret=e.Request.Headers.GetHeader("X-Game-Portal-Desktop");}catch{secret="";}if(secret!=root.Secret)throw new UnauthorizedAccessException("起動元を確認してください。");
             if(uri.AbsolutePath=="/io/read"&&e.Request.Method=="GET"){
                 Stream stream=await Task.Run(()=>files.Read(root,path));e.Response=view.CoreWebView2.Environment.CreateWebResourceResponse(stream,200,"OK","Content-Type: application/octet-stream\r\nCache-Control: no-store\r\nContent-Length: "+stream.Length);return;
@@ -98,7 +100,7 @@ internal sealed class DesktopForm : Form {
                 if(e.AdditionalObjects==null||e.AdditionalObjects.Count!=1||!(e.AdditionalObjects[0] is CoreWebView2File))throw new IOException("保存先フォルダーを1つドラッグしてください。");
                 string chosen=((CoreWebView2File)e.AdditionalObjects[0]).Path;value=files.Record(await Task.Run(()=>files.Register(chosen)));
             }else if(op=="launch"){
-                var root=files.Get(DesktopFiles.Text(data,"root"));value=await Launch(root,data);
+                var root=files.Known(DesktopFiles.Text(data,"root"));value=await Launch(root,data);
             }else value=await Task.Run(()=>Operate(op,data));
             if(!IsDisposed&&!view.IsDisposed&&view.CoreWebView2!=null)view.CoreWebView2.PostWebMessageAsJson(files.Serialize(new {id=id,ok=true,value=value}));
         }catch(Exception error){if(id>0&&!IsDisposed&&!view.IsDisposed&&view.CoreWebView2!=null)try{view.CoreWebView2.PostWebMessageAsJson(files.Serialize(new {id=id,ok=false,error=new {message=error.Message,name=DesktopFiles.ErrorName(error)}}));}catch{}}
@@ -123,7 +125,7 @@ internal sealed class DesktopForm : Form {
         var result=new TaskCompletionSource<object>();var thread=new Thread(()=>{
             Mutex lease=null;bool held=false;Process game=null;
             try{
-                string libraryId=PortalNative.Id(DesktopFiles.Text(data,"libraryId")),gameId=PortalNative.Id(DesktopFiles.Text(data,"gameId"));PortalNative.CheckLibrary(root.Path,libraryId);string executable=PortalNative.Executable(root.Path,DesktopFiles.Text(data,"path"),gameId);
+                files.Get(root.Token);string libraryId=PortalNative.Id(DesktopFiles.Text(data,"libraryId")),gameId=PortalNative.Id(DesktopFiles.Text(data,"gameId"));PortalNative.CheckLibrary(root.Path,libraryId);string executable=PortalNative.Executable(root.Path,DesktopFiles.Text(data,"path"),gameId);
                 lease=new Mutex(false,"Local\\GamePortalNative-"+libraryId+"-"+gameId);try{held=lease.WaitOne(0);}catch(AbandonedMutexException){held=true;}if(!held)throw new IOException("このEXEゲームは起動中です。");
                 game=Process.Start(new ProcessStartInfo {FileName=executable,WorkingDirectory=Path.GetDirectoryName(executable),UseShellExecute=false});if(game==null)throw new IOException("ゲームを起動できませんでした。");Interlocked.Increment(ref nativeGames);result.SetResult(new {launched=true});game.WaitForExit();
             }catch(Exception error){result.TrySetException(error);}finally{if(game!=null){game.Dispose();Interlocked.Decrement(ref nativeGames);}if(held)lease.ReleaseMutex();if(lease!=null)lease.Dispose();}
