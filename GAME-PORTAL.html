@@ -3176,7 +3176,7 @@ for(const id of ['postButton','editPlaying','updatePlaying']){
   button.onclick=()=>{
     if(permissionPending||busy||starting||!editingEnabled||!root)return;
     const folder=root;let permission;permissionPending=true;
-    try{permission=Promise.resolve(folder.requestPermission({mode:'readwrite'}));}
+    try{permission=Promise.resolve(requestFolderPermission(folder,'readwrite'));}
     catch(error){permissionPending=false;editingAccessError(error);return;}
     return permission.then(result=>{
       if(result!=='granted')throw new Error('ゲームを追加・編集するには保存の許可が必要です。');
