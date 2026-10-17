@@ -70,7 +70,7 @@ internal sealed class DesktopForm : Form {
             var query=System.Web.HttpUtility.ParseQueryString(uri.Query);var root=files.Known(query["root"]??"");string path=query["path"]??"",secret;
             try{secret=e.Request.Headers.GetHeader("X-Game-Portal-Desktop");}catch{secret="";}if(secret!=root.Secret)throw new UnauthorizedAccessException("起動元を確認してください。");
             if(uri.AbsolutePath=="/io/read"&&e.Request.Method=="GET"){
-                Stream stream=await Task.Run(()=>files.Read(root,path));e.Response=view.CoreWebView2.Environment.CreateWebResourceResponse(stream,200,"OK","Content-Type: application/octet-stream\r\nCache-Control: no-store\r\nContent-Length: "+stream.Length);return;
+                var read=await Task.Run(()=>{Stream stream=files.Read(root,path);try{return Tuple.Create(stream,stream.Length);}catch{stream.Dispose();throw;}});e.Response=view.CoreWebView2.Environment.CreateWebResourceResponse(read.Item1,200,"OK","Content-Type: application/octet-stream\r\nCache-Control: no-store\r\nContent-Length: "+read.Item2);return;
             }
             if(uri.AbsolutePath=="/io/write"&&e.Request.Method=="POST"){
                 // No timeout or cancellation: a committed write must be verified, never retried blindly.
