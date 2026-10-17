@@ -121,7 +121,7 @@ do {
         NSApplication.shared.setActivationPolicy(.accessory);NSApplication.shared.activate(ignoringOtherApps:true)
         let dialog=NSOpenPanel();dialog.title="ゲームの保存先フォルダーを選んでください";dialog.message=configurationError ?? "Windows版で初期設定したゲームの保管フォルダーを選んでください。";dialog.canChooseFiles=false;dialog.canChooseDirectories=true;dialog.allowsMultipleSelection=false
         guard dialog.runModal() == .OK,let selected=dialog.url else{exit(0)}
-        let id=try checkLibrary(selected);root=selected;libraryID=id;UserDefaults.standard.set(["path":selected.path,"libraryId":id],forKey:preference)
+        let id=try checkLibrary(selected);root=selected;libraryID=id;configurationError=nil;UserDefaults.standard.set(["path":selected.path,"libraryId":id],forKey:preference)
       }
     }
     #endif
