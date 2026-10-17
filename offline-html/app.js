@@ -402,7 +402,7 @@ function homeIsIdle(){return performance.now()-lastHomeActivity>=HOME_IDLE_MS&&!
 function noteHomeActivity(){lastHomeActivity=performance.now();idleSyncController?.abort();folderRecoveryAbort?.abort();folderWatchAbort?.abort();}
 for(const event of ['pointerdown','pointermove','keydown','wheel','input','focusin'])document.addEventListener(event,noteHomeActivity,{capture:true,passive:true});
 async function syncLibrary({idle=false}={}){
-  if(!root||starting||busy||syncPaused||syncPromise||folderRecoveryPromise||closingPlayer||document.hidden||document.querySelector('dialog[open]:not(#player)'))return;
+  if(!root||starting||busy||automaticConnectionPaused||syncPaused||syncPromise||folderRecoveryPromise||closingPlayer||document.hidden||document.querySelector('dialog[open]:not(#player)'))return;
   if(idle&&!homeIsIdle())return;
   const folder=root,libraryId=localLibrary,controller=new AbortController();syncController=controller;
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
@@ -428,7 +428,7 @@ async function syncLibrary({idle=false}={}){
   try{await syncPromise;}finally{clearTimeout(deadline);syncPromise=null;if(syncController===controller)syncController=null;if(idleSyncController===controller)idleSyncController=null;}
 }
 async function syncWhenHomeIdle(){
-  if(!homeIsIdle()||performance.now()-lastHomeSync<HOME_IDLE_MS||!root||starting||busy||syncPaused||syncPromise||closingPlayer||document.hidden)return;
+  if(!homeIsIdle()||performance.now()-lastHomeSync<HOME_IDLE_MS||!root||starting||busy||automaticConnectionPaused||syncPaused||syncPromise||closingPlayer||document.hidden)return;
   lastHomeSync=performance.now();await syncLibrary({idle:true});
 }
 setInterval(()=>{void syncWhenHomeIdle();},5000);
