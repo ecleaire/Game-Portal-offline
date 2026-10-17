@@ -93,7 +93,10 @@ internal sealed class DesktopForm : Form {
             if(op=="closeReady"&&closePending){closePending=false;if(DesktopFiles.Flag(data,"allowed")){closing=true;Close();}else MessageBox.Show(this,"処理中または未保存の内容があります。保存を完了してから閉じてください。","GAME PORTAL");return;}
             if(op=="closeWindow"){BeginInvoke(new Action(()=>Close()));return;}
             if(op=="select"){
-                using(var dialog=new FolderBrowserDialog()){dialog.Description="ゲームの保存先フォルダーを選んでください";dialog.ShowNewFolderButton=true;if(dialog.ShowDialog(this)==DialogResult.OK){string chosen=dialog.SelectedPath;value=files.Record(await Task.Run(()=>files.Register(chosen)));}}
+                string chosen=DesktopFolderDialog.Choose(Handle);if(chosen!=null)value=files.Record(await Task.Run(()=>files.Register(chosen)));
+            }else if(op=="dropFolder"){
+                if(e.AdditionalObjects==null||e.AdditionalObjects.Count!=1||!(e.AdditionalObjects[0] is CoreWebView2File))throw new IOException("保存先フォルダーを1つドラッグしてください。");
+                string chosen=((CoreWebView2File)e.AdditionalObjects[0]).Path;value=files.Record(await Task.Run(()=>files.Register(chosen)));
             }else if(op=="launch"){
                 var root=files.Get(DesktopFiles.Text(data,"root"));value=await Launch(root,data);
             }else value=await Task.Run(()=>Operate(op,data));
@@ -102,6 +105,7 @@ internal sealed class DesktopForm : Form {
     }
     object Operate(string op,Dictionary<string,object> data){
         if(op=="restore")return files.Record(files.Restore());if(op=="forget"){files.Forget();return true;}
+        if(op=="selectPath")return files.Record(files.Register(DesktopFiles.Text(data,"path")));
         if(op=="abortWrite"){var known=files.Known(DesktopFiles.Text(data,"root"));files.AbortWrite(known,DesktopFiles.Text(data,"writer"));return true;}
         var root=files.Get(DesktopFiles.Text(data,"root"));string path=DesktopFiles.Text(data,"path");
         switch(op){

@@ -7,6 +7,10 @@ internal static class DesktopSelfTest {
     static void Fails(Action action,string name,List<string> results){bool failed=false;try{action();}catch{failed=true;}Assert(failed,name);results.Add(name);}
     internal static void Run(string directory){
         Directory.CreateDirectory(directory);var results=new List<string>();string disk=Path.Combine(directory,"ゲーム保管 # +");Directory.CreateDirectory(disk);var service=new DesktopFiles(Path.Combine(directory,"profile"));var root=service.Register(disk);
+        Assert(DesktopFiles.NormalizeRoot(@"\\NAS\共有\ゲーム\")==@"\\NAS\共有\ゲーム","UNC path normalization");results.Add("UNC path normalization");
+        Assert(DesktopFiles.NormalizeRoot("\""+disk+"\"")==disk,"quoted local path");results.Add("quoted local path");
+        Assert(DesktopFiles.NormalizeRoot(@"C:\")==@"C:\","drive root preserved");results.Add("drive root preserved");
+        foreach(string invalid in new[]{"relative","",@"\\NAS",@"\\?\C:\folder",@"\\.\C:\folder"})Fails(()=>DesktopFiles.NormalizeRoot(invalid),"reject root "+invalid,results);
         service.Entry(root,".gameportal",true,true);service.Entry(root,".gameportal/library-id.json",false,true);
         string id=new String('a',32);service.Write(root,".gameportal/library-id.json",new MemoryStream(Encoding.UTF8.GetBytes("{\"schema\":1,\"id\":\""+id+"\"}")));service.Remember(root);
         Assert(service.Restore().Id==id,"persistent identity");results.Add("initialize and reconnect");

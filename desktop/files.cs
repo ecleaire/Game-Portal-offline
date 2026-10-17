@@ -39,8 +39,14 @@ internal sealed class DesktopFiles {
         foreach(string part in relative.Split('/')){current=System.IO.Path.Combine(current,part);if((Directory.Exists(current)||File.Exists(current))&&(File.GetAttributes(current)&FileAttributes.ReparsePoint)!=0)throw new IOException("リンクを経由したファイルは操作できません。");}
         return full;
     }
+    internal static string NormalizeRoot(string path){
+        path=(path??"").Trim();if(path.StartsWith("\"")&&path.EndsWith("\"")&&path.Length>=2)path=path.Substring(1,path.Length-2);
+        path=path.Replace('/','\\');
+        if(path.Length>1000||path.StartsWith("\\\\?\\")||path.StartsWith("\\\\.\\")||!System.Text.RegularExpressions.Regex.IsMatch(path,@"^(?:[a-zA-Z]:\\|\\\\[^\\]+\\[^\\]+(?:\\|$))"))throw new IOException("フォルダーのフルパスを入力してください。NASは \\\\サーバー名\\共有名 の形で指定します。");
+        string full=System.IO.Path.GetFullPath(path),root=System.IO.Path.GetPathRoot(full);return full.Length==root.Length?full:full.TrimEnd('\\');
+    }
     internal Root Register(string path,string expected=null){
-        path=System.IO.Path.GetFullPath(path).TrimEnd('\\');if(!Directory.Exists(path))throw new DirectoryNotFoundException("保存先が見つかりません。NASやドライブの接続を確認してください。");
+        path=NormalizeRoot(path);if(File.Exists(path))throw new InvalidDataException("ファイルではなく、保存先フォルダーを選んでください。");if(!Directory.Exists(path))throw new DirectoryNotFoundException("保存先が見つかりません。NASの場合はエクスプローラーで共有フォルダーを開き、接続・サインインを確認してください。");
         if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new IOException("リンクを経由した保存先は選べません。");
         string id=LibraryId(path);if(expected!=null&&expected!=id)throw new IOException("保存先のIDが変わりました。元の保存先と設定を確認してください。");
         lock(gate){foreach(var item in roots.Values)if(String.Equals(item.Path,path,StringComparison.OrdinalIgnoreCase)&&item.Id==id)return item;var root=new Root {Path=path,Token=Secret(),Secret=Secret(),Id=id};roots[root.Token]=root;return root;}

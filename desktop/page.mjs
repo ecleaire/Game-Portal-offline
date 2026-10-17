@@ -14,7 +14,8 @@ export function desktopPage(html,bootstrap,licenses=''){
   // WebView2 exposes this property in opaque frames, but reading it throws.
   // Keep the sandbox and let exports detect that service workers are unavailable.
   replace('function webBootstrap(nonce) {',"function webBootstrap(nonce) {\n  try { void navigator.serviceWorker; } catch { delete Object.getPrototypeOf(navigator).serviceWorker; }");
-  replace('</style>','#folderDrop,#exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}</style>');
+  replace('<div id="folderDrop" class="notice" role="group" aria-label="保存先フォルダーをドラッグして接続">保存先フォルダーをここへドラッグ</div>','<div id="folderDrop" class="notice" role="group" aria-label="保存先フォルダーをドラッグして接続">保存先フォルダーをここへドラッグ</div><label for="desktopFolderPath">保存先のパス</label><div class="buttons desktop-path"><input id="desktopFolderPath" type="text" autocomplete="off" spellcheck="false" placeholder="例：&#92;&#92;NAS&#92;共有&#92;ゲーム" aria-label="保存先フォルダーのパス"><button id="desktopConnectPath" class="secondary">このパスに接続</button></div><p class="hint">エクスプローラーのアドレス欄からコピーして貼り付けられます。</p>');
+  replace('</style>','#exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}.desktop-path{margin-top:8px}.desktop-path input{flex:1 1 240px;min-width:0;width:100%}</style>');
   html=html.replaceAll('このPCのChrome','このアプリ').replaceAll('このブラウザー内','このアプリ内');
   const escaped=licenses.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
   replace('<div class="buttons help-footer">','<section class="help-section"><h3>デスクトップ試作版</h3><p>保存先の選択と読み書きはWindowsアプリが行います。初回に保存先を選び、次回はEXEを開くと前回の保存先へ接続します。セーブはこのアプリ内に保存します。Chrome内のセーブは必要に応じて書き出し・読み込みで移してください。</p><details><summary>ライセンス</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px">'+escaped+'</pre></details></section><div class="buttons help-footer">');

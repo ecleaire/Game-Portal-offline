@@ -5,11 +5,11 @@ const desktopHost=(()=>{
   const notify=()=>{if(typeof nativeReadControls==='function')nativeReadControls(reads.size);};
   function error(info){const result=new Error(info.message||'保存先を確認してください。');result.name=info.name||'NotReadableError';return result;}
   chrome.webview.addEventListener('message',event=>{const message=event.data,job=requests.get(message.id);if(!job)return;requests.delete(message.id);clearTimeout(job.timer);reads.delete(job);notify();message.ok?job.resolve(message.value):job.reject(error(message.error||{}));});
-  function rpc(op,args={}){
+  function rpc(op,args={},objects=null){
     return new Promise((resolve,reject)=>{
-      const id=++serial,readonly=['restore','stat','list'].includes(op)||(['file','directory'].includes(op)&&!args.create),job={resolve,reject,id};
+      const id=++serial,readonly=['restore','stat','list','selectPath','dropFolder'].includes(op)||(['file','directory'].includes(op)&&!args.create),job={resolve,reject,id};
       if(readonly){reads.add(job);job.timer=setTimeout(()=>{requests.delete(id);reads.delete(job);notify();reject(error({name:'TimeoutError',message:'保存先から応答がありません。再接続するか、保存先を選び直してください。'}));},12000);}
-      requests.set(id,job);notify();chrome.webview.postMessage({id,op,...args});
+      requests.set(id,job);notify();try{if(objects)chrome.webview.postMessageWithAdditionalObjects({id,op,...args},objects);else chrome.webview.postMessage({id,op,...args});}catch(e){requests.delete(id);clearTimeout(job.timer);reads.delete(job);notify();reject(e);}
     });
   }
   const child=(path,name)=>{if(typeof name!=='string'||!name||name==='.'||name==='..'||/[\\/]/.test(name))throw new TypeError('ファイル名を確認してください。');return path?path+'/'+name:name;};
@@ -44,10 +44,21 @@ const desktopHost=(()=>{
   nativeTools.nativeFolder=async()=> (await current())?.handle||null;
   nativeTools.launchNative=async(connection,libraryId,game)=>rpc('launch',{root:root?.desktopToken,libraryId,gameId:game.id,path:game.path});
   const cancel=()=>{for(const job of [...reads]){const reason=error({name:'NativeReadCancelled',message:'接続待ちを中止しました。もう一度試せます。'});if(job.controller)job.controller.abort(reason);else{clearTimeout(job.timer);requests.delete(job.id);job.reject(reason);}reads.delete(job);}notify();};
-  return {current,cancel,get pending(){return reads.size;},attach(h){if(!h)return h;h.cancelReads=cancel;Object.defineProperty(h,'pendingReads',{get:()=>reads.size,configurable:true});return h;}};
+  return {current,cancel,fromPath:async path=>desktopHost.attach(record(await rpc('selectPath',{path})).handle),fromDrop:async files=>desktopHost.attach(record(await rpc('dropFolder',{},files)).handle),get pending(){return reads.size;},attach(h){if(!h)return h;h.cancelReads=cancel;Object.defineProperty(h,'pendingReads',{get:()=>reads.size,configurable:true});return h;}};
 })();
 const desktopOriginalNativeFolder=nativeTools.nativeFolder;
 nativeTools.nativeFolder=async()=>desktopHost.attach(await desktopOriginalNativeFolder());
 const desktopOriginalPicker=window.showDirectoryPicker;
 window.showDirectoryPicker=async()=>desktopHost.attach(await desktopOriginalPicker());
-document.addEventListener('drop',event=>{if(event.target.closest('#emptyState,#folderDrop')){event.preventDefault();event.stopImmediatePropagation();status('デスクトップ版では「保存先を選ぶ」からフォルダーを選んでください。');}},true);
+document.addEventListener('drop',event=>{
+  const target=event.target.closest('#emptyState,#folderDrop');if(!target)return;
+  event.preventDefault();event.stopImmediatePropagation();if(busy||starting||(target.id==='emptyState'&&root))return;
+  const files=[...(event.dataTransfer?.files||[])];
+  const selection=files.length===1?desktopHost.fromDrop(files).then(handle=>({handle}),error=>({error})):Promise.resolve({error:new Error('保存先フォルダーを1つドラッグしてください。')});
+  openFolderSelection(selection);
+},true);
+document.getElementById('desktopConnectPath').onclick=()=>{
+  if(busy||starting)return;
+  return openFolderSelection(desktopHost.fromPath(document.getElementById('desktopFolderPath').value).then(handle=>({handle}),error=>({error})));
+};
+document.getElementById('desktopFolderPath').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();document.getElementById('desktopConnectPath').click();}});
