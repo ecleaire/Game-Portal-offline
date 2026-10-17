@@ -245,7 +245,7 @@ function writeControls() {
   renderSaveVerification();
   $('#enableEditing').disabled = starting || !!root?.nativeReadOnly;
   $('#nativeFolderNotice').hidden=!root?.nativeReadOnly;
-  $('#retryNativeConnection').hidden=!nativeBridge||!!root&&!root.nativeReadOnly;
+  $('#retryNativeConnection').hidden=!nativeBridge||nativeRetryNeeded||!!root&&!root.nativeReadOnly;
   $('#syncSaves').disabled=!!root?.nativeReadOnly;
   if(openedGame)updatePlayerInfo();else $('#editPlaying').disabled=true;
   $('#postButton').hidden=!editingEnabled;
@@ -448,6 +448,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   const nextLocalLibrary = initialize ? await library.ensureLibraryId(handle) : scannedLibrary;
   await checkLibraryCompatibility(handle,signal);
   signal?.throwIfAborted();
+  if(handle.nativeReadOnly){editingEnabled=false;$('#enableEditing').checked=false;}
   resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; automaticPermissionAttempted=false; if(!preserveSearch){resetSearch();sharedSaveIssues.clear();saveSyncRows();}folderRecovery=null;
   nativeRetry=false;
   if(!handle.nativeReadOnly)clearNativePageConnection();
