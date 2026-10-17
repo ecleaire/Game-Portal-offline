@@ -69,6 +69,6 @@ await writeFile(join(root, 'THIRD-PARTY-LICENSES.txt'), licenses);
 await writeFile(join(output, 'README.txt'), readme);
 await writeFile(join(output, 'NAS-VALIDATION.txt'), nasGuide);
 await writeFile(join(output, 'START-HERE.txt'), transferGuide);
-const zip = await packageWebFiles([new File([html], 'GAME-PORTAL.html'), new File([readme], 'README.txt'), new File([nasGuide], 'NAS-VALIDATION.txt'), new File([licenses], 'THIRD-PARTY-LICENSES.txt'), new File([transferGuide], 'START-HERE.txt')]);
+const zip = await packageWebFiles([new File([html], 'GAME-PORTAL.html'), new File([playerHTML], 'GAME-PORTAL-PLAY.html'), new File([readme], 'README.txt'), new File([nasGuide], 'NAS-VALIDATION.txt'), new File([licenses], 'THIRD-PARTY-LICENSES.txt'), new File([transferGuide], 'START-HERE.txt')]);
 await writeFile(join(output, 'GAME-PORTAL-HTML.zip'), Buffer.from(await zip.arrayBuffer()));
 console.log(`Offline launcher built: ${Buffer.byteLength(html)} bytes, ${lock.files.length} verified runtime files. No runtime network required.`);

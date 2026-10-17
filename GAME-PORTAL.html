@@ -1982,7 +1982,8 @@ function failedAutomaticConnection(){
   if(++automaticConnectionFailures>=3){pauseAutomaticConnection();syncStatus('自動接続を停止しました。設定から保存先を選び直せます。');}
 }
 function cancelFolderConnection(){
-  pauseAutomaticConnection();startupConnection?.abort();nativeReadAbort?.abort();manualConnection?.abort();root?.cancelReads?.();nativeTools.cancelFolderReads?.();
+  const reason=new DOMException('接続待ちを中止しました。設定から保存先を選び直せます。','NativeReadCancelled');
+  pauseAutomaticConnection();startupConnection?.abort(reason);nativeReadAbort?.abort(reason);manualConnection?.abort(reason);root?.cancelReads?.();nativeTools.cancelFolderReads?.();
   if(starting)initialized();status('接続待ちを中止しました。設定から保存先を選び直せます。');
 }
 const transientFolderError=error=>typeof error.code!=='string'&&['NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(error.name);
@@ -1995,7 +1996,7 @@ async function recoverFolderConnection(){
   const job=folderRecovery;
   if(!job||folderRecoveryPromise||performance.now()<job.next||starting||busy||syncPromise||folderWatchPromise||closingPlayer||activePlay||openedGame||pendingSave||flushing||settingsReceipts.length||contentTarget?.contentPending||games.some(game=>game.contentPending)||document.hidden||document.querySelector('dialog[open]'))return;
   if(root!==job.root||localLibrary!==job.libraryId||!root&&remembered!==job.handle||compatibilityProblem){folderRecovery=null;return;}
-  const controller=new AbortController();folderRecoveryAbort=controller;
+  const controller=new AbortController();folderRecoveryAbort=controller;nativeReadControls();
   job.delay=Math.min(job.delay*2,60000);job.next=performance.now()+job.delay;
   const previousStatus=$('#status').textContent;
   folderRecoveryPromise=(async()=>{
@@ -2012,7 +2013,7 @@ async function recoverFolderConnection(){
       if(!transientFolderError(error)){folderRecovery=null;syncPaused=true;compatibilityFailure(error);status(error.message);writeControls();}
     }
   })();
-  try{await folderRecoveryPromise;}finally{folderRecoveryPromise=null;if(folderRecoveryAbort===controller)folderRecoveryAbort=null;}
+  try{await folderRecoveryPromise;}finally{folderRecoveryPromise=null;if(folderRecoveryAbort===controller)folderRecoveryAbort=null;nativeReadControls();}
 }
 setInterval(()=>{void recoverFolderConnection();},5000);
 window.addEventListener('hashchange',()=>{if(nativeBridge&&(!root||root.nativeReadOnly)&&['','#main','#libraryTitle'].includes(location.hash))try{rememberNativePageConnection(location.href);}catch{}});
@@ -2156,7 +2157,7 @@ function folderSharingControls(){
 async function checkSharedFolder(){
   const available=()=>!automaticConnectionPaused&&!folderRecovery&&!root?.nativeReadOnly&&!folderRecoveryPromise&&!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!contentTarget?.contentPending&&!games.some(game=>game.contentPending)&&!document.hidden;
   if(folderWatchPromise||!available())return;
-  const controller=new AbortController(),watchRoot=root;folderWatchAbort=controller;
+  const controller=new AbortController(),watchRoot=root;folderWatchAbort=controller;nativeReadControls();
   const timer=setTimeout(()=>controller.abort(new DOMException('保存先の確認が応答しません。再接続するか、保存先を選び直してください。','TimeoutError')),12000);
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
   folderWatchPromise=(async()=>{
@@ -2171,14 +2172,14 @@ async function checkSharedFolder(){
       if(!available()||root!==watchRoot)return;
       await (async()=>{
         if(await read(()=>record.handle.queryPermission({mode:'read'}))!=='granted'){
-          remembered=record.handle;automaticPermissionAttempted=false;lastFolderRevision=record.revision;$('#reconnect').hidden=false;return '保存先へのアクセス許可が必要です。「保存先に再接続する」を押してください。';
+          remembered=record.handle;automaticPermissionAttempted=false;lastFolderRevision=record.revision;$('#reconnect').hidden=false;status('保存先へのアクセス許可が必要です。「保存先に再接続する」を押してください。');return;
         }
         controller.signal.throwIfAborted();if(root!==watchRoot)return '';
         lastFolderRevision=record.revision;await connectRememberedRead(record.handle,true,{signal:controller.signal});return '';
       })();
     }catch(error){if(root!==watchRoot||controller.signal.aborted&&controller.signal.reason?.name!=='TimeoutError')return;failedAutomaticConnection();lastFolderRevision='';status('保存先の共有を確認できません。設定から選び直せます：'+error.message);}
   })();
-  try{await folderWatchPromise;}finally{clearTimeout(timer);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;void recoverFolderConnection();}
+  try{await folderWatchPromise;}finally{clearTimeout(timer);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();}
 }
 setInterval(()=>{void checkSharedFolder();},5000);
 window.addEventListener('focus',()=>{void checkSharedFolder();});
@@ -2396,6 +2397,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   await read(()=>checkLibraryCompatibility(handle,signal));
   const scannedLibrary=await read(()=>library.loadLibraryId(handle));
   signal?.throwIfAborted();
+  if(launcherEdition==='player'&&!scannedLibrary)throw new Error('この保存先は準備が必要です。クリエイター版で一度開いて初回設定を済ませてください。');
   if(expectedLibrary&&scannedLibrary!==expectedLibrary){const error=new Error('保存先のIDが変わりました。設定からフォルダーを確認してください。');error.code='LIBRARY_ID_CHANGED';throw error;}
   if(portableConnection&&scannedLibrary!==portableConnection.libraryId)throw new Error('このHTMLの保存先と違います。「'+portableConnection.name+'」のフォルダーを選んでください。');
   const next = await read(()=>library.loadMetadata(handle)), nextGames = await read(()=>library.scan(handle, next));

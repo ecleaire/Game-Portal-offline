@@ -26,5 +26,6 @@ jobs:
           name: GAME-PORTAL-desktop-prototype
           path: |
             GAME-PORTAL.exe
+            GAME-PORTAL-PLAY.exe
             DESKTOP-LICENSES.txt
           if-no-files-found: error

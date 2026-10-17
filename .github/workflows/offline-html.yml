@@ -43,6 +43,7 @@ jobs:
           name: GAME-PORTAL-HTML
           path: |
             offline-release/GAME-PORTAL.html
+            offline-release/GAME-PORTAL-PLAY.html
             offline-release/README.txt
             offline-release/START-HERE.txt
             offline-release/NAS-VALIDATION.txt

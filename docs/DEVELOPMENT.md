@@ -71,3 +71,9 @@ npm run source:package
 ゲーム本体・個人セーブ・認証情報・ローカル作業資料はGitや配布ZIPへ含めないでください。
 
 [資料一覧へ戻る](README.md)
+
+## 2つの版の配布
+
+HTMLビルドは `GAME-PORTAL.html`（クリエイター）と `GAME-PORTAL-PLAY.html`（プレイ専用）を生成します。Windowsビルドも同じ2版を生成し、Macビルドは各OS向けに2つの署名済みアプリを作成します。`node scripts/verify-distribution.mjs` で全版の役割・内蔵HTML・バージョンを確認します。プレイ専用版の制限はUIと保存処理の両方で維持し、対応セーブの同期だけ許可します。新しいUIを追加したときはプレイ専用版への露出を確認してください。
+
+追加検証：`node tests/offline-html/editions-browser.mjs`、Windows上では `node tests/desktop-player.mjs`。両方とも3回のプレイ・保存・再起動を確認し、後者はアプリへの直接変更要求も拒否されることを確認します。Mac実機の操作・実NAS・別PCの実権限は自動テストでは代替できません。
