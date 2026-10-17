@@ -41,4 +41,4 @@ try{
   }
   assert.deepEqual(errors,[]);await context.close();contexts.delete(context);console.log('Automatic connection passed:',scenario);
  }
-}finally{for(const context of contexts)await context.close().catch(()=>{});await new Promise(r=>server.close(r));for(const profile of profiles){assert.equal(dirname(profile),resolve(tmpdir()));await rm(profile,{recursive:true,force:true});}}
+}finally{for(const context of contexts)await context.close().catch(()=>{});await new Promise(r=>server.close(r));for(const profile of profiles){assert.equal(dirname(profile),resolve(tmpdir()));await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:100});}}
