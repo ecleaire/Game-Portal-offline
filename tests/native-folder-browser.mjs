@@ -22,8 +22,8 @@ try{
  const api=(action,path='',headers={},extra={})=>fetch(info.origin+'/native/folder',{method:'POST',headers:{Origin:'null','Content-Type':'application/json','X-Game-Portal-Token':info.token,...headers},body:JSON.stringify({version,action,path,...extra})});
  if(process.platform==='darwin'){
   // Malformed local requests must be rejected without terminating the app.
-  for(const value of ['', 'not-a-number']){
-   const response=await new Promise((resolve,reject)=>{let output='';const socket=createConnection({host:'127.0.0.1',port:Number(new URL(info.origin).port)},()=>socket.write('POST /native/folder HTTP/1.1\r\nHost: 127.0.0.1:'+new URL(info.origin).port+'\r\nContent-Length: '+value+'\r\n\r\n'));socket.setTimeout(3000,()=>socket.destroy(Error('Malformed request stalled')));socket.on('data',bytes=>output+=bytes);socket.on('error',reject);socket.on('end',()=>resolve(output));});
+  for(const value of ['', ' ', 'not-a-number']){
+   const response=await new Promise((resolve,reject)=>{let output='';const socket=createConnection({host:'127.0.0.1',port:Number(new URL(info.origin).port)},()=>socket.write('POST /native/folder HTTP/1.1\r\nHost: 127.0.0.1:'+new URL(info.origin).port+'\r\nContent-Length:'+value+'\r\n\r\n'));socket.setTimeout(3000,()=>socket.destroy(Error('Malformed request stalled')));socket.on('data',bytes=>output+=bytes);socket.on('error',reject);socket.on('end',()=>resolve(output));});
    assert.match(response,/^HTTP\/1\.1 4\d\d /,'malformed Content-Length must return an error, not crash');assert.equal((await api('info')).status,200,'helper survives malformed input');
   }
   const fifo=join(disk,'blocked.html');execFileSync('mkfifo',[fifo]);
