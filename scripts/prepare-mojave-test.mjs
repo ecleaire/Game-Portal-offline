@@ -9,8 +9,9 @@ const app=join(cache,'Firefox.app');try{await access(join(app,'Contents/MacOS/fi
 execFileSync('codesign',['--verify','--deep','--strict',app],{stdio:'pipe'});
 const entries=execFileSync('tar',['-tzf',driver],{encoding:'utf8'}).trim();if(entries!=='geckodriver')throw Error('Unexpected driver archive entries');execFileSync('tar',['-xzf',driver,'-C',cache],{stdio:'pipe'});
 console.log('Official Firefox ESR 115.43.0 and geckodriver verified for isolated browser testing.');
-// Official Chrome for Testing entry and Google Cloud Storage object digest.
-const chromeZip=await download('chrome-116-mac-x64.zip','https://storage.googleapis.com/chrome-for-testing-public/116.0.5845.96/mac-x64/chrome-mac-x64.zip','md5',Buffer.from('pSu7psLw4QiqJqeXaJ24pw==','base64').toString('hex'));
+// Official Chrome for Testing object, first cross-checked against Google's
+// storage MD5 pSu7psLw4QiqJqeXaJ24pw==; pin its verified SHA-256 for future runs.
+const chromeZip=await download('chrome-116-mac-x64.zip','https://storage.googleapis.com/chrome-for-testing-public/116.0.5845.96/mac-x64/chrome-mac-x64.zip','sha256','edc8e78f7a4b618037067593b2cb79ff571c16da0b955bc05a500af34b77d2fe');
 const chrome=join(cache,'chrome-mac-x64','Google Chrome for Testing.app');
 try{await access(join(chrome,'Contents/MacOS/Google Chrome for Testing'));}catch{execFileSync('ditto',['-x','-k',chromeZip,cache],{stdio:'pipe'});}
 // This official testing build is unsigned; verify the pinned storage object
