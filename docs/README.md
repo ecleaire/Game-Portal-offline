@@ -1,13 +1,13 @@
-# 使い方・資料
+# 使い方
 
-基本操作は `GAME-PORTAL.html` 内の「ヘルプ」で確認できます。
-[ダウンロード・起動手順](../README.md)へ戻る。
+基本操作は、アプリ内の **「ヘルプ」** で確認できます。
+[ダウンロード・起動手順](../README.md)はこちら。
 
 ## 目的から探す
 
 | 知りたいこと | 案内 |
 | --- | --- |
-| WindowsでHTMLを開かずに使う | [デスクトップ試作版](DESKTOP.md) |
+| Windowsアプリを使う | [Windowsでの使い方](DESKTOP.md) |
 | Macで使う | [Macアプリの使い方](MAC.md) |
 | ゲームの追加・編集・プレイ、保存と同期 | [詳しい使い方](OFFLINE_HTML.md) |
 | 別のPC・他の人へ渡す | [受け渡し手順](TRANSFER_GUIDE.md) |
@@ -16,22 +16,11 @@
 | NASで運用する前に確認する | [NAS検証手順](NAS_VALIDATION.md) |
 | 更新内容を確認する | [変更履歴](../CHANGELOG.md) |
 
-プレイ専用版は **`GAME-PORTAL-PLAY.html` / `GAME-PORTAL-PLAY.exe`**、Macは **`GAME-PORTAL-PLAY-MAC.app` / `GAME-PORTAL-PLAY-MOJAVE.app`** です。追加・編集できるクリエイター版と同じ保存先を使えます。
+遊ぶときはプレイ専用版、ゲームを追加・管理するときはクリエイター版を選びます。どちらも同じゲームの保存先を使えます。
 
-## ZIPの中で使うファイル
+## 起動するファイルを選ぶ
 
-ZIPを展開した `Game-Portal-offline-html-main` の一番上にあります。
-
-| ファイル | 使う場面 |
-| --- | --- |
-| **`GAME-PORTAL.exe`** | Windowsデスクトップ本体の試作版。HTMLは内蔵しています。 |
-| **`GAME-PORTAL.html`** | 通常の起動。クリエイター版。Chromeで開きます。 |
-| `GAME-PORTAL-WINDOWS.exe` | Windowsの自動接続・EXEゲーム用の起動補助。ベータ版。 |
-| `GAME-PORTAL-MAC.command` ＋ `GAME-PORTAL-MAC` | Macの自動接続用の起動補助。2つを同じ場所に置きます。ベータ版。 |
-| **`GAME-PORTAL-MOJAVE.app`** | macOS 10.14.6以降のIntel Mac用アプリ。HTML内蔵。Chromeでクリエイター版を開きます。自動接続は読み取り専用。 |
-| `GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。[準備方法](AUTO_CONNECT.md)を参照してください。 |
-| `README-WINDOWS.txt` | Windows起動補助の説明。 |
-| `THIRD-PARTY-LICENSES.txt` | 同梱ソフトのライセンス。 |
+起動用ファイルは、ZIPを展開したフォルダーの中にあります。Windows・Mac・HTMLのファイル名は、[ダウンロード・起動手順の表](../README.md#ダウンロードして使う)で確認してください。
 
 ゲームと作品情報は、自分で選んだ保存先フォルダーで管理します。配布ZIPにゲームや個人のセーブは含みません。
 

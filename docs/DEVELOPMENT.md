@@ -26,7 +26,7 @@ npm run test:native
 
 Windows補助のビルドには.NET FrameworkのC#コンパイラーが必要です。
 
-Windowsデスクトップ本体の試作版は[デスクトップ版の開発手順](DESKTOP.md#開発する人へ)を参照してください。HTML版とは別に `node scripts/build-desktop.mjs --prepare` で生成します。画面やデスクトップ用ソースを変えた場合はEXEを再ビルドし、`node scripts/verify-desktop.mjs` と `npm run test:desktop` で確認します。
+Windowsアプリ（ベータ版）の開発は[デスクトップ版の開発手順](DESKTOP.md#開発する人へ)を参照してください。HTML版とは別に `node scripts/build-desktop.mjs --prepare` で生成します。画面やデスクトップ用ソースを変えた場合はEXEを再ビルドし、`node scripts/verify-desktop.mjs` と `npm run test:desktop` で確認します。
 
 Mac補助はmacOS上で、Xcodeのコマンドラインツールを使ってビルドします。
 
@@ -44,7 +44,7 @@ Intel Mac用 `.app` はIntel Mac上で `node scripts/build-mojave.mjs` を実行
 | 場所 | 内容 |
 | --- | --- |
 | 最上位の `GAME-PORTAL.html` | Code ZIPからそのまま開く配布HTML |
-| 最上位の `GAME-PORTAL.exe` / `DESKTOP-LICENSES.txt` | Windowsデスクトップ本体の試作版とライセンス |
+| 最上位の `GAME-PORTAL.exe` / `DESKTOP-LICENSES.txt` | Windowsアプリとライセンス |
 | 最上位の `GAME-PORTAL-WINDOWS.exe` / `README-WINDOWS.txt` | Windows起動補助と案内 |
 | 最上位の `GAME-PORTAL-MAC` / `GAME-PORTAL-MAC.command` | Mac起動補助と起動用スクリプト |
 | 最上位の `GAME-PORTAL-MOJAVE.app` | Intel Mac用アプリ。実行ファイル・HTML・ライセンス・ビルド情報・署名を含むbundle全体を公開します。 |
@@ -72,8 +72,8 @@ npm run source:package
 
 [資料一覧へ戻る](README.md)
 
-## 2つの版の配布
+## プレイ専用版・クリエイター版の配布
 
-HTMLビルドは `GAME-PORTAL.html`（クリエイター）と `GAME-PORTAL-PLAY.html`（プレイ専用）を生成します。Windowsビルドも同じ2版を生成し、Macビルドは各OS向けに2つの署名済みアプリを作成します。`node scripts/verify-distribution.mjs` で全版の役割・内蔵HTML・バージョンを確認します。プレイ専用版の制限はUIと保存処理の両方で維持し、対応セーブの同期だけ許可します。新しいUIを追加したときはプレイ専用版への露出を確認してください。
+HTMLビルドは `GAME-PORTAL.html`（クリエイター版）と `GAME-PORTAL-PLAY.html`（プレイ専用版）を生成します。Windowsビルドも用途ごとにEXEを生成し、Macビルドは各OS向けにプレイ専用・クリエイターの署名済みアプリを作成します。`node scripts/verify-distribution.mjs` で役割・内蔵HTML・バージョンを確認します。プレイ専用版はゲームの追加・変更をUIと保存処理の両方で制限し、セーブ共有に必要な保存だけを許可します。新しいUIを追加したときは、プレイ専用版に管理用の操作が表示されないか確認してください。
 
-追加検証：`node tests/offline-html/editions-browser.mjs`、Windows上では `node tests/desktop-player.mjs`。両方とも3回のプレイ・保存・再起動を確認し、後者はアプリへの直接変更要求も拒否されることを確認します。Mac実機の操作・実NAS・別PCの実権限は自動テストでは代替できません。
+追加検証：`node tests/offline-html/editions-browser.mjs`、Windows上では `node tests/desktop-player.mjs`。どちらも3回のプレイ・保存・再起動を確認します。Windowsのテストでは、アプリへの直接の変更要求も拒否されることを確認します。Mac実機の操作・実NAS・別PCの実権限は自動テストでは代替できません。
