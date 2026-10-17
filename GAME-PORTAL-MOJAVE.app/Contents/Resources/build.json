@@ -1,1 +1,1 @@
-{"schema":1,"version":"0.20.20","files":{"scripts/macos/native-launcher.swift":"1048a5e7198d30dda24c142f835e06efd793944732f02c6c369ef6cf5bcdf27c","scripts/build-mojave.mjs":"e3ff6731228a19a038b92599410003c0ec96af3bd6258c48413ce5bc158ed888"}}
+{"schema":1,"version":"0.20.20","files":{"scripts/macos/native-launcher.swift":"e09ada26a250c25d23ab0a82db7f039a38e11f8983ee205d85fec8496d90e383","scripts/build-mojave.mjs":"e3ff6731228a19a038b92599410003c0ec96af3bd6258c48413ce5bc158ed888"}}
