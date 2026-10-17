@@ -22,7 +22,7 @@ async function collect(path) {
   }
 }
 for (const path of ['offline-html', 'assets', 'scripts', 'tests', '.github', 'desktop']) await collect(path);
-for(const name of ['README.md','DEVELOPMENT.md','OFFLINE_HTML.md','TRANSFER_GUIDE.md','NAS_VALIDATION.md','WINDOWS_EXE.md','AUTO_CONNECT.md','DESKTOP.md','MOJAVE.md'])paths.push('docs/'+name);
+for(const name of ['README.md','DEVELOPMENT.md','OFFLINE_HTML.md','TRANSFER_GUIDE.md','NAS_VALIDATION.md','WINDOWS_EXE.md','AUTO_CONNECT.md','DESKTOP.md','MAC.md'])paths.push('docs/'+name);
 const files = [], entries = [];
 for (const path of paths.sort()) {
   const bytes = await readFile(join(root, path));

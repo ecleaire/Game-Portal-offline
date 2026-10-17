@@ -8,7 +8,7 @@
 | 知りたいこと | 案内 |
 | --- | --- |
 | WindowsでHTMLを開かずに使う | [デスクトップ試作版](DESKTOP.md) |
-| macOS Mojave 10.14.6のIntel Macで遊ぶ | [Mojave用・プレイ専用試作版](MOJAVE.md) |
+| Macで使う | [Macアプリの使い方](MAC.md) |
 | ゲームの追加・編集・プレイ、保存と同期 | [詳しい使い方](OFFLINE_HTML.md) |
 | 別のPC・他の人へ渡す | [受け渡し手順](TRANSFER_GUIDE.md) |
 | Windows・Macでフォルダー選択を省略する | [自動接続（ベータ版）](AUTO_CONNECT.md) |
@@ -28,7 +28,7 @@ ZIPを展開した `Game-Portal-offline-html-main` の一番上にあります�
 | **`GAME-PORTAL.html`** | 通常の起動。クリエイター版。Chromeで開きます。 |
 | `GAME-PORTAL-WINDOWS.exe` | Windowsの自動接続・EXEゲーム用の起動補助。ベータ版。 |
 | `GAME-PORTAL-MAC.command` ＋ `GAME-PORTAL-MAC` | Macの自動接続用の起動補助。2つを同じ場所に置きます。ベータ版。 |
-| **`GAME-PORTAL-MOJAVE.app`** | Mojave 10.14.6／Intel Mac用アプリ。HTML内蔵。Chromeでクリエイター版を開きます。自動接続は読み取り専用。 |
+| **`GAME-PORTAL-MOJAVE.app`** | macOS 10.14.6以降のIntel Mac用アプリ。HTML内蔵。Chromeでクリエイター版を開きます。自動接続は読み取り専用。 |
 | `GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。[準備方法](AUTO_CONNECT.md)を参照してください。 |
 | `README-WINDOWS.txt` | Windows起動補助の説明。 |
 | `THIRD-PARTY-LICENSES.txt` | 同梱ソフトのライセンス。 |

@@ -37,7 +37,7 @@ npm run test:native-folder
 
 Intel・Appleシリコン共通のバイナリーを生成し、macOS 12以降を対象にします。Windowsでフォルダー自動接続を検証するときも `npm run test:native-folder` を実行してください。
 
-Mojave用 `.app` はIntel Mac上で `node scripts/build-mojave.mjs` を実行して生成します。`node scripts/verify-mojave.mjs` でIntel・macOS 10.14の最低条件、内蔵HTML・ライセンス・ソースのハッシュを照合します。macOS上のCIではアプリの署名検査、実Firefox ESR 115と公式Chrome for Testing 116でのゲーム起動・セーブ保持・再読み込み・接続復旧も検証します。新しいmacOS上の検証であり、Mojave実機での検証とは区別してください。テスト用ブラウザーの取得は `node scripts/prepare-mojave-test.mjs`、Firefox ESR検証は `node tests/mojave-esr-browser.mjs`、フォルダー接続検証は `node tests/native-folder-browser.mjs` です。Chrome for Testingは公式の署名なしテスト用ビルドを固定ハッシュで照合し、配布物には含めません。
+Intel Mac用 `.app` はIntel Mac上で `node scripts/build-mojave.mjs` を実行して生成します。`node scripts/verify-mojave.mjs` でIntel・macOS 10.14の最低条件、内蔵HTML・ライセンス・ソースのハッシュを照合します。macOS上のCIではアプリの署名検査、実Firefox ESR 115と公式Chrome for Testing 116でのゲーム起動・セーブ保持・再読み込み・接続復旧も検証します。テスト用ブラウザーの取得は `node scripts/prepare-mojave-test.mjs`、Firefox ESR検証は `node tests/mojave-esr-browser.mjs`、フォルダー接続検証は `node tests/native-folder-browser.mjs` です。Chrome for Testingは公式の署名なしテスト用ビルドを固定ハッシュで照合し、配布物には含めません。
 
 ## 公開するファイル
 
@@ -47,8 +47,8 @@ Mojave用 `.app` はIntel Mac上で `node scripts/build-mojave.mjs` を実行し
 | 最上位の `GAME-PORTAL.exe` / `DESKTOP-LICENSES.txt` | Windowsデスクトップ本体の試作版とライセンス |
 | 最上位の `GAME-PORTAL-WINDOWS.exe` / `README-WINDOWS.txt` | Windows起動補助と案内 |
 | 最上位の `GAME-PORTAL-MAC` / `GAME-PORTAL-MAC.command` | Mac起動補助と起動用スクリプト |
-| 最上位の `GAME-PORTAL-MOJAVE.app` | Mojave用アプリ。実行ファイル・HTML・ライセンス・ビルド情報・署名を含むbundle全体を公開します。 |
-| 最上位の `GAME-PORTAL-MOJAVE` / `GAME-PORTAL-MOJAVE.command` | Mojave用の開発・確認用起動方法 |
+| 最上位の `GAME-PORTAL-MOJAVE.app` | Intel Mac用アプリ。実行ファイル・HTML・ライセンス・ビルド情報・署名を含むbundle全体を公開します。 |
+| 最上位の `GAME-PORTAL-MOJAVE` / `GAME-PORTAL-MOJAVE.command` | Intel Mac用の開発・確認用起動方法 |
 | 最上位の `GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。個人の設定ファイルはGitへ含めません。 |
 | 最上位の `THIRD-PARTY-LICENSES.txt` | 同梱ランタイムのライセンス |
 | `offline-html/` / `assets/` | HTML・画面・実行処理のソース |

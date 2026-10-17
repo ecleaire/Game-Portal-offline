@@ -16,9 +16,9 @@ GitHubの **Code → Download ZIP** でもダウンロードできます。ZIP�
 | Windows 10 / 11（64bit） | **`GAME-PORTAL-PLAY.exe`** | **`GAME-PORTAL.exe`** |
 | Windows・MacのGoogle Chrome | **`GAME-PORTAL-PLAY.html`** | **`GAME-PORTAL.html`** |
 | Mac（macOS 12以降） | `GAME-PORTAL-PLAY-MAC.app` | `GAME-PORTAL-MAC.app` |
-| Intel Mac（Mojave 10.14.6以降） | `GAME-PORTAL-PLAY-MOJAVE.app` | `GAME-PORTAL-MOJAVE.app` |
+| Intel Mac（macOS 10.14.6以降） | `GAME-PORTAL-PLAY-MOJAVE.app` | `GAME-PORTAL-MOJAVE.app` |
 
-EXE・Macアプリはベータ版です。Macアプリは別途Google Chromeを使い、画面上部の「GAME PORTAL」メニューから終了できます。Mojave用は実機で未検証です。[Macの注意点](docs/MOJAVE.md)
+EXE・Macアプリはベータ版です。Macアプリは別途Google Chromeを使い、画面上部の「GAME PORTAL」メニューから終了できます。[Macでの使い方](docs/MAC.md)
 
 1. 使うファイルを開きます。
 2. **保存先フォルダーを選ぶ**か、設定の枠へフォルダーをドラッグします。
@@ -35,7 +35,7 @@ EXE・Macアプリはベータ版です。Macアプリは別途Google Chromeを�
 
 HTML・WebゲームのZIP・展開済みフォルダー・Pyxelに対応しています。GodotはWeb書き出し一式を使い、Scratch（sb3）はHTMLへ変換します。手順は画面内の**ヘルプ**で確認できます。
 
-Macの自動接続は読み取り用です。クリエイター版で追加・編集する際は、Chromeの画面で保存先を選ぶかドラッグし、書き込みを許可します。Firefox ESR 115はMojaveのプレイ用の予備手段で、ドラッグ接続・編集にはChromeを使ってください。
+Macの自動接続は読み取り用です。クリエイター版で追加・編集する際は、Chromeの画面で保存先を選ぶかドラッグし、書き込みを許可します。ドラッグ接続・編集にはChromeを使ってください。
 
 ## 次回の起動・共有
 

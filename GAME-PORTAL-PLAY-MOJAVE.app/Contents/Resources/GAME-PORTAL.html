@@ -141,7 +141,7 @@ html[data-edition="player"] :is(#post,#edit,#contentUpdate,#capture,#history,#in
 .app-edition{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
 @media(max-width:560px){.app-edition{display:none}}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.21.1</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.21.2</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -449,7 +449,7 @@ function portableLauncher(source,info) {
 
 return {connectionInfo,portableLauncher};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.21.1';
+const LAUNCHER_VERSION = '0.21.2';
 const MINIMUM_VERSION = '0.14.0';
 const FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FILE = 'compatibility.json';
@@ -1540,6 +1540,7 @@ async function commitSaveSync(libraryId,gameId,expected,state,data=expected.data
 return {cacheHandle,forgetHandle,loadSettingsReceipts,trackSettingsReceipt,loadLocalSave,writeLocalSave,acquirePlaySession,validSave,validSaveBackups,loadSaveBackups,backupLocalSave,restoreLocalSaveBackup,saveDeviceId,loadSaveSync,commitSaveSync};})();
 const sharedSaves=(()=>{// Immutable, per-game snapshots: concurrent PCs publish different filenames.
 // Vector clocks detect concurrent progress without trusting wall-clock times.
+const {readWithSignal}=readTasks;
 const id=/^[a-f0-9]{32}$/;
 const saveText=data=>JSON.stringify(Object.fromEntries(Object.keys(data).sort().map(key=>[key,data[key]])));
 function validClock(clock){return !!clock&&typeof clock==='object'&&!Array.isArray(clock)&&Object.keys(clock).length<=128&&Object.entries(clock).every(([key,n])=>id.test(key)&&Number.isSafeInteger(n)&&n>0);}
@@ -1548,15 +1549,17 @@ const combine=records=>{const clock={};for(const record of records)for(const [ke
 function validSnapshot(value,libraryId,gameId,validSave){return !!value&&value.schema===1&&value.libraryId===libraryId&&value.gameId===gameId&&id.test(value.revision)&&id.test(value.deviceId)&&validClock(value.clock)&&value.clock[value.deviceId]>0&&typeof value.createdAt==='string'&&Number.isFinite(Date.parse(value.createdAt))&&validSave(value.data);}
 function saveHeads(records){return records.filter(a=>!records.some(b=>a!==b&&covers(b.clock,a.clock)&&!covers(a.clock,b.clock)));}
 const cancelled=signal=>signal?.throwIfAborted();
-async function checkRoot(root,libraryId,tools){if(await tools.loadLibraryId(root)!==libraryId)throw Error('セーブの共有先IDが変わりました。フォルダーを再接続してください。');}
+async function checkRoot(root,libraryId,tools,signal){if(await readWithSignal(()=>tools.loadLibraryId(root),signal)!==libraryId)throw Error('セーブの共有先IDが変わりました。フォルダーを再接続してください。');}
 async function directory(root,gameId,create=false){try{return await(await(await root.getDirectoryHandle('.gameportal',{create})).getDirectoryHandle('shared-saves',{create})).getDirectoryHandle(gameId,{create});}catch(error){if(!create&&error.name==='NotFoundError')return null;throw error;}}
 async function readRecords(dir,libraryId,gameId,local,signal){
   const records=[];let total=0,count=0;if(!dir)return records;
-  for await(const entry of dir.values()){
+  const read=operation=>readWithSignal(operation,signal),iterator=dir.values()[Symbol.asyncIterator]();
+  for(;;){
+    const next=await read(()=>iterator.next());if(next.done)break;const entry=next.value;
     cancelled(signal);if(entry.kind!=='file'||!/^([a-f0-9]{32})\.json$/.test(entry.name))throw Error('共有セーブに不明なファイルがあります。元データを残して確認してください。');
     if(++count>256)throw Error('共有セーブの記録が多すぎます。フォルダーをバックアップして確認してください。');
-    const file=await entry.getFile();total+=file.size;if(file.size>510000||total>16*1024*1024)throw Error('共有セーブの容量が大きすぎます。');
-    let record;try{record=JSON.parse(await file.text());}catch{throw Error('共有セーブが壊れているか保存途中です。保存したPCで同期を再試行してください。');}
+    const file=await read(()=>entry.getFile());total+=file.size;if(file.size>510000||total>16*1024*1024)throw Error('共有セーブの容量が大きすぎます。');
+    const text=await read(()=>file.text());let record;try{record=JSON.parse(text);}catch{throw Error('共有セーブが壊れているか保存途中です。保存したPCで同期を再試行してください。');}
     if(!validSnapshot(record,libraryId,gameId,local.validSave)||entry.name!==record.revision+'.json')throw Error('共有セーブの形式・作品IDを確認してください。');
     records.push(record);
   }
@@ -1564,8 +1567,9 @@ async function readRecords(dir,libraryId,gameId,local,signal){
 }
 async function syncSave(root,libraryId,gameId,tools,local,{signal,pullOnly=false,resolution=null}={}){
   if(!id.test(libraryId)||!id.test(gameId))throw Error('セーブのライブラリ・作品IDを確認してください。');
-  cancelled(signal);await checkRoot(root,libraryId,tools);
-  let current=await local.loadSaveSync(libraryId,gameId),dir=await directory(root,gameId);
+  const read=operation=>readWithSignal(operation,signal);
+  cancelled(signal);await checkRoot(root,libraryId,tools,signal);
+  let current=await read(()=>local.loadSaveSync(libraryId,gameId)),dir=await read(()=>directory(root,gameId));
   const finish=async()=>{
     // Persisted intent makes an uncertain close retry the SAME snapshot only.
     const record=current.state.pending,text=JSON.stringify(record),name=record.revision+'.json';
@@ -1583,6 +1587,7 @@ async function syncSave(root,libraryId,gameId,tools,local,{signal,pullOnly=false
   cancelled(signal);
   const records=await readRecords(dir,libraryId,gameId,local,signal),heads=saveHeads(records),remoteClock=combine(records),clock=combine([...records,{clock:current.state.clock}]),dataText=saveText(current.data),base=current.state.base;
   const fingerprint=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(records.toSorted((a,b)=>a.revision.localeCompare(b.revision))))))].map(n=>n.toString(16).padStart(2,'0')).join('');
+  cancelled(signal);
   if(resolution&&resolution.fingerprint!==fingerprint)throw Error('ほかのPCでセーブが変わりました。もう一度確認してください。');
   const distinct=new Set(heads.map(r=>saveText(r.data))),remote=heads[0],dirty=base===null?Object.keys(current.data).length>0:dataText!==base;
   const rolledBack=!!remote&&dataText!==saveText(remote.data)&&covers(current.state.clock,remoteClock)&&!covers(remoteClock,current.state.clock);
@@ -1592,17 +1597,19 @@ async function syncSave(root,libraryId,gameId,tools,local,{signal,pullOnly=false
   if(resolution){
     if(resolution.revision!=='local'){const selected=heads.find(r=>r.revision===resolution.revision);if(!selected)throw Error('選択したセーブが変わりました。');chosen=selected.data;}
   }else if(remote&&(!dirty||dataText===saveText(remote.data))){
-    cancelled(signal);await checkRoot(root,libraryId,tools);
+    cancelled(signal);await checkRoot(root,libraryId,tools,signal);
     cancelled(signal);
     await local.commitSaveSync(libraryId,gameId,current,{schema:1,base:saveText(remote.data),clock,pending:null},remote.data);
     return {state:dataText===saveText(remote.data)?'unchanged':'downloaded'};
   }else if(!dirty)return {state:'unchanged'};
   if(pullOnly)return {state:'local'};
   cancelled(signal);
-  if(await root.queryPermission({mode:'readwrite'})!=='granted')throw Error('セーブを共有する保存許可が必要です。設定の「今すぐセーブを同期」を押してください。');
+  if(await read(()=>root.queryPermission({mode:'readwrite'}))!=='granted')throw Error('セーブを共有する保存許可が必要です。設定の「今すぐセーブを同期」を押してください。');
   const deviceId=await local.saveDeviceId();clock[deviceId]=(clock[deviceId]||0)+1;
+  cancelled(signal);
   const record={schema:1,libraryId,gameId,revision:crypto.randomUUID().replaceAll('-',''),deviceId,clock,createdAt:new Date().toISOString(),data:chosen};
   if(!validSnapshot(record,libraryId,gameId,local.validSave))throw Error('セーブの共有履歴が上限に達しました。元データを残して確認してください。');
+  // After persisting this intent, drain publication/verification even if canceled.
   await local.commitSaveSync(libraryId,gameId,current,{...current.state,pending:record},chosen);
   current=await local.loadSaveSync(libraryId,gameId);await finish();
   // Remove only observed ancestors after verified publication, retaining ten
@@ -2293,25 +2300,27 @@ async function syncLibrary({idle=false}={}){
   if(!root||starting||busy||syncPaused||syncPromise||folderRecoveryPromise||closingPlayer||document.hidden||document.querySelector('dialog[open]:not(#player)'))return;
   if(idle&&!homeIsIdle())return;
   const folder=root,libraryId=localLibrary,controller=new AbortController();syncController=controller;
+  const read=operation=>readTasks.readWithSignal(operation,controller.signal);
+  const deadline=setTimeout(()=>controller.abort(new DOMException('自動確認の読み取りが応答しません。接続を確認し、保存先を選び直してください。','TimeoutError')),30000);
   if(idle)idleSyncController=controller;
   syncPromise=(async()=>{
     try{
-      await checkLibraryCompatibility(folder);
+      await read(()=>checkLibraryCompatibility(folder,controller.signal));
       controller.signal.throwIfAborted();
-      const nextId=await library.loadLibraryId(folder);
+      const nextId=await read(()=>library.loadLibraryId(folder));
       if(libraryId&&nextId!==libraryId)throw new Error('保管フォルダーのIDが変わりました。フォルダーを指定し直してください。');
-      const nextMetadata=await library.loadMetadata(folder),nextGames=await library.scan(folder,nextMetadata,{signal:controller.signal});
+      const nextMetadata=await read(()=>library.loadMetadata(folder)),nextGames=await read(()=>library.scan(folder,nextMetadata,{signal:controller.signal}));
       controller.signal.throwIfAborted();
-      if(await library.loadLibraryId(folder)!==nextId)throw new Error('読み込み中に保管フォルダーが変わりました。');
+      if(await read(()=>library.loadLibraryId(folder))!==nextId)throw new Error('読み込み中に保管フォルダーが変わりました。');
       if(root!==folder||busy||document.hidden||document.querySelector('dialog[open]:not(#player)')||idle&&!homeIsIdle())return;
       const changed=syncTools.libraryViewKey(games)!==syncTools.libraryViewKey(nextGames)||localLibrary!==nextId;
       metadata=nextMetadata;games=nextGames;localLibrary=nextId;
       if(changed){const limit=renderLimit;resetCards();renderLimit=limit;await render();updatePlayerInfo();writeControls();}
       if(idle){controller.signal.throwIfAborted();await syncAllSaves(controller.signal);}
       syncStatus('共有フォルダー確認済み：'+new Date().toLocaleTimeString('ja-JP')+(changed?'（変更を反映しました）':''));
-    }catch(error){if(root!==folder||controller.signal.aborted&&error===controller.signal.reason)return;compatibilityFailure(error);syncPaused=true;queueFolderRecovery(error);$('#reconnect').hidden=false;syncStatus((folderRecovery?'保存先との接続を確認しています。接続が戻ると自動で再開します：':'自動確認を停止しました。再読み込み・再接続で再開：')+error.message);if(!busy)writeControls();}
+    }catch(error){if(root!==folder||controller.signal.aborted&&error===controller.signal.reason&&error?.name!=='TimeoutError')return;compatibilityFailure(error);syncPaused=true;queueFolderRecovery(error);$('#reconnect').hidden=false;syncStatus((folderRecovery?'保存先との接続を確認しています。接続が戻ると自動で再開します：':'自動確認を停止しました。再読み込み・再接続で再開：')+error.message);if(!busy)writeControls();}
   })();
-  try{await syncPromise;}finally{syncPromise=null;if(syncController===controller)syncController=null;if(idleSyncController===controller)idleSyncController=null;}
+  try{await syncPromise;}finally{clearTimeout(deadline);syncPromise=null;if(syncController===controller)syncController=null;if(idleSyncController===controller)idleSyncController=null;}
 }
 async function syncWhenHomeIdle(){
   if(!homeIsIdle()||performance.now()-lastHomeSync<HOME_IDLE_MS||!root||starting||busy||syncPaused||syncPromise||closingPlayer||document.hidden)return;
