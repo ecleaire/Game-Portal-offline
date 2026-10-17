@@ -1,7 +1,7 @@
 name: Build Mojave play helper
 on:
   push:
-    paths: ['scripts/macos/**', 'scripts/build-mojave.mjs', 'scripts/prepare-mojave-test.mjs', 'tests/mojave-esr-browser.mjs', 'tests/native-folder-browser.mjs', 'GAME-PORTAL.html', '.github/workflows/mojave-helper.yml']
+    paths: ['HTML/**', 'scripts/distribution.mjs', 'tests/native-distribution.mjs', 'scripts/macos/**', 'scripts/build-mojave.mjs', 'scripts/prepare-mojave-test.mjs', 'tests/mojave-esr-browser.mjs', 'tests/native-folder-browser.mjs', 'GAME-PORTAL.html', '.github/workflows/mojave-helper.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -18,6 +18,9 @@ jobs:
       - run: npm ci
       - run: node scripts/build-mojave.mjs
       - run: node scripts/verify-mojave.mjs
+      - run: node tests/native-distribution.mjs
+        env:
+          PORTAL_NATIVE_EXE: GAME-PORTAL-MOJAVE
       - run: node scripts/prepare-mojave-test.mjs
       - run: node tests/mojave-esr-browser.mjs
       - run: node tests/mojave-esr-browser.mjs

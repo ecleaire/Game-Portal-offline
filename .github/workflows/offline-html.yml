@@ -33,6 +33,8 @@ jobs:
         if: matrix.os == 'windows-latest'
       - run: npm run test:native
         if: matrix.os == 'windows-latest'
+      - run: node tests/native-distribution.mjs
+        if: matrix.os == 'windows-latest'
       - run: npm run test:native-folder
         if: matrix.os == 'windows-latest'
       - run: node scripts/verify-distribution.mjs

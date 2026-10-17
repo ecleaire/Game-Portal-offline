@@ -2,6 +2,9 @@ name: Build Mac portable helper
 on:
   push:
     paths:
+      - 'HTML/**'
+      - 'scripts/distribution.mjs'
+      - 'tests/native-distribution.mjs'
       - 'scripts/macos/**'
       - 'scripts/build-macos.mjs'
       - 'tests/native-folder-browser.mjs'
@@ -35,6 +38,7 @@ jobs:
       - run: npm ci
       - run: node scripts/build-macos.mjs
       - run: npx playwright install chromium
+      - run: node tests/native-distribution.mjs
       - run: node tests/native-folder-browser.mjs
       - run: node tests/offline-html/folder-comfort-browser.mjs
       - run: node tests/offline-html/loading-cancel-browser.mjs

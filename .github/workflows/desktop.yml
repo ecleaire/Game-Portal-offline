@@ -1,7 +1,7 @@
 name: Build and test Windows desktop prototype
 on:
   push:
-    paths: ['desktop/**', 'scripts/build-desktop.mjs', 'scripts/verify-desktop.mjs', 'scripts/windows/native-launcher.cs', 'tests/desktop*', 'GAME-PORTAL.html', '.github/workflows/desktop.yml']
+    paths: ['HTML/**', 'scripts/distribution.mjs', 'tests/native-distribution.mjs', 'desktop/**', 'scripts/build-desktop.mjs', 'scripts/verify-desktop.mjs', 'scripts/windows/native-launcher.cs', 'tests/desktop*', 'GAME-PORTAL.html', '.github/workflows/desktop.yml']
   workflow_dispatch:
 permissions:
   contents: read
