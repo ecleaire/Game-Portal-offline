@@ -97,6 +97,7 @@ internal static class PortalNative {
     }
     static void Folder(NetworkStream stream,Dictionary<string,object> data) {
         if(data==null||!(data.Count==3&&!data.ContainsKey("limit")||data.Count==4&&data.ContainsKey("limit")&&Text(data,"action")=="read")||data.Keys.Any(k=>!new[]{"version","action","path","limit"}.Contains(k))||Text(data,"version")!=Version)throw new Exception("HTMLと起動補助を同じ最新版にしてください。");
+        lock(RootLock){if(String.IsNullOrEmpty(AutoRoot))ConfigureAutoRoot();}
         if(AutoRootError!=null)throw new Exception(AutoRootError);
         if(String.IsNullOrEmpty(AutoRoot)){Reply(stream,200,new{configured=false},true);return;}
         CheckLibrary(AutoRoot,AutoId);
@@ -165,20 +166,24 @@ internal static class PortalNative {
         try {while(true){var client=Listener.AcceptTcpClient();if(!Slots.Wait(0)){client.Close();continue;}ThreadPool.QueueUserWorkItem(_=>Handle(client));}}catch(SocketException){}catch(ObjectDisposedException){}
     }
     static void OpenPortal() { Process.Start(new Uri(Html).AbsoluteUri+"#native="+((IPEndPoint)Listener.LocalEndpoint).Port+"."+Token); }
+    // Resolve failed configuration again, but pin a successful root/ID for this process.
+    static void ConfigureAutoRoot() {
+        AutoRootError=null;
+        string config=Path.Combine(Path.GetDirectoryName(Html),"GAME-PORTAL-FOLDER.txt");
+        if(!File.Exists(config))return;
+        try {
+            string path=Read(config,8192).Trim();if(path.Length==0||path.IndexOfAny(new[]{'\r','\n','\0'})>=0)throw new Exception("GAME-PORTAL-FOLDER.txtには保存先を1行で指定してください。");
+            string candidate=Path.GetFullPath(Path.IsPathRooted(path)?path:Path.Combine(Path.GetDirectoryName(Html),path));
+            if(!Directory.Exists(candidate)||(File.GetAttributes(candidate)&FileAttributes.ReparsePoint)!=0)throw new Exception("保存先が見つかりません。NASやドライブの接続を確認して再試行してください。");
+            var library=Parse(Read(Bound(candidate,".gameportal/library-id.json",false),1024));string id=Id(Text(library,"id"));CheckLibrary(candidate,id);
+            AutoId=id;AutoRoot=candidate;if(String.IsNullOrEmpty(FixedRoot))FixedRoot=AutoRoot;
+        } catch(Exception error){AutoRootError="自動接続の設定を確認してください。GAME-PORTAL-FOLDER.txtを修正して再試行できます："+error.Message;}
+    }
     [STAThread] static void Main(string[] args) {
         try {
             Html=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"GAME-PORTAL.html");string ready=null;
             for(int i=0;i<args.Length;i++){if(args[i]=="--headless")Headless=true;else if(args[i]=="--root")FixedRoot=args[++i];else if(args[i]=="--html")Html=Path.GetFullPath(args[++i]);else if(args[i]=="--ready-file")ready=args[++i];else throw new Exception("起動オプションが不正です。");}
             if(!File.Exists(Html))throw new Exception("同じフォルダーにGAME-PORTAL.htmlを置いてください。");
-            string config=Path.Combine(Path.GetDirectoryName(Html),"GAME-PORTAL-FOLDER.txt");
-            if(File.Exists(config)){
-              try {
-                string path=Read(config,8192).Trim();if(path.Length==0||path.IndexOfAny(new[]{'\r','\n','\0'})>=0)throw new Exception("GAME-PORTAL-FOLDER.txtには保存先を1行で指定してください。");
-                AutoRoot=Path.GetFullPath(Path.IsPathRooted(path)?path:Path.Combine(Path.GetDirectoryName(Html),path));
-                if(!Directory.Exists(AutoRoot)||(File.GetAttributes(AutoRoot)&FileAttributes.ReparsePoint)!=0)throw new Exception("自動接続の保存先にアクセスできません。");
-                var library=Parse(Read(Bound(AutoRoot,".gameportal/library-id.json",false),1024));AutoId=Id(Text(library,"id"));CheckLibrary(AutoRoot,AutoId);if(String.IsNullOrEmpty(FixedRoot))FixedRoot=AutoRoot;
-              } catch(Exception error){AutoRoot=null;AutoId=null;AutoRootError="保存先の自動接続設定を確認してください。HTMLの「設定」で保存先を選び直せます："+error.Message;}
-            }
             byte[] secret=new byte[32];using(var rng=RandomNumberGenerator.Create())rng.GetBytes(secret);Token=BitConverter.ToString(secret).Replace("-","").ToLowerInvariant();
             Listener=new TcpListener(IPAddress.Loopback,0);Listener.Start();Origin="http://127.0.0.1:"+((IPEndPoint)Listener.LocalEndpoint).Port;
             if(ready!=null)File.WriteAllText(ready,Serialize(new{origin=Origin,token=Token}),new UTF8Encoding(false));

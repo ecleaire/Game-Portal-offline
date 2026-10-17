@@ -58,6 +58,9 @@ do {
     guard fm.fileExists(atPath:html.path) else {throw PortalError("同じフォルダーにGAME-PORTAL.htmlを置いてください。")}
     let config=html.deletingLastPathComponent().appendingPathComponent("GAME-PORTAL-FOLDER.txt")
     var root: URL?=nil, libraryID: String?=nil, configurationError: String?=nil
+    let configurationLock=NSLock()
+    func configureRoot() {
+      configurationError=nil
     if fm.fileExists(atPath:config.path) {
       do {
         guard let raw=String(data:try read(config,8192),encoding:.utf8) else {throw PortalError("保存先設定はUTF-8で保存してください。")}
@@ -66,9 +69,14 @@ do {
         let url=path.hasPrefix("/") ? URL(fileURLWithPath:path).standardizedFileURL : html.deletingLastPathComponent().appendingPathComponent(path).standardizedFileURL
         let values=try url.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey]);guard values.isDirectory == true && values.isSymbolicLink != true else{throw PortalError("自動接続の保存先にアクセスできません。")}
         libraryID=try checkLibrary(url);root=url
-      } catch { configurationError="保存先の自動接続設定を確認してください。HTMLの「設定」で保存先を選び直せます："+((error as? PortalError)?.message ?? error.localizedDescription) }
+      } catch { configurationError="自動接続の設定を確認してください。GAME-PORTAL-FOLDER.txtを修正して再試行できます："+((error as? PortalError)?.message ?? error.localizedDescription) }
     }
-    let configuredRoot=root, configuredID=libraryID, configuredError=configurationError
+    }
+    func configuredFolder() -> (URL?,String?,String?) {
+      configurationLock.lock();defer {configurationLock.unlock()}
+      if root == nil {configureRoot()}
+      return (root,libraryID,configurationError)
+    }
     var secret=[UInt8](repeating:0,count:32)
     guard SecRandomCopyBytes(kSecRandomDefault,secret.count,&secret)==errSecSuccess else {throw PortalError("起動補助を開始できません。")}
     let token=secret.map{String(format:"%02x",$0)}.joined()
@@ -96,6 +104,7 @@ do {
         guard request[0]=="POST" && headers["x-game-portal-token"]==token else{reply(connection,403,try json(["error":"Mac起動補助からHTMLを開き直してください。"]));return}
         guard headers["content-type"]?.components(separatedBy:";")[0]=="application/json", let length=Int(headers["content-length"] ?? ""),length>1,length<=16384,bytes.count-split.upperBound==length else{throw PortalError("リクエストが不正です。")}
         let data=try object(bytes[split.upperBound...]);guard data["version"] as? String == version, let action=data["action"] as? String,let path=data["path"] as? String,path.utf8.count<=4000,Set(data.keys)==Set(["version","action","path"]) || action=="read" && Set(data.keys)==Set(["version","action","path","limit"]) else{throw PortalError("HTMLとMac起動補助を同じ最新版にしてください。")}
+        let (configuredRoot,configuredID,configuredError)=configuredFolder()
         if let error=configuredError{throw PortalError(error)}
         guard let root=configuredRoot else{reply(connection,200,try json(["configured":false]));return}
         _=try checkLibrary(root,configuredID)

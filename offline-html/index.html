@@ -14,7 +14,7 @@
   <section class="settings-card" aria-labelledby="folderSettingsTitle">
     <h3 id="folderSettingsTitle">ゲームのフォルダー</h3>
     <p id="settingFolder">未設定</p><p id="nativeFolderNotice" class="hint" hidden>自動接続（ベータ版・プレイ専用）。セーブはこのブラウザー内に保存します。追加・編集・セーブ共有は「保存先を選ぶ」から接続してください。</p>
-    <div class="buttons settings-folder-actions"><button id="chooseFolder">保存先を選ぶ</button><button id="reconnect" class="secondary" hidden>再接続する</button><button id="cancelFolderRead" class="secondary" hidden>接続待ちを中止</button></div>
+    <div class="buttons settings-folder-actions"><button id="chooseFolder">保存先を選ぶ</button><button id="retryNativeConnection" class="secondary" hidden>自動接続を再試行</button><button id="reconnect" class="secondary" hidden>再接続する</button><button id="cancelFolderRead" class="secondary" hidden>接続待ちを中止</button></div>
     <div id="folderDrop" class="notice" role="group" aria-label="保存先フォルダーをドラッグして接続">保存先フォルダーをここへドラッグ</div>
     <details id="folderSelectionHelp" class="settings-detail"><summary>フォルダーを選べないとき</summary><p class="hint">選択後にChromeのアクセス確認を許可してください。ドライブ全体ではなく、ゲーム専用のフォルダーを選びます。</p><p class="hint">接続だけを行います。ゲームのコピー・投稿はしません。PCやブラウザーのアクセス制限がある場合は接続できません。</p></details>
   </section>
@@ -31,7 +31,7 @@
   </section>
   <section class="settings-tools" aria-label="点検と詳細設定">
     <button id="inspectButton" class="secondary">ゲームを点検</button>
-    <details id="sharingDetails" class="settings-detail"><summary>共有・バージョン</summary><label>保存先のパス（ほかのPCへの案内・任意）<input id="sharedFolderPath" placeholder="例：\\NAS\Games"></label><p class="hint">別PCでは初回だけフォルダーを選びます。ゲーム・セーブ・アクセス許可はHTMLに含めません。</p><button id="exportSharedLauncher" class="secondary" disabled>共有用HTMLを保存</button><p id="sharedConnectionHint" class="hint"></p><div class="settings-version"><p id="compatibilityStatus" class="hint">HTMLの互換性は、保管フォルダーを接続すると確認します。</p><p class="hint">共有する全PCで v0.14.0 以降の対応HTMLを使ってください。v0.13.1以前は互換性チェック非対応のため、自動では停止できません。</p></div></details>
+    <details id="sharingDetails" class="settings-detail"><summary>共有・バージョン</summary><label>保存先のパス（ほかのPCへの案内・任意）<input id="sharedFolderPath" placeholder="例：\\NAS\Games"></label><p class="hint">別PCでは初回だけフォルダーを選びます。ゲーム・セーブ・アクセス許可はHTMLに含めません。</p><button id="downloadFolderConfig" class="secondary">起動補助の設定ファイルを保存</button><p class="hint">入力したパスをGAME-PORTAL-FOLDER.txtとして保存します。HTML・起動補助と同じ場所に置いてください。</p><button id="exportSharedLauncher" class="secondary" disabled>共有用HTMLを保存</button><p id="sharedConnectionHint" class="hint"></p><div class="settings-version"><p id="compatibilityStatus" class="hint">HTMLの互換性は、保管フォルダーを接続すると確認します。</p><p class="hint">共有する全PCで v0.14.0 以降の対応HTMLを使ってください。v0.13.1以前は互換性チェック非対応のため、自動では停止できません。</p></div></details>
     <details id="folderMemoryDetails" class="settings-detail"><summary>このPCのフォルダーの記憶</summary><p class="hint">次回の自動接続に使う記憶を消します。現在の接続・ゲーム・セーブは残ります。</p><button id="forgetFolder" class="secondary" disabled>フォルダーの記憶を消す</button></details>
   </section>
   <p class="settings-footnote">ゲームは保管フォルダー、WebゲームのセーブはこのPCに保存します。</p>

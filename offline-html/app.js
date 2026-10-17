@@ -9,7 +9,7 @@ function initialLauncherShell(node){
   for(const child of node.childNodes)copy.append(initialLauncherShell(child));return copy;
 }
 const originalLauncher='<!doctype html>\n'+initialLauncherShell(document.documentElement).outerHTML;
-let nativeBridge=null;
+let nativeBridge=null,nativeRetry=false,nativeReadAbort=null;
 try{
   nativeBridge=nativeTools.nativePageConnection(location.href,history.state,performance.getEntriesByType('navigation')[0]?.type);
   if(nativeBridge)rememberNativePageConnection();
@@ -226,20 +226,26 @@ window.addEventListener('focus',()=>{void checkSharedFolder();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)void checkSharedFolder();});
 
 function nativeReadControls(count=root?.pendingReads||0){
+  if(nativeReadAbort)for(const id of ['helpButton','settingsButton'])$('#'+id).disabled=false;
   for(const id of ['cancelConnection','cancelFolderRead']){const button=$('#'+id);button.hidden=!busy||!count;button.disabled=!busy||!count;}
 }
-for(const id of ['cancelConnection','cancelFolderRead'])$('#'+id).onclick=()=>root?.cancelReads?.();
+for(const id of ['cancelConnection','cancelFolderRead'])$('#'+id).onclick=()=>{nativeReadAbort?.abort(new Error('接続待ちを中止しました。もう一度試せます。'));root?.cancelReads?.();};
 function writeControls() {
   nativeReadControls();updateGameLoadControls();
-  const reconnectNeeded=!!remembered&&!$('#reconnect').hidden;
+  const nativeRetryNeeded=!!nativeBridge&&nativeRetry&&(!root||root.nativeReadOnly);
+  if(nativeRetryNeeded)$('#reconnect').hidden=false;
+  const reconnectNeeded=(!!remembered||nativeRetryNeeded)&&!$('#reconnect').hidden;
+  $('#reconnect').textContent=nativeRetryNeeded?'自動接続を再試行':'再接続する';
+  $('#homeReconnect').textContent=root?.nativeReadOnly?'自動接続を再試行':'アクセスを許可して開く';
   $('#reconnectNotice').hidden=starting||!root||!reconnectNeeded||!!compatibilityProblem;
   $('#setupFolder').hidden=starting||!!root;
-  $('#setupFolder').textContent=!root&&reconnectNeeded?'前回の保存先を開く':'保存先フォルダーを選ぶ';
+  $('#setupFolder').textContent=nativeRetryNeeded?'自動接続を再試行':!root&&reconnectNeeded?'前回の保存先を開く':'保存先フォルダーを選ぶ';
   folderSharingControls();
   contentControls();
   renderSaveVerification();
   $('#enableEditing').disabled = starting || !!root?.nativeReadOnly;
   $('#nativeFolderNotice').hidden=!root?.nativeReadOnly;
+  $('#retryNativeConnection').hidden=!nativeBridge||!!root&&!root.nativeReadOnly;
   $('#syncSaves').disabled=!!root?.nativeReadOnly;
   if(openedGame)updatePlayerInfo();else $('#editPlaying').disabled=true;
   $('#postButton').hidden=!editingEnabled;
@@ -287,7 +293,7 @@ async function action(fn, reconnecting = false, prioritizePlay = false) {
   if(prioritizePlay)syncController?.abort();
   document.body.setAttribute('aria-busy','true');document.body.classList.add('working');
   document.querySelectorAll('button:not([data-close]):not(#closePlayer):not(#cancelUsage)').forEach(b => b.disabled = true);
-  if(root?.nativeReadOnly)for(const id of ['helpButton','settingsButton'])$('#'+id).disabled=false;
+  if(root?.nativeReadOnly||nativeReadAbort)for(const id of ['helpButton','settingsButton'])$('#'+id).disabled=false;
   nativeReadControls();
   document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=true);
   document.querySelectorAll('#edit input,#edit textarea,#enableEditing').forEach(input=>input.disabled=true);
@@ -296,7 +302,7 @@ async function action(fn, reconnecting = false, prioritizePlay = false) {
     if(syncPromise){try{await syncPromise;}catch(error){if(!reconnecting)throw error;}}
     const result=await fn();status(typeof result==='string'?result:'');
   }
-  catch (e) { compatibilityFailure(e);if(e.code==='LIBRARY_ID_CHANGED')syncPaused=true;queueFolderRecovery(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;status(e.name === 'AbortError' ? '選択をキャンセルしました。' : e.message || '操作できませんでした。');if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
+  catch (e) { compatibilityFailure(e);if(e.code==='LIBRARY_ID_CHANGED')syncPaused=true;if(nativeBridge&&root?.nativeReadOnly&&transientFolderError(e))nativeRetry=true;queueFolderRecovery(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;status(e.name === 'AbortError' ? '選択をキャンセルしました。' : e.message || '操作できませんでした。');if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
   finally { busy = false;document.body.setAttribute('aria-busy','false');document.body.classList.remove('working'); document.querySelectorAll('button').forEach(b => b.disabled = false);document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=false); writeControls(); }
 }
 async function refresh({signal}={}) {
@@ -443,6 +449,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   await checkLibraryCompatibility(handle,signal);
   signal?.throwIfAborted();
   resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; automaticPermissionAttempted=false; if(!preserveSearch){resetSearch();sharedSaveIssues.clear();saveSyncRows();}folderRecovery=null;
+  nativeRetry=false;
   if(!handle.nativeReadOnly)clearNativePageConnection();
   let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){cacheError=' 投稿先をこのPCに記憶できませんでした。次回はフォルダーを選び直してください：'+error.message;}
   syncPaused=false;$('#reconnect').hidden = true;
@@ -766,7 +773,7 @@ $('#homeLink').onclick=event=>{
     resetSearch();await render();window.scrollTo({top:0});$('#homeLink').focus();
   },false,true);
 };
-$('#setupFolder').onclick = () => remembered&&!$('#reconnect').hidden?$('#reconnect').onclick():$('#chooseFolder').onclick();
+$('#setupFolder').onclick = () => (remembered||nativeRetry)&&!$('#reconnect').hidden?$('#reconnect').onclick():$('#chooseFolder').onclick();
 function resetSearch(){clearTimeout(searchTimer);renderLimit=60;$('#search').value='';$('#tagSearch').value='';$('#tagCategory').value='';selectedTags.clear();$('#searchScope').value='all';$('#kindFilter').value='';$('#environmentFilter').value='';$('#tagMatch').value='all';$('#sortGames').value='name-asc'; }
 $('#clearFilters').onclick = () => { resetSearch();render().catch(e => status(e.message));$('#search').focus(); };
 $('#emptyReset').onclick=()=>$('#clearFilters').click();
@@ -840,13 +847,25 @@ $('#emptyState').ondrop=event=>{
   event.preventDefault();
 };
 const reconnectHint='ホーム画面をクリックして、Chromeのアクセス確認を許可してください。';
+async function retryNativeConnection(){
+  const controller=new AbortController();nativeReadAbort=controller;nativeRetry=true;
+  const timer=setTimeout(()=>controller.abort(new Error('自動接続を待ち続けています。NASや起動補助を確認して、もう一度試してください。')),12000);
+  try{
+    const handle=await readTasks.readWithSignal(()=>nativeTools.nativeFolder(nativeBridge,compatibilityTools.LAUNCHER_VERSION,controller.signal,{onPendingChange:nativeReadControls}),controller.signal);
+    if(!handle)throw new Error('GAME-PORTAL-FOLDER.txtに保存先を設定してください。「設定」からフォルダーを選んでも使えます。');
+    await readTasks.readWithSignal(()=>connect(handle,false,true,false,controller.signal,{expectedLibrary:root?.nativeReadOnly?localLibrary:null,preserveSearch:!!root}),controller.signal);
+    controller.signal.throwIfAborted();$('#settings').close();
+  }finally{clearTimeout(timer);if(nativeReadAbort===controller)nativeReadAbort=null;}
+}
 async function connectRememberedRead(handle,shared=false,options={}){
   const controller=new AbortController(),abort=()=>controller.abort(options.signal.reason);let timer;
   if(options.signal?.aborted)abort();else options.signal?.addEventListener('abort',abort,{once:true});
   try{await Promise.race([connect(handle,false,true,shared,controller.signal,options),new Promise((_,reject)=>{timer=setTimeout(()=>{const error=new Error('保存先への接続を中止しました。もう一度接続するか、設定から保存先を選び直してください。');error.name='TimeoutError';controller.abort(error);reject(error);},12000);})]);controller.signal.throwIfAborted();if(!options.signal)$('#settings').close();if($('#status').textContent===reconnectHint)status('');}
   finally{clearTimeout(timer);options.signal?.removeEventListener('abort',abort);}
 }
+$('#retryNativeConnection').onclick=()=>{if(!busy&&!starting&&nativeBridge&&(!root||root.nativeReadOnly))return action(()=>retryNativeConnection(),true);};
 $('#reconnect').onclick = () => {
+  if(!busy&&!starting&&nativeBridge&&nativeRetry&&(!root||root.nativeReadOnly))return action(()=>retryNativeConnection(),true);
   if(busy||starting||!remembered)return;
   const handle=remembered,expectedLibrary=handle===root?localLibrary:null,preserveSearch=handle===root;
   // Ask in the trusted gesture, before any await; browsing only needs read access.
@@ -998,7 +1017,7 @@ function initialized() { if(connectionError)status(connectionError);starting = f
 if (!window.showDirectoryPicker&&!nativeBridge) { status('このブラウザーはフォルダーへの保存に対応していません。PC版Google Chromeを使用してください。'); initialized(); }
 else {
 const startupAbort=new AbortController();
-const startupTimeout=setTimeout(()=>{startupAbort.abort();status('前回の保存先への自動接続を中止しました。保存先を開き直してください。ヘルプ・設定から操作できます。');initialized();},12000);
+const startupTimeout=setTimeout(()=>{startupAbort.abort();if(nativeBridge)nativeRetry=true;status('前回の保存先への自動接続を中止しました。保存先を開き直してください。ヘルプ・設定から操作できます。');initialized();},12000);
 Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previous,receipts]) => {
   startupAbort.signal.throwIfAborted();
   settingsReceipts=receipts;lastFolderRevision=previous?.revision||'';
@@ -1006,7 +1025,7 @@ Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previ
   if(previous?.scope&&previous.scope!==folderScope)previous=null;
   if (previous?.name) $('#settingFolder').textContent = '前回：' + previous.name;
   if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;writeControls();try{const permission=await remembered.queryPermission({mode:'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal);}else {syncStatus(reconnectHint);status(reconnectHint);}}catch(error){if(startupAbort.signal.aborted)return;queueFolderRecovery(error);syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}
-}).catch(error => {if(nativeBridge&&!root){editingEnabled=false;$('#enableEditing').checked=false;}if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{clearTimeout(startupTimeout);if(!startupAbort.signal.aborted)initialized();});
+}).catch(error => {if(nativeBridge&&!root){nativeRetry=true;editingEnabled=false;$('#enableEditing').checked=false;}if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。再試行するか、「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{clearTimeout(startupTimeout);if(!startupAbort.signal.aborted)initialized();});
 }
 
 
@@ -1231,3 +1250,10 @@ for(const id of ['postButton','editPlaying','updatePlaying']){
     }).catch(editingAccessError).finally(()=>{permissionPending=false;});
   };
 }
+
+$('#downloadFolderConfig').onclick=()=>action(()=>{
+ const path=$('#sharedFolderPath').value.trim();
+ if(!path||/[\r\n\0]/.test(path)||new TextEncoder().encode(path).length>8192||path.startsWith('"')||path.endsWith('"'))throw new Error('保存先のパスを、引用符を付けずに1行で入力してください。');
+ const url=URL.createObjectURL(new Blob([path+'\n'],{type:'text/plain;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='GAME-PORTAL-FOLDER.txt';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ return '設定ファイルをHTML・起動補助と同じ場所に置き、自動接続を再試行してください。接続済みの保存先を変える場合は起動補助を開き直します。';
+});
