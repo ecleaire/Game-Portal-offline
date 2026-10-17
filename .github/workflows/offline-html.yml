@@ -38,7 +38,9 @@ jobs:
       - run: npm run test:native-folder
         if: matrix.os == 'windows-latest'
       - run: node scripts/verify-distribution.mjs
-      - run: git diff --exit-code -- HTML THIRD-PARTY-LICENSES.txt
+      # Native PE build metadata changes when the helper is compiled on a runner.
+      # verify-distribution checks role copies; generated HTML must be byte-stable.
+      - run: git diff --exit-code -- ':(glob)HTML/**/*.html' THIRD-PARTY-LICENSES.txt
       - uses: actions/upload-artifact@v4
         if: matrix.os == 'windows-latest'
         with:
