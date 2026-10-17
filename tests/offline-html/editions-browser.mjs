@@ -1,13 +1,18 @@
 import {chromium,expect} from '@playwright/test';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
 const files={creator:await readFile('GAME-PORTAL.html'),player:await readFile('GAME-PORTAL-PLAY.html')};
 const server=createServer((q,r)=>r.end(files[q.url==='/player'?'player':'creator']));
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined});
+// Match normal Chrome folder permission/IDB persistence; Chromium 153 has an
+// incognito OPFS handle restoration crash unrelated to the launcher's UI.
+const profile=await mkdtemp(join(tmpdir(),'portal-editions-'));
+const context=await chromium.launchPersistentContext(profile,{headless:true,executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined});
 try{
- const context=await browser.newContext(),errors=[];
+ const errors=[];
  await context.addInitScript(()=>{if(top!==window)return;FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';localStorage.setItem('game-portal.offline-editing','true');});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));const url='http://127.0.0.1:'+server.address().port;
  await page.goto(url+'/creator');await expect(page.locator('html')).toHaveAttribute('data-ready','true');
@@ -40,4 +45,4 @@ try{
  await page.evaluate(()=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();});
  await page.goto(url+'/creator');await expect(page.locator('html')).toHaveAttribute('data-ready','true');assert.equal(await page.evaluate(()=>editingEnabled),true);
  assert.deepEqual(errors,[]);console.log('Editions passed: three player connect/play/save/search/reload cycles; stored editing preference ignored, mutation entry points denied, creator remains editable, player help contains no creation controls.');
-}finally{await browser.close();await new Promise(r=>server.close(r));}
+}finally{await context.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:200});}
