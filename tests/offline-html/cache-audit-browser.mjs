@@ -23,10 +23,6 @@ try{
  let actual=await page.locator('#folderName').textContent();if(actual!=='Folder A')issues.push('Opening another HTML lost the first HTML folder: '+actual);
  // A failed IDB cache write must not partially replace either record.
  assert.equal(await page.evaluate(async()=>{const before=await localState.cacheHandle(),put=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(value,key){if(key==='folder'&&value?.scope==='/failed')throw new DOMException('test quota','QuotaExceededError');return put.apply(this,arguments);};let failed=false;try{await localState.cacheHandle(root,true,'/failed');}catch{failed=true;}finally{IDBObjectStore.prototype.put=put;}const after=await localState.cacheHandle();return failed&&before.revision===after.revision&&(await localState.cacheHandle(null,true,'/failed'))===null;}),true);
- // Cache failures must be visible even though the selected folder can still be opened.
- await page.evaluate(()=>{window.auditPut=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(value,key){if(key==='folder'&&value?.scope===location.pathname)throw new DOMException('test cache quota','QuotaExceededError');return auditPut.apply(this,arguments);};});await select('Folder B');
- if(!(await page.locator('#status').textContent()).includes('記憶できませんでした'))issues.push('Folder cache failure was hidden after a successful connection');
- await page.evaluate(()=>{IDBObjectStore.prototype.put=auditPut;});await select('Folder A');
  // Forget only this HTML's selection; the other edition and local saves remain.
  const libraryA=await page.evaluate(()=>localLibrary);await page.evaluate(()=>localState.writeLocalSave(localLibrary,'d'.repeat(32),{keep:'yes'}));
  await page.locator('#settingsButton').click();await page.locator('#folderMemoryDetails summary').click();await page.locator('#forgetFolder').click();await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('#folderName')).toHaveText('未選択');
@@ -34,6 +30,11 @@ try{
  // Upgrade from the old single-slot record, preserving it when the second edition selects a folder.
  await page.evaluate(async()=>{await localState.forgetHandle();const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('Folder A');const record={name:folder.name,handle:folder,scope:'/one'};await new Promise((resolve,reject)=>{const request=indexedDB.open('game-portal-offline-folder-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('settings','readwrite');tx.objectStore('settings').put(record,'folder');tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);};});});
  await visit('/one');await expect(page.locator('#folderName')).toHaveText('Folder A');await visit('/two');await select('Folder B');await visit('/one');await expect(page.locator('#folderName')).toHaveText('Folder A');
+ // Cache failures must be visible even though the selected folder can still be opened.
+ await page.evaluate(()=>{window.auditPut=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(value,key){if(key==='folder'&&value?.scope===location.pathname)throw new DOMException('test cache quota','QuotaExceededError');return auditPut.apply(this,arguments);};});await select('Folder B');
+ await page.evaluate(()=>checkSharedFolder());await expect(page.locator('#folderName')).toHaveText('Folder B');
+ if(!(await page.locator('#status').textContent()).includes('記憶できませんでした'))issues.push('Folder cache failure was hidden after a successful connection');
+ await page.evaluate(()=>{IDBObjectStore.prototype.put=auditPut;});await select('Folder A');
  for(const [path,name,editing]of [['/one','Folder A',true],['/two','Folder B',false]]){
   await visit(path);await page.evaluate(()=>{localStorage.setItem('game-portal.offline-editing','true');sessionStorage.setItem('audit-helper','unavailable');});await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');
   actual=await page.locator('#folderName').textContent();if(actual!==name)issues.push('Native helper failure blocked an already permitted folder: '+actual);

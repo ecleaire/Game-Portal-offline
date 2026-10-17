@@ -2455,7 +2455,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   nativeRetry=false;
   automaticConnectionPaused=false;automaticConnectionFailures=0;
   if(!handle.nativeReadOnly)clearNativePageConnection();
-  let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){cacheError=' 保存先をこのPCに記憶できませんでした。次回は保存先を確認し、必要に応じて選び直してください：'+error.message;}
+  let cacheError='';try{if(!shared&&!restoring)await cacheHandle(handle,true);}catch(error){pauseAutomaticConnection();cacheError=' 保存先をこのPCに記憶できませんでした。次回は保存先を確認し、必要に応じて選び直してください：'+error.message;}
   syncPaused=false;$('#reconnect').hidden = true;
   $('#sharedFolderPath').value=portableConnection?.path||'';try{$('#sharedFolderPath').value=localStorage.getItem('game-portal.folder-path.'+localLibrary)||$('#sharedFolderPath').value;}catch{}
   metadata = next; games = nextGames; $('#folderName').textContent = handle.name; $('#settingFolder').textContent = handle.name;
