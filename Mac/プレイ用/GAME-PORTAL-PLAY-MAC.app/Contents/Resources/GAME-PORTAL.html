@@ -140,8 +140,12 @@ html[data-edition="player"] :is(#post,#edit,#contentUpdate,#capture,#history,#in
 #folderDrop{min-height:180px;display:flex;align-items:center;justify-content:center;text-align:center;border-style:dashed}
 .app-edition{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
 @media(max-width:560px){.app-edition{display:none}}
+
+.new-tag-row{display:flex;align-items:center;gap:10px}.new-tag-row input{flex:1;min-width:0}.new-tag-row button{flex-shrink:0;min-height:44px}#newTagStatus:empty{display:none}@media(max-width:420px){.new-tag-row{flex-wrap:wrap}.new-tag-row input{flex-basis:100%}.new-tag-row button{width:100%}}
+
+#playerTags{max-height:108px;overflow-y:auto;overscroll-behavior:contain;align-content:start;padding:2px 4px 4px 0;scrollbar-width:thin}#playerTags .game-tag{flex-shrink:0}#playerTags:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.21.2</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.22.0</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -188,8 +192,8 @@ html[data-edition="player"] :is(#post,#edit,#contentUpdate,#capture,#history,#in
 </dialog>
 <dialog id="updateContent" aria-labelledby="updateContentTitle"><h2 id="updateContentTitle">ゲーム本体を更新</h2><p id="updateTarget" class="notice"></p><p data-dialog-status class="hint" role="status"></p><p class="hint">名前・タグ・画像・概要・操作方法・作品ID・このPCのセーブを引き継ぎます。新しいゲーム一式を確認してから切り替え、旧版を残します。セーブが新版で使えるかはゲーム側の互換性に依存します。更新・旧版復元前に、このPCのランチャー用セーブを自動退避します。退避に失敗した場合は本体を切り替えません。戻す場合はゲーム画面の「セーブ履歴」を使ってください。Pyxel独自の保存ファイルは対象外です。</p><label class="file">更新ファイルを選ぶ<span class="file-help">HTML・WebゲームZIP・PYXAPP</span><input id="updateFiles" type="file" accept=".html,.htm,.zip,.pyxapp"></label><label class="file">更新フォルダーを選ぶ<span class="file-help">素材を含むWeb書き出し一式</span><input id="updateDirectory" type="file" webkitdirectory multiple></label><p id="updateCheck" class="notice" role="status">新しいゲームを選んでください。選択だけでは保存しません。</p><details id="updateWarnings" hidden><summary>未確認・外部参照を確認</summary><ul id="updateWarningList"></ul></details><p class="hint">更新・復元時には、このPCで開いているゲームを停止します。他のPCで開いているゲームはそのまま継続し、開き直すと変更後の本体を読み込みます。</p><div class="buttons"><button id="verifyContentUpdate" class="secondary" hidden>更新状態を確認</button><button id="restoreContent" class="secondary" disabled>前の本体に戻す</button><button id="confirmContentUpdate" disabled>確認して本体を更新</button><button class="secondary" data-close>キャンセル</button></div></dialog>
 <dialog id="post" aria-labelledby="postTitle"><h2 id="postTitle">ゲームを追加</h2><p data-dialog-status role="status" class="hint"></p><label class="file">ファイルを選ぶ<span class="file-help">HTML・ZIP・PYXAPP・EXE</span><input id="postFiles" type="file" accept=".html,.htm,.zip,.pyxapp,.exe"></label><label class="file">フォルダーを選ぶ<span class="file-help">展開済みゲームをまとめて選ぶ</span><input id="postDirectory" type="file" webkitdirectory multiple></label><p id="postCheck" class="notice" role="status"></p><details id="postWarnings" class="save-location" hidden><summary>未確認・外部参照を確認</summary><ul id="postWarningList"></ul></details><p id="postSummary" class="selection-summary" role="status"></p><details id="postDetails" class="save-location" hidden><summary>ファイルのくわしい情報</summary><p id="postTechnicalCheck" class="hint"></p><p class="hint">HTMLがJSや画像を別ファイルで使う場合は、すべて含めてZIPまたはフォルダーで追加してください。ZIPは50MB、展開後200MB・500ファイル以内。EXEはWindowsの起動補助が必要です。DLLや素材はフォルダーごと追加してください。</p></details><div class="buttons dialog-actions"><button class="secondary" data-close>キャンセル</button><button type="button" class="secondary" data-verify-settings hidden>保存結果を確認</button><button id="confirmPost" disabled>追加する</button></div></dialog>
-<dialog id="edit" aria-labelledby="editHeading"><form id="editForm"><div class="editor-heading"><span class="editor-mode">編集モード</span><div class="editor-title"><h2 id="editHeading">ゲームを編集</h2><p id="editTarget" class="editor-target"></p></div></div><p id="postEditNotice" class="notice" hidden>追加しました。名前や画像はあとで変えられます。</p><p data-dialog-status role="status" class="hint"></p><div class="edit-tabs" role="tablist" aria-label="作品情報の項目"><button type="button" role="tab" id="tabBasic" aria-controls="panelBasic" aria-selected="true">基本情報・タグ</button><button type="button" role="tab" id="tabDescription" aria-controls="panelDescription" aria-selected="false" tabindex="-1">概要・操作方法</button><button type="button" role="tab" id="tabImage" aria-controls="panelImage" aria-selected="false" tabindex="-1">サムネイル</button></div><div id="editContent" class="editor-content"><div id="panelBasic" role="tabpanel" aria-labelledby="tabBasic"><section class="form-section"><h3>基本情報</h3><div class="form-columns"><label>ゲーム名（必須）<input id="editTitle" required maxlength="120" aria-describedby="editTitleCount"><span id="editTitleCount" class="field-counter">0 / 120</span></label><label>作成ツール（必須）<input id="editEnvironment" required maxlength="32" list="environments" placeholder="Godot / Scratch / Pyxel など"><datalist id="environments"><option value="Godot"><option value="Scratch"><option value="TurboWarp"><option value="Pyxel"><option value="Unity"><option value="HTML / JavaScript"></datalist></label></div></section><section class="form-section"><h3>タグ</h3><label>タグ（12こまで）<input id="editTags" maxlength="400" list="knownTags" placeholder="アクション, パズル"><datalist id="knownTags"></datalist></label><fieldset id="tagChoices"><legend>タグの候補</legend><p id="tagCount" class="hint" aria-live="polite"></p><div id="tagCategories"></div></fieldset></section></div><div id="panelDescription" role="tabpanel" aria-labelledby="tabDescription" hidden><section class="form-section"><h3>概要・操作方法</h3><label>概要（2000文字まで）<textarea id="editDescription" maxlength="2000" rows="4" placeholder="どんなゲームか、楽しみ方など" aria-describedby="editDescriptionCount"></textarea><span id="editDescriptionCount" class="field-counter">0 / 2000</span></label><label>操作方法（4000文字まで）<textarea id="editInstructions" maxlength="4000" rows="5" placeholder="例：← →：移動&#10;Space：ジャンプ&#10;Enter：開始" aria-describedby="editInstructionsCount"></textarea><span id="editInstructionsCount" class="field-counter">0 / 4000</span></label></section></div><div id="panelImage" role="tabpanel" aria-labelledby="tabImage" hidden><section class="form-section"><h3>サムネイル</h3><label class="file">画像を選ぶ（JPG・PNG推奨）<input id="editImage" type="file" accept=".jpg,.jpeg,.png,.webp,image/png,image/jpeg,image/webp"></label><p id="imageStatus" class="hint" role="status"></p><img id="editImagePreview" class="capture-preview" alt="設定するサムネイル" hidden><details id="cropControls" class="optional-crop" hidden><summary>画像を切り抜く</summary><label class="check"><input id="enableCrop" type="checkbox">画像を16:9に切り抜く</label><fieldset id="cropFields" disabled><legend>切り抜きの位置・拡大率</legend><label>拡大率 <output id="cropZoomValue">1.00倍</output><input id="cropZoom" type="range" min="1" max="3" step="0.05" value="1"></label><label>横位置<input id="cropX" type="range" min="0" max="100" value="50"></label><label>縦位置<input id="cropY" type="range" min="0" max="100" value="50"></label><button id="resetCrop" type="button" class="secondary">中央に戻す</button></fieldset></details><label class="check"><input id="clearImage" type="checkbox">保存時にサムネイルを削除</label></section></div><details class="save-location"><summary>保存先を確認</summary><p class="hint">設定とサムネイルはゲームごとのJSONファイルに保存します。<br><span id="editSettingsPath"></span></p></details></div><div class="buttons editor-actions"><p id="editDirty" class="edit-dirty" role="status" hidden>未保存の変更があります</p><button type="button" class="secondary" data-verify-settings hidden>保存結果を確認</button><button id="historyButton" type="button" class="secondary">設定履歴</button><button id="cancelEdit" type="button" class="secondary" data-close>キャンセル</button><button id="saveGameSettings" type="submit">保存</button></div></form></dialog>
-<dialog id="player" aria-labelledby="playerTitle"><div class="playerbar"><strong id="playerTitle"></strong><div class="buttons"><button type="button" class="secondary" data-verify-settings hidden>保存結果を確認</button><button id="editPlaying" hidden class="secondary" aria-describedby="editPlayingReason">編集</button><button id="updatePlaying" hidden class="secondary" aria-describedby="updatePlayingReason">本体を更新</button><button id="captureButton" hidden class="secondary">プレイ画面を撮影</button><button id="retryPlaying" class="secondary" hidden>起動を再試行</button><button id="cancelGameLoad" class="secondary" hidden>中止して一覧へ戻る</button><button id="fullscreen" class="secondary">全画面</button><button id="closePlayer" class="secondary">← ゲーム一覧</button></div></div><p id="updatePlayingReason" class="control-reason" hidden></p><p id="captureReason" class="control-reason"></p><div class="buttons"><button id="nativeLaunch" hidden>EXEを起動</button></div><p id="nativeReason" class="hint" hidden></p><p id="playerStatus" role="status">読み込んでいます…</p><iframe id="frame" title="ゲーム画面" sandbox="allow-scripts allow-pointer-lock" allow="fullscreen; autoplay" referrerpolicy="no-referrer"></iframe><section class="player-game-info"><div class="player-meta-heading"><div><p id="playerEnvironment" class="muted"></p><div id="playerTags" class="tags"></div></div><p id="editPlayingReason" class="control-reason"></p></div><div class="game-meta"><section class="meta-card"><h2>このゲームについて</h2><p id="playerDescription" class="game-text"></p></section><section class="meta-card"><h2>操作方法</h2><p id="playerInstructions" class="game-text"></p></section></div></section><details id="playerMoreTools" class="player-more-tools"><summary>その他</summary><div id="saveTools" class="buttons save-tools"><button id="exportSave" class="secondary">セーブ書き出し</button><button id="importSaveButton" class="secondary">セーブ読み込み</button><input id="importSave" type="file" accept=".json,application/json" hidden><span class="hint">このPCのChromeに保存</span></div><div class="buttons"><button id="playerHelpButton" class="secondary">ヘルプ</button><button id="saveBackupsButton" class="secondary">セーブ履歴</button></div></details></dialog>
+<dialog id="edit" aria-labelledby="editHeading"><form id="editForm"><div class="editor-heading"><span class="editor-mode">編集モード</span><div class="editor-title"><h2 id="editHeading">ゲームを編集</h2><p id="editTarget" class="editor-target"></p></div></div><p id="postEditNotice" class="notice" hidden>追加しました。名前や画像はあとで変えられます。</p><p data-dialog-status role="status" class="hint"></p><div class="edit-tabs" role="tablist" aria-label="作品情報の項目"><button type="button" role="tab" id="tabBasic" aria-controls="panelBasic" aria-selected="true">基本情報・タグ</button><button type="button" role="tab" id="tabDescription" aria-controls="panelDescription" aria-selected="false" tabindex="-1">概要・操作方法</button><button type="button" role="tab" id="tabImage" aria-controls="panelImage" aria-selected="false" tabindex="-1">サムネイル</button></div><div id="editContent" class="editor-content"><div id="panelBasic" role="tabpanel" aria-labelledby="tabBasic"><section class="form-section"><h3>基本情報</h3><div class="form-columns"><label>ゲーム名（必須）<input id="editTitle" required maxlength="120" aria-describedby="editTitleCount"><span id="editTitleCount" class="field-counter">0 / 120</span></label><label>作成ツール（必須）<input id="editEnvironment" required maxlength="32" list="environments" placeholder="Godot / Scratch / Pyxel など"><datalist id="environments"><option value="Godot"><option value="Scratch"><option value="TurboWarp"><option value="Pyxel"><option value="Unity"><option value="HTML / JavaScript"></datalist></label></div></section><section class="form-section"><h3>タグ</h3><label>選んだタグ（32こまで）<input id="editTags" maxlength="1100" list="knownTags" placeholder="アクション, パズル"><datalist id="knownTags"></datalist></label><label for="newTag">新しいタグを作る</label><div class="new-tag-row"><input id="newTag" maxlength="32" placeholder="例：学校で作った" aria-describedby="newTagStatus"><button id="addTag" type="button" class="secondary">タグを追加</button></div><p id="newTagStatus" class="hint" role="status"></p><fieldset id="tagChoices"><legend>タグの候補</legend><p id="tagCount" class="hint" aria-live="polite"></p><div id="tagCategories"></div></fieldset></section></div><div id="panelDescription" role="tabpanel" aria-labelledby="tabDescription" hidden><section class="form-section"><h3>概要・操作方法</h3><label>概要（2000文字まで）<textarea id="editDescription" maxlength="2000" rows="4" placeholder="どんなゲームか、楽しみ方など" aria-describedby="editDescriptionCount"></textarea><span id="editDescriptionCount" class="field-counter">0 / 2000</span></label><label>操作方法（4000文字まで）<textarea id="editInstructions" maxlength="4000" rows="5" placeholder="例：← →：移動&#10;Space：ジャンプ&#10;Enter：開始" aria-describedby="editInstructionsCount"></textarea><span id="editInstructionsCount" class="field-counter">0 / 4000</span></label></section></div><div id="panelImage" role="tabpanel" aria-labelledby="tabImage" hidden><section class="form-section"><h3>サムネイル</h3><label class="file">画像を選ぶ（JPG・PNG推奨）<input id="editImage" type="file" accept=".jpg,.jpeg,.png,.webp,image/png,image/jpeg,image/webp"></label><p id="imageStatus" class="hint" role="status"></p><img id="editImagePreview" class="capture-preview" alt="設定するサムネイル" hidden><details id="cropControls" class="optional-crop" hidden><summary>画像を切り抜く</summary><label class="check"><input id="enableCrop" type="checkbox">画像を16:9に切り抜く</label><fieldset id="cropFields" disabled><legend>切り抜きの位置・拡大率</legend><label>拡大率 <output id="cropZoomValue">1.00倍</output><input id="cropZoom" type="range" min="1" max="3" step="0.05" value="1"></label><label>横位置<input id="cropX" type="range" min="0" max="100" value="50"></label><label>縦位置<input id="cropY" type="range" min="0" max="100" value="50"></label><button id="resetCrop" type="button" class="secondary">中央に戻す</button></fieldset></details><label class="check"><input id="clearImage" type="checkbox">保存時にサムネイルを削除</label></section></div><details class="save-location"><summary>保存先を確認</summary><p class="hint">設定とサムネイルはゲームごとのJSONファイルに保存します。<br><span id="editSettingsPath"></span></p></details></div><div class="buttons editor-actions"><p id="editDirty" class="edit-dirty" role="status" hidden>未保存の変更があります</p><button type="button" class="secondary" data-verify-settings hidden>保存結果を確認</button><button id="historyButton" type="button" class="secondary">設定履歴</button><button id="cancelEdit" type="button" class="secondary" data-close>キャンセル</button><button id="saveGameSettings" type="submit">保存</button></div></form></dialog>
+<dialog id="player" aria-labelledby="playerTitle"><div class="playerbar"><strong id="playerTitle"></strong><div class="buttons"><button type="button" class="secondary" data-verify-settings hidden>保存結果を確認</button><button id="editPlaying" hidden class="secondary" aria-describedby="editPlayingReason">編集</button><button id="updatePlaying" hidden class="secondary" aria-describedby="updatePlayingReason">本体を更新</button><button id="captureButton" hidden class="secondary">プレイ画面を撮影</button><button id="retryPlaying" class="secondary" hidden>起動を再試行</button><button id="cancelGameLoad" class="secondary" hidden>中止して一覧へ戻る</button><button id="fullscreen" class="secondary">全画面</button><button id="closePlayer" class="secondary">← ゲーム一覧</button></div></div><p id="updatePlayingReason" class="control-reason" hidden></p><p id="captureReason" class="control-reason"></p><div class="buttons"><button id="nativeLaunch" hidden>EXEを起動</button></div><p id="nativeReason" class="hint" hidden></p><p id="playerStatus" role="status">読み込んでいます…</p><iframe id="frame" title="ゲーム画面" sandbox="allow-scripts allow-pointer-lock" allow="fullscreen; autoplay" referrerpolicy="no-referrer"></iframe><section class="player-game-info"><div class="player-meta-heading"><div><p id="playerEnvironment" class="muted"></p><div id="playerTags" role="group" aria-label="ゲームのタグ。多いときはスクロールできます" tabindex="0" class="tags"></div></div><p id="editPlayingReason" class="control-reason"></p></div><div class="game-meta"><section class="meta-card"><h2>このゲームについて</h2><p id="playerDescription" class="game-text"></p></section><section class="meta-card"><h2>操作方法</h2><p id="playerInstructions" class="game-text"></p></section></div></section><details id="playerMoreTools" class="player-more-tools"><summary>その他</summary><div id="saveTools" class="buttons save-tools"><button id="exportSave" class="secondary">セーブ書き出し</button><button id="importSaveButton" class="secondary">セーブ読み込み</button><input id="importSave" type="file" accept=".json,application/json" hidden><span class="hint">このPCのChromeに保存</span></div><div class="buttons"><button id="playerHelpButton" class="secondary">ヘルプ</button><button id="saveBackupsButton" class="secondary">セーブ履歴</button></div></details></dialog>
 
 <dialog id="saveBackups" class="wide-dialog" aria-labelledby="saveBackupsTitle"><h2 id="saveBackupsTitle">このPCのセーブ履歴</h2><p id="saveBackupTarget" class="notice"></p><p data-dialog-status class="hint" role="status"></p><p class="hint">本体の更新・旧版復元前のセーブを自動退避します。作品ごとに直近10件をこのPCのChrome内へ保持します。セーブを戻す時は、現在のセーブも退避してから置き換えます。本体の版は変更しません。</p><p class="hint">対象はランチャーが保存するlocalStorage相当のセーブです。Pyxel独自ファイルやゲーム固有のIndexedDBは対象外です。ブラウザーの保存データを削除すると履歴も失われます。必要な退避はJSONで書き出してください。</p><p id="saveBackupSummary" class="hint" role="status"></p><div id="saveBackupRows" class="maintenance-list"></div><button class="secondary" data-close>閉じる</button></dialog><dialog id="saveVerification" class="wide-dialog" aria-labelledby="saveVerificationTitle"><h2 id="saveVerificationTitle">保存結果を確認</h2><p class="hint">接続を復旧し、保存した保管フォルダーを指定してください。履歴と現在の設定を読み比べます。確認操作では再保存・自動上書きを行いません。未反映の場合だけ、履歴から明示的に再試行できます。</p><p data-dialog-status role="status" class="hint"></p><div id="saveVerificationResults" class="maintenance-list"></div><div class="buttons dialog-actions"><button class="secondary" data-close>閉じる</button><button id="verifySettingsSaves">保存結果を確認</button></div></dialog><dialog id="inspection" class="wide-dialog" aria-labelledby="inspectionTitle"><h2 id="inspectionTitle">ライブラリ点検</h2><p class="hint">ファイルと設定を読み取って確認します。ゲームを起動したり、ファイルを変更・削除したりしません。</p><p data-dialog-status role="status" class="hint"></p><div class="buttons"><button id="inspectionFolder">フォルダーを選んで点検</button><button id="inspectionAgain" class="secondary" disabled>もう一度点検</button><button id="measureUsage" class="secondary" disabled>使用容量を確認</button><button id="cancelUsage" class="secondary" hidden>容量確認を中止</button></div><details id="usagePanel" class="form-section" hidden><summary>ゲームフォルダー別の使用容量</summary><p id="usageSummary" class="notice" role="status"></p><p class="hint">ファイルサイズの合計です。ディスクの空き容量・実際の占有領域とは異なります。ZIPは圧縮されたファイルのサイズで数えます。直接配置したゲームはフォルダー単位、ルート直下のファイルはまとめて集計します。本体の復元・更新確認に使う保存版も含みます。</p><div class="search-options"><label>表示するフォルダー<select id="usageFilter"><option value="all">すべて</option><option value="versions">保存版がある作品</option><option value="attention">未確認・一部確認の作品</option></select></label><label>並べ替え<select id="usageSort"><option value="size">容量が大きい順</option><option value="name">名前順</option></select></label></div><p id="usageResultsCount" class="hint"></p><div id="usageWarnings" class="notice" hidden></div><div id="usageRows" class="maintenance-list"></div><div class="buttons"><button id="usageMore" class="secondary" hidden>さらに表示</button><button id="exportUsage" class="secondary">結果をJSONに書き出す</button></div></details><p id="inspectionSummary" role="status" class="hint">保管フォルダーを選んでください。</p><label class="inspection-filter">表示する項目<select id="inspectionFilter"><option value="all">すべて</option><option value="missing">ファイル不足</option><option value="config">壊れた設定・初期設定</option><option value="duplicate">重複ID</option><option value="upload">投稿途中</option><option value="package">作品形式・破損</option><option value="unreadable">読み取りエラー</option><option value="limit">点検上限</option></select></label><div id="inspectionResults" class="maintenance-list"></div><button class="secondary close" data-close>閉じる</button></dialog>
 <dialog id="history" class="wide-dialog" aria-labelledby="historyTitle"><h2 id="historyTitle">設定履歴から復元</h2><p data-dialog-status role="status" class="hint"></p><p class="hint">各保存の直前にあった名前・タグ・画像・開発環境・概要・操作方法を確認して復元できます。履歴は保存試行の記録です。ゲーム本体とセーブは変更しません。</p><p id="historySummary" class="hint"></p><div class="history-layout"><div id="historyEntries" class="maintenance-list"></div><div id="historyPreview" class="history-preview"></div></div><div class="buttons dialog-actions"><button class="secondary" data-close>キャンセル</button><button id="restoreHistory" disabled>この設定に戻す</button></div></dialog>
@@ -254,22 +258,26 @@ async function checkWebGameZip(file) {
   if (!webArchiveLayout(names)) throw new Error('web_export_required');
 }
 
-async function inflate(raw, expected) {
+async function inflate(raw, expected,signal) {
+  signal?.throwIfAborted();
   if (typeof DecompressionStream !== 'function') throw new Error('preview_unsupported');
   const reader = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const abort=()=>{void reader.cancel(signal.reason).catch(()=>{});};
+  if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
   const result = new Uint8Array(expected); let size = 0;
   try {
     while (true) {
-      const { value, done } = await reader.read(); if (done) break;
+      signal?.throwIfAborted();const { value, done } = await reader.read();signal?.throwIfAborted();if (done) break;
       if (size + value.length > expected || size + value.length > MAX_UNPACKED) throw new Error('invalid_preview');
       result.set(value,size);size += value.length;
     }
-  } finally { reader.releaseLock(); }
+  } catch(error){void reader.cancel(error).catch(()=>{});throw error;} finally { signal?.removeEventListener('abort',abort);reader.releaseLock(); }
   if (size !== expected) throw new Error('invalid_preview');
   return result;
 }
 
-async function unpackPrivateZip(buffer, onProgress = () => {}) {
+async function unpackPrivateZip(buffer, onProgress = () => {}, {signal} = {}) {
+  signal?.throwIfAborted();
   const data = new Uint8Array(buffer);
   if (data.length > MAX_ZIP || data.length < 22) throw new Error('invalid_preview');
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
@@ -304,16 +312,16 @@ async function unpackPrivateZip(buffer, onProgress = () => {}) {
   if (!layout) throw new Error('web_export_required');
   // Validate the entire directory and size budget before starting any work.
   // Bound concurrent inflation so large exports do not open hundreds of streams.
-  const contents = new Array(entries.length); let cursor = 0, completed = 0;
+  const contents = new Array(entries.length); let cursor = 0, completed = 0,failure;
   onProgress(0,entries.length);
   await Promise.all(Array.from({ length: Math.min(4, entries.length) }, async () => {
-    while (cursor < entries.length) {
+    while (!failure&&!signal?.aborted&&cursor < entries.length) {
       const index = cursor++, entry = entries[index];
       const raw = data.subarray(entry.start, entry.start + entry.packed);
-      contents[index] = entry.method === 0 ? raw : await inflate(raw, entry.size);
-      onProgress(++completed,entries.length);
+      try{contents[index] = entry.method === 0 ? raw : await inflate(raw, entry.size,signal);signal?.throwIfAborted();onProgress(++completed,entries.length);}catch(error){failure??=error;}
     }
   }));
+  signal?.throwIfAborted();if(failure)throw failure;
   const normalized = new Map(entries.flatMap((entry, index) => archiveMetadata(entry.name) ? [] : [[entry.name.slice(layout.root.length), contents[index]]]));
   normalized.set('index.html', normalized.get(layout.entry));
   return normalized;
@@ -427,7 +435,19 @@ function readWithSignal(operation,signal) {
   });
 }
 
-return {readWithSignal};})();
+// Independent startup work overlaps, but a started save must drain before release.
+async function prepareTogether(operations,signal){
+  const controller=new AbortController(),abort=()=>controller.abort(signal.reason);
+  if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
+  let failure;
+  try{
+    const results=await Promise.allSettled(operations.map(operation=>Promise.resolve().then(()=>{controller.signal.throwIfAborted();return operation(controller.signal);}).catch(error=>{failure??=error;controller.abort(error);throw error;})));
+    if(failure)throw failure;
+    controller.signal.throwIfAborted();return results.map(result=>result.value);
+  }finally{signal?.removeEventListener('abort',abort);}
+}
+
+return {readWithSignal,prepareTogether};})();
 const folderSharing=(()=>{// Portable hints contain no browser handle, permission or personal save.
 function connectionInfo(value) {
   if(value===null||value===undefined)return null;
@@ -447,11 +467,19 @@ function portableLauncher(source,info) {
   return source.slice(0,start+open.length)+json+source.slice(end);
 }
 
-return {connectionInfo,portableLauncher};})();
+// One bounded, known relocation; never borrow another launcher's folder scope.
+function legacyScope(path){
+ const parts=path.split('/');let role;try{role=decodeURIComponent(parts.at(-2));}catch{return null;}
+ if(parts.at(-3)!=='HTML'||!['プレイ用','クリエイター用'].includes(role)||!['GAME-PORTAL.html','GAME-PORTAL-PLAY.html'].includes(parts.at(-1)))return null;
+ return [...parts.slice(0,-3),parts.at(-1)].join('/');
+}
+
+return {connectionInfo,portableLauncher,legacyScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.21.2';
+const LAUNCHER_VERSION = '0.22.0';
 const MINIMUM_VERSION = '0.14.0';
-const FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
+const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
+const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
 const FILE = 'compatibility.json';
 function failure(message) {
   const error = new Error(message + ' 全PCのGAME-PORTAL.htmlを対応版へ交換し、再読み込みしてください。互換性情報は削除・書き換えないでください。');
@@ -488,10 +516,11 @@ async function checkCompatibility(root, version = LAUNCHER_VERSION) {
   const text = await read(root);
   return text === null ? null : validate(text, version);
 }
-async function ensureCompatibility(root) {
+async function ensureCompatibility(root,{extendedTags=false}={}) {
+  const minimum=extendedTags?'0.22.0':MINIMUM_VERSION,required=extendedTags?FEATURES:BASE_FEATURES;
   const current = await checkCompatibility(root);
   // Never lower a shared requirement or discard fields written by another version.
-  if (current && !older(current.minLauncherVersion, MINIMUM_VERSION) && FEATURES.every(f => current.requiredFeatures.includes(f))) return current;
+  if (current && !older(current.minLauncherVersion, minimum) && required.every(f => current.requiredFeatures.includes(f))) return current;
   const directory = await root.getDirectoryHandle('.gameportal', { create: true });
   const handle = await directory.getFileHandle(FILE, { create: true });
   const writer = await handle.createWritable({ mode: 'exclusive' });
@@ -500,8 +529,8 @@ async function ensureCompatibility(root) {
     let previous = current;
     if (live) previous = validate(live, LAUNCHER_VERSION);
     else if (current) throw failure('互換性情報が変更されています。');
-    const next = { ...previous, schema: 1, minLauncherVersion: previous && !older(previous.minLauncherVersion, MINIMUM_VERSION) ? previous.minLauncherVersion : MINIMUM_VERSION,
-      requiredFeatures: [...new Set([...(previous?.requiredFeatures || []), ...FEATURES])] };
+    const next = { ...previous, schema: 1, minLauncherVersion: previous && !older(previous.minLauncherVersion, minimum) ? previous.minLauncherVersion : minimum,
+      requiredFeatures: [...new Set([...(previous?.requiredFeatures || []), ...required])] };
     const text = JSON.stringify(next, null, 2) + '\n';
     await writer.write(text); await writer.close();
     if (await read(root) !== text) throw failure('互換性情報の保存結果を確認できません。再接続して確認してください。');
@@ -779,14 +808,14 @@ async function saveMetadata(root, data) {
   data.revision = next.revision;
 }
 function tagsFrom(text) {
-  return [...new Set(String(text).split(/[,、\n]/).map(s => s.trim()).filter(Boolean))].slice(0, 12).map(s => s.slice(0, 32));
+  return [...new Set(String(text).split(/[,、\n]/).map(s => s.trim()).filter(Boolean))].slice(0, 32).map(s => s.slice(0, 32));
 }
 function parseGameSettings(text, path = '') {
     if (new TextEncoder().encode(text).length > 2 * 1024 * 1024) throw new Error('ゲーム設定のサイズが大きすぎます。');
     let data;try { data = JSON.parse(text); } catch { throw new Error('ゲーム設定のJSONが壊れています。'); }
     if (!data || data.schema !== 1 || typeof data.id !== 'string' || !/^[a-f0-9]{32}$/.test(data.id) ||
       typeof data.title !== 'string' || !data.title.trim() || data.title.length > 120 ||
-      !Array.isArray(data.tags) || data.tags.length > 12 || data.tags.some(t => typeof t !== 'string' || t.length > 32) ||
+      !Array.isArray(data.tags) || data.tags.length > 32 || data.tags.some(t => typeof t !== 'string' || t.length > 32) ||
       typeof data.developmentEnvironment !== 'string' || data.developmentEnvironment.length > 120 ||
       (data.description !== undefined && (typeof data.description !== 'string' || data.description.length > 2000)) ||
       (data.instructions !== undefined && (typeof data.instructions !== 'string' || data.instructions.length > 4000)) ||
@@ -833,6 +862,7 @@ async function saveGameSettings(root, game, values, options={}) {
   }
   current||=await loadGameSettings(root, game.path);
   if (current.text !== game.settingsText) throw new Error('このゲームの設定が更新されています。「再読み込み」してから編集してください。');
+  if(!Array.isArray(values.tags)||values.tags.length>32||values.tags.some(tag=>typeof tag!=='string'||tag.trim().length>32))throw new Error('タグは32こまで、1つ32文字以内で設定してください。');
   const next = { ...current.data, schema: 1, id: game.id, title: values.title.trim(),
     tags: tagsFrom(values.tags.join(',')), developmentEnvironment: values.developmentEnvironment.trim(),
     description: values.description ?? current.data?.description ?? '', instructions: values.instructions ?? current.data?.instructions ?? '',
@@ -843,6 +873,7 @@ async function saveGameSettings(root, game, values, options={}) {
     (next.thumbnail !== null && (typeof next.thumbnail !== 'string' || !/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(next.thumbnail)))) throw new Error('ゲーム設定の入力内容を確認してください。');
   const text = JSON.stringify(next, null, 2) + '\n';
   if (new TextEncoder().encode(text).length > 2 * 1024 * 1024) throw new Error('ゲーム設定のサイズが大きすぎます。');
+  if(next.tags.length>12)await ensureCompatibility(root,{extendedTags:true});
   const attempt={schema:1,id:game.id,gamePath:game.path,historyName:crypto.randomUUID()+'.json',expectedHash:await settingsDigest(text),beforeHash:current.text===null?null:await settingsDigest(current.text),kind:options.kind||'edit',uploadFolder:options.uploadFolder||null};
   const parts = safePath(game.path + '.gameportal.json'); let folder = root;
   for (const part of parts.slice(0, -1)) folder = await folder.getDirectoryHandle(part);
@@ -2083,13 +2114,13 @@ const cardCache=new Map();
 function resetCards(){for(const url of imageURLs)URL.revokeObjectURL(url);imageURLs=[];cardCache.clear();renderLimit=60;}
 let editBaseline = '';
 function editValues() {
-  return JSON.stringify(['editTitle','editEnvironment','editTags','editDescription','editInstructions','cropZoom','cropX','cropY'].map(id=>$('#'+id).value).concat($('#clearImage').checked,$('#enableCrop').checked,[...$('#editImage').files].map(f=>[f.name,f.size,f.lastModified])));
+  return JSON.stringify(['editTitle','editEnvironment','editTags','editDescription','editInstructions','cropZoom','cropX','cropY'].map(id=>$('#'+id).value).concat($('#clearImage').checked,$('#enableCrop').checked,[...$('#editImage').files].map(f=>[f.name,f.size,f.lastModified]),$('#newTag').value));
 }
 function hasEditChanges(){return $('#edit').open && editValues()!==editBaseline;}
 function updateEditDirty(){
   $('#editDirty').hidden=!hasEditChanges();
   const current=JSON.parse(editValues()),before=JSON.parse(editBaseline||'[]');
-  for(const [name,indexes] of Object.entries({Basic:[0,1,2],Description:[3,4],Image:[5,6,7,8,9,10]})){
+  for(const [name,indexes] of Object.entries({Basic:[0,1,2,11],Description:[3,4],Image:[5,6,7,8,9,10]})){
     const dirty=!!editBaseline&&indexes.some(i=>JSON.stringify(current[i])!==JSON.stringify(before[i]));
     const tab=$('#tab'+name);tab.dataset.dirty=String(dirty);tab.setAttribute('aria-description',dirty?'未保存の変更があります':'');
   }
@@ -2110,7 +2141,9 @@ const status = message => {
   },message==='一覧を更新しました。'?10000:20000);
 };
 async function cacheHandle(value,remember=true){
-  const record=await localState.cacheHandle(value,remember,folderScope);
+  let record=await localState.cacheHandle(value,remember,folderScope);
+  const legacy=folderSharing.legacyScope(folderScope);
+  if(value===undefined&&!record&&legacy){const old=await localState.cacheHandle(null,true,legacy);if(old?.scope===legacy)record={...old,scope:folderScope};}
   if(value){lastFolderRevision=record.revision;folderChannel?.postMessage('changed');}
   return record;
 }
@@ -2128,7 +2161,7 @@ async function checkSharedFolder(){
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
   folderWatchPromise=(async()=>{
     try{
-      const record=await read(()=>localState.cacheHandle(null,true,folderScope));if(!available()||!record?.handle||record.scope&&record.scope!==folderScope)return;
+      const record=await read(()=>cacheHandle());if(!available()||!record?.handle||record.scope&&record.scope!==folderScope)return;
       if(record.revision&&record.revision===lastFolderRevision){
         // Another tab may have granted permission since the initial restore.
         if(!folderRecovery&&!syncPaused&&!compatibilityProblem&&remembered&&!$('#reconnect').hidden&&await read(()=>remembered.isSameEntry(record.handle))&&await read(()=>remembered.queryPermission({mode:'read'}))==='granted'&&available())await connectRememberedRead(remembered,false,{signal:controller.signal});
@@ -2188,7 +2221,8 @@ function writeControls() {
   if(openedGame&&pendingSettings(openedGame.path))$('#captureButton').disabled=true;
   const pendingEdit=!!editing&&pendingSettings(editing.path);$('#saveGameSettings').disabled=pendingEdit||imageProcessing||!!imageError;$('#restoreHistory').disabled||=pendingEdit;
   for(const input of document.querySelectorAll('#edit input,#edit textarea'))input.disabled=pendingEdit;
-  for(const [button]of tagControls)button.disabled=pendingEdit||!button.classList.contains('active')&&library.tagsFrom($('#editTags').value).length>=12;
+  for(const [button]of tagControls)button.disabled=pendingEdit||!button.classList.contains('active')&&library.tagsFrom($('#editTags').value).length>=32;
+  $('#addTag').disabled=pendingEdit;
   $('#cropFields').disabled=pendingEdit||!$('#enableCrop').checked;
   for(const button of document.querySelectorAll('[data-retry-settings]'))button.disabled=!editingEnabled;
   $('#fullscreen').disabled = !activePlay || !stopGame;
@@ -2297,7 +2331,7 @@ function homeIsIdle(){return performance.now()-lastHomeActivity>=HOME_IDLE_MS&&!
 function noteHomeActivity(){lastHomeActivity=performance.now();idleSyncController?.abort();folderRecoveryAbort?.abort();folderWatchAbort?.abort();}
 for(const event of ['pointerdown','pointermove','keydown','wheel','input','focusin'])document.addEventListener(event,noteHomeActivity,{capture:true,passive:true});
 async function syncLibrary({idle=false}={}){
-  if(!root||starting||busy||syncPaused||syncPromise||folderRecoveryPromise||closingPlayer||document.hidden||document.querySelector('dialog[open]:not(#player)'))return;
+  if(!root||starting||busy||automaticConnectionPaused||syncPaused||syncPromise||folderRecoveryPromise||closingPlayer||document.hidden||document.querySelector('dialog[open]:not(#player)'))return;
   if(idle&&!homeIsIdle())return;
   const folder=root,libraryId=localLibrary,controller=new AbortController();syncController=controller;
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
@@ -2323,7 +2357,7 @@ async function syncLibrary({idle=false}={}){
   try{await syncPromise;}finally{clearTimeout(deadline);syncPromise=null;if(syncController===controller)syncController=null;if(idleSyncController===controller)idleSyncController=null;}
 }
 async function syncWhenHomeIdle(){
-  if(!homeIsIdle()||performance.now()-lastHomeSync<HOME_IDLE_MS||!root||starting||busy||syncPaused||syncPromise||closingPlayer||document.hidden)return;
+  if(!homeIsIdle()||performance.now()-lastHomeSync<HOME_IDLE_MS||!root||starting||busy||automaticConnectionPaused||syncPaused||syncPromise||closingPlayer||document.hidden)return;
   lastHomeSync=performance.now();await syncLibrary({idle:true});
 }
 setInterval(()=>{void syncWhenHomeIdle();},5000);
@@ -2485,6 +2519,7 @@ async function render() {
 function editGame(game) {
   if (!editingEnabled || game.settingsError) return;
   autoEnvironmentTag=game.tags.includes(game.developmentEnvironment)?game.developmentEnvironment:'';
+  $('#newTag').value='';$('#newTagStatus').textContent='';
   editing = game; $('#editEnvironment').value = game.developmentEnvironment; $('#editSettingsPath').textContent = game.path + '.gameportal.json'; $('#editTitle').value = game.title; $('#editTags').value = game.tags.join(', '); $('#editImage').value = ''; $('#clearImage').checked = false; renderTagChoices(); $('#edit').showModal();
   $('#editDescription').value=game.description || '';$('#editInstructions').value=game.instructions || '';
   updateFormCounters();
@@ -2526,12 +2561,12 @@ function addEnvironmentTag(){
 $('#editEnvironment').addEventListener('change',()=>{addEnvironmentTag();renderTagChoices();updateEditDirty();});
 function updateTagChoices() {
   const raw=[...new Set($('#editTags').value.split(/[,、\n]/).map(s=>s.trim()).filter(Boolean))];
-  $('#editTags').setCustomValidity(raw.length>12?'タグは12件までにしてください。':raw.some(t=>t.length>32)?'タグは1件32文字以内にしてください。':'');
+  $('#editTags').setCustomValidity(raw.length>32?'タグは32件までにしてください。':raw.some(t=>t.length>32)?'タグは1件32文字以内にしてください。':'');
   const picked = new Set(library.tagsFrom($('#editTags').value));
-  $('#tagCount').textContent = `${picked.size} / 12`;
+  $('#tagCount').textContent = `${picked.size} / 32`;
   for (const [button, name] of tagControls) {
     const active = picked.has(name); button.setAttribute('aria-pressed', String(active));
-    button.classList.toggle('active', active); button.disabled = !active && picked.size >= 12;
+    button.classList.toggle('active', active); button.disabled = !active && picked.size >= 32;
   }
 }
 function renderTagChoices() {
@@ -2549,7 +2584,7 @@ function renderTagChoices() {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'tag'; button.textContent = name;
       button.onclick = () => {
         const picked = new Set(library.tagsFrom($('#editTags').value));
-        if (picked.has(name)) picked.delete(name); else if (picked.size < 12) picked.add(name);
+        if (picked.has(name)) picked.delete(name); else if (picked.size < 32) picked.add(name);
         $('#editTags').value = [...picked].join(', '); updateTagChoices();
         updateEditDirty();
       };
@@ -2560,6 +2595,19 @@ function renderTagChoices() {
   updateTagChoices();
 }
 $('#editTags').addEventListener('input', updateTagChoices);
+function addCustomTag(){
+  if(busy||!editingEnabled||!editing||pendingSettings(editing.path))return false;
+  const input=$('#newTag'),name=input.value.trim(),message=$('#newTagStatus');
+  if(!name){message.textContent='タグ名を入力してください。';input.focus();return false;}
+  if(name.length>32||/[,、\r\n]/.test(name)){message.textContent='タグは1つずつ、32文字以内で入力してください。';input.focus();return false;}
+  const raw=[...new Set($('#editTags').value.split(/[,、\n]/).map(s=>s.trim()).filter(Boolean))];
+  if(raw.includes(name)){input.value='';message.textContent='このタグは追加済みです。';updateEditDirty();return true;}
+  if(raw.length>=32){message.textContent='タグは32こまでです。使わないタグを外してから追加してください。';input.focus();return false;}
+  $('#editTags').value=[...raw,name].join(', ');input.value='';renderTagChoices();updateEditDirty();message.textContent='「'+name+'」を追加しました。保存するとほかのゲームでも選べます。';input.focus();return true;
+}
+$('#addTag').onclick=addCustomTag;
+$('#newTag').addEventListener('input',()=>{$('#newTagStatus').textContent='';});
+$('#newTag').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();addCustomTag();}});
 function updateFormCounters(){
   for(const [id,limit]of[['editTitle',120],['editDescription',2000],['editInstructions',4000]])$('#'+id+'Count').textContent=$('#'+id).value.length+' / '+limit;
   $('#editTitle').setCustomValidity($('#editTitle').value.trim()?'':'ゲーム名を入力してください。');
@@ -2658,11 +2706,15 @@ async function loadGame(game,task) {
       pyxelRuntime ||= JSON.parse($('#runtime').textContent);
       options = { kind: 'pyxapp', app: player.encodeBase64(bytes), runtime: pyxelRuntime };
     } else {
-      let files = game.kind === 'zip' ? await read(async()=>preview.unpackPrivateZip(await read(()=>file.arrayBuffer()))) : await read(()=>library.readTree(game.folder, new Map([[game.entry, htmlBytes]]), {fileBacked:true,signal:loadController.signal}));
+      const [files,saved]=await readTasks.prepareTogether([
+        signal=>game.kind==='zip'?readTasks.readWithSignal(async()=>preview.unpackPrivateZip(await readTasks.readWithSignal(()=>file.arrayBuffer(),signal),()=>{},{signal}),signal):readTasks.readWithSignal(()=>library.readTree(game.folder,new Map([[game.entry,htmlBytes]]),{fileBacked:true,signal}),signal),
+        async signal=>{
+          const shared=root.nativeReadOnly?{state:'local'}:await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal});
+          if(shared.state==='conflict'){sharedSaveIssues.set(game.id,{game,result:shared});saveSyncRows();throw Error('セーブが別々のPCで進んでいます。ホームに戻り「設定」→「セーブの共有」で使うセーブを選んでください。');}
+          return readTasks.readWithSignal(()=>localState.loadLocalSave(session.libraryId,game.id),signal);
+        }
+      ],loadController.signal);
       if (game.kind === 'html') files.set('index.html', files.get(game.entry));
-      const shared=root.nativeReadOnly?{state:'local'}:await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal:loadController.signal});
-      if(shared.state==='conflict'){sharedSaveIssues.set(game.id,{game,result:shared});saveSyncRows();throw Error('セーブが別々のPCで進んでいます。ホームに戻り「設定」→「セーブの共有」で使うセーブを選んでください。');}
-      const saved = await read(()=>localState.loadLocalSave(session.libraryId, game.id));
       options = { kind: game.kind, files, saved };
     }
     if (activePlay !== session) return;
@@ -2955,7 +3007,7 @@ $('#clearImage').onchange=()=>{
   if(!busy)writeControls();
 };
 $('#editForm').noValidate=true;
-$('#editForm').onsubmit = event => { event.preventDefault();if(busy)return;addEnvironmentTag();updateFormCounters();if(imageProcessing||imageError){selectEditTab('Image');status(imageError||'画像の読み込み完了をお待ちください。');return;}if(editing&&pendingSettings(editing.path)){status('再保存せず、先に保存結果を確認してください。');return;}const invalid=[...event.target.elements].find(e=>e.willValidate&&!e.validity.valid);if(invalid){const panel=invalid.closest('[role=tabpanel]');if(panel)selectEditTab(panel.id.replace('panel',''));event.target.reportValidity();return;}
+$('#editForm').onsubmit = event => { event.preventDefault();if(busy)return;addEnvironmentTag();if($('#newTag').value.trim()&&!addCustomTag()){selectEditTab('Basic');return;}updateFormCounters();if(imageProcessing||imageError){selectEditTab('Image');status(imageError||'画像の読み込み完了をお待ちください。');return;}if(editing&&pendingSettings(editing.path)){status('再保存せず、先に保存結果を確認してください。');return;}const invalid=[...event.target.elements].find(e=>e.willValidate&&!e.validity.valid);if(invalid){const panel=invalid.closest('[role=tabpanel]');if(panel)selectEditTab(panel.id.replace('panel',''));event.target.reportValidity();return;}
   const values={title:$('#editTitle').value,tags:library.tagsFrom($('#editTags').value),developmentEnvironment:$('#editEnvironment').value,description:$('#editDescription').value,instructions:$('#editInstructions').value},imageFile=$('#editImage').files[0],clear=$('#clearImage').checked,adjustment={enabled:$('#enableCrop').checked,zoom:$('#cropZoom').value,x:$('#cropX').value,y:$('#cropY').value};action(async () => {
   if (!editingEnabled) throw new Error('設定で追加・編集を有効にしてください。');
   let image = clear ? null : editing.thumbnail;
@@ -2996,7 +3048,7 @@ Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previ
 }
 
 
-$('#forgetFolder').onclick=()=>action(async()=>{await localState.forgetHandle(folderScope);return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
+$('#forgetFolder').onclick=()=>action(async()=>{if(folderSharing.legacyScope(folderScope))await cacheHandle({name:''},false);else await localState.forgetHandle(folderScope);return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
 
 document.addEventListener('visibilitychange',noteHomeActivity);
 
