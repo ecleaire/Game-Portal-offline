@@ -7,5 +7,6 @@ GAME-PORTAL-MAC binary linguist-generated=true
 GAME-PORTAL-MAC.command text eol=lf
 GAME-PORTAL-MOJAVE binary linguist-generated=true
 GAME-PORTAL-MOJAVE.command text eol=lf
+GAME-PORTAL-MOJAVE.app/** binary linguist-generated=true
 README-WINDOWS.txt -text
 THIRD-PARTY-LICENSES.txt -text

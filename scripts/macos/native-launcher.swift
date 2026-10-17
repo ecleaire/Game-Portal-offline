@@ -5,6 +5,16 @@ import CoreFoundation
 #if MOJAVE
 import AppKit
 import Darwin
+let mojaveApp = Bundle.main.bundleURL.pathExtension == "app" && !CommandLine.arguments.contains("--headless")
+final class MojaveMenu: NSObject, NSApplicationDelegate {
+    var item: NSStatusItem?;var open: (() -> Void)?;var choose: (() -> Void)?
+    func install(){item=NSStatusBar.system.statusItem(withLength:NSStatusItem.variableLength);item?.button?.title="GAME PORTAL";let menu=NSMenu();for (title,selector) in [("ゲーム一覧を開く",#selector(openPortal)),("次回の保存先を選ぶ",#selector(chooseFolder)),("終了",#selector(quit))]{let entry=NSMenuItem(title:title,action:selector,keyEquivalent:"");entry.target=self;menu.addItem(entry)};item?.menu=menu}
+    @objc func openPortal(){open?()};@objc func chooseFolder(){choose?()};@objc func quit(){NSApplication.shared.terminate(nil)}
+    func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows flag:Bool)->Bool{open?();return false}
+}
+func reportMojaveError(_ message:String){
+    if mojaveApp{let show:()->Void={NSApplication.shared.setActivationPolicy(.accessory);NSApplication.shared.activate(ignoringOtherApps:true);let alert=NSAlert();alert.messageText="GAME PORTALを開けませんでした";alert.informativeText=message;alert.runModal();exit(1)};if Thread.isMainThread{show()}else{DispatchQueue.main.async(execute:show)}}else{fputs("GAME PORTAL: \(message)\n",stderr);exit(1)}
+}
 #endif
 
 // macOS 12+, universal Intel / Apple silicon. No external runtime installation.
@@ -58,6 +68,9 @@ func checkLibrary(_ root: URL, _ expected: String? = nil) throws -> String {
 do {
     let args=CommandLine.arguments
     var html=URL(fileURLWithPath:args[0]).standardizedFileURL.deletingLastPathComponent().appendingPathComponent("GAME-PORTAL.html")
+    #if MOJAVE
+    if Bundle.main.bundleURL.pathExtension == "app"{html=Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/GAME-PORTAL.html")}
+    #endif
     var headless=false, ready: URL?=nil, index=1
     while index<args.count {
         switch args[index] {
@@ -69,8 +82,12 @@ do {
         };index+=1
     }
     guard fm.fileExists(atPath:html.path) else {throw PortalError("同じフォルダーにGAME-PORTAL.htmlを置いてください。")}
-    let config=html.deletingLastPathComponent().appendingPathComponent("GAME-PORTAL-FOLDER.txt")
-    let sharedConfig=html.deletingLastPathComponent().appendingPathComponent("GAME-PORTAL-CONNECTION.json")
+    var configurationDirectory=html.deletingLastPathComponent()
+    #if MOJAVE
+    if Bundle.main.bundleURL.pathExtension == "app" && !args.contains("--html"){configurationDirectory=Bundle.main.bundleURL.deletingLastPathComponent()}
+    #endif
+    let config=configurationDirectory.appendingPathComponent("GAME-PORTAL-FOLDER.txt")
+    let sharedConfig=configurationDirectory.appendingPathComponent("GAME-PORTAL-CONNECTION.json")
     var root: URL?=nil, libraryID: String?=nil, configurationError: String?=nil
     let configurationLock=NSLock()
     func configureRoot() {
@@ -78,7 +95,7 @@ do {
     if fm.fileExists(atPath:sharedConfig.path) {
       do {
         let info=try object(read(sharedConfig,8192));guard schema(info["schema"]),info["kind"] as? String == "relative",let path=info["path"] as? String,!path.isEmpty,path.count<=1000,!path.hasPrefix("/"),!path.contains("\\"),!path.contains(":"),!path.contains("\0"),!path.contains("\n"),!path.contains("\r"),path.split(separator:"/",omittingEmptySubsequences:false).count<=32,let expected=validID(info["libraryId"]) else{throw PortalError("共有接続設定を確認してください。")}
-        let url=html.deletingLastPathComponent().appendingPathComponent(path).standardizedFileURL
+        let url=configurationDirectory.appendingPathComponent(path).standardizedFileURL
         let values=try url.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey]);guard values.isDirectory == true && values.isSymbolicLink != true else{throw PortalError("共有の保存先にアクセスできません。FinderでNASの接続を確認してください。")}
         libraryID=try checkLibrary(url,expected);root=url
       } catch {configurationError="共有の保存先へ接続できません："+((error as? PortalError)?.message ?? error.localizedDescription)}
@@ -89,7 +106,7 @@ do {
         guard let raw=String(data:try read(config,8192),encoding:.utf8) else {throw PortalError("保存先設定はUTF-8で保存してください。")}
         let path=(raw.hasPrefix("\u{FEFF}") ? String(raw.dropFirst()) : raw).trimmingCharacters(in:.whitespacesAndNewlines)
         guard !path.isEmpty && !path.contains(where:{$0.isNewline || $0 == "\0"}) else {throw PortalError("GAME-PORTAL-FOLDER.txtには保存先を1行で指定してください。")}
-        let url=path.hasPrefix("/") ? URL(fileURLWithPath:path).standardizedFileURL : html.deletingLastPathComponent().appendingPathComponent(path).standardizedFileURL
+        let url=path.hasPrefix("/") ? URL(fileURLWithPath:path).standardizedFileURL : configurationDirectory.appendingPathComponent(path).standardizedFileURL
         let values=try url.resourceValues(forKeys:[.isDirectoryKey,.isSymbolicLinkKey]);guard values.isDirectory == true && values.isSymbolicLink != true else{throw PortalError("自動接続の保存先にアクセスできません。")}
         libraryID=try checkLibrary(url);root=url
       } catch { configurationError="自動接続の設定を確認してください。GAME-PORTAL-FOLDER.txtを修正して再試行できます："+((error as? PortalError)?.message ?? error.localizedDescription) }
@@ -97,16 +114,14 @@ do {
     }
     #if MOJAVE
     if !headless {
-      configureRoot()
-      if root == nil {
       let preference="GamePortalMojaveFolder:"+html.deletingLastPathComponent().path
       if let saved=UserDefaults.standard.dictionary(forKey:preference),let path=saved["path"] as? String,let expected=validID(saved["libraryId"]),let id=try? checkLibrary(URL(fileURLWithPath:path),expected){root=URL(fileURLWithPath:path);libraryID=id}
-      else {
+      else {configureRoot()}
+      if root == nil {
         NSApplication.shared.setActivationPolicy(.accessory);NSApplication.shared.activate(ignoringOtherApps:true)
         let dialog=NSOpenPanel();dialog.title="ゲームの保存先フォルダーを選んでください";dialog.message=configurationError ?? "Windows版で初期設定したゲームの保管フォルダーを選んでください。";dialog.canChooseFiles=false;dialog.canChooseDirectories=true;dialog.allowsMultipleSelection=false
         guard dialog.runModal() == .OK,let selected=dialog.url else{exit(0)}
         let id=try checkLibrary(selected);root=selected;libraryID=id;UserDefaults.standard.set(["path":selected.path,"libraryId":id],forKey:preference)
-      }
       }
     }
     #endif
@@ -122,6 +137,16 @@ do {
     let listener=try NWListener(using:parameters)
     let queue=DispatchQueue(label:"gameportal.listener"), slots=DispatchSemaphore(value:8)
     var port: UInt16=0
+    func openPortal() throws {
+        let task=Process();task.executableURL=URL(fileURLWithPath:"/usr/bin/open")
+        #if MOJAVE
+        guard let firefox=NSWorkspace.shared.urlForApplication(withBundleIdentifier:"org.mozilla.firefox") else{throw PortalError("Firefox ESR 115を先にインストールしてください。https://www.firefox.com/download/all/desktop-esr/")}
+        task.arguments=["-a",firefox.path,html.absoluteString+"#native=\(port).\(token)"]
+        #else
+        task.arguments=[html.absoluteString+"#native=\(port).\(token)"]
+        #endif
+        try task.run()
+    }
     func reply(_ connection: NWConnection,_ status: Int,_ body: Data,_ binary: Bool=false,_ cors: Bool=true) {
         var header="HTTP/1.1 \(status) Response\r\nConnection: close\r\nCache-Control: no-store\r\nContent-Type: \(binary ? "application/octet-stream" : "application/json; charset=utf-8")\r\nContent-Length: \(body.count)\r\n"
         if cors { header += "Access-Control-Allow-Origin: null\r\nAccess-Control-Allow-Methods: POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, X-Game-Portal-Token\r\nAccess-Control-Allow-Private-Network: true\r\nVary: Origin\r\n" }
@@ -193,18 +218,32 @@ do {
             port=listener.port!.rawValue
             do{
                 if let ready=ready {try json(["origin":"http://127.0.0.1:\(port)","token":token]).write(to:ready)}
-                if !headless {let task=Process();task.executableURL=URL(fileURLWithPath:"/usr/bin/open")
+                if !headless {try openPortal();print("GAME PORTAL：このウィンドウを閉じると自動接続が終了します。")}
+            }catch{
                 #if MOJAVE
-                guard let firefox=NSWorkspace.shared.urlForApplication(withBundleIdentifier:"org.mozilla.firefox") else{throw PortalError("Firefox ESR 115を先にインストールしてください。https://www.firefox.com/download/all/desktop-esr/")}
-                task.arguments=["-a",firefox.path,html.absoluteString+"#native=\(port).\(token)"]
+                reportMojaveError((error as? PortalError)?.message ?? error.localizedDescription)
                 #else
-                task.arguments=[html.absoluteString+"#native=\(port).\(token)"]
+                fputs("\(error)\n",stderr);exit(1)
                 #endif
-                try task.run();print("GAME PORTAL：このウィンドウを閉じると自動接続が終了します。")}
-            }catch{fputs("\(error)\n",stderr);exit(1)}
+            }
         case .failed(let error):fputs("\(error)\n",stderr);exit(1)
         default:break
         }
     }
-    listener.start(queue:queue);dispatchMain()
-}catch{fputs("GAME PORTAL: \((error as? PortalError)?.message ?? error.localizedDescription)\n",stderr);exit(1)}
+    listener.start(queue:queue)
+    #if MOJAVE
+    if mojaveApp {
+        NSApplication.shared.setActivationPolicy(.accessory);let menu=MojaveMenu();menu.open={do{try openPortal()}catch{reportMojaveError((error as? PortalError)?.message ?? error.localizedDescription)}}
+        menu.choose={let dialog=NSOpenPanel();dialog.title="次回の保存先を選んでください";dialog.canChooseFiles=false;dialog.canChooseDirectories=true;dialog.allowsMultipleSelection=false;if dialog.runModal() == .OK,let selected=dialog.url{do{let id=try checkLibrary(selected);UserDefaults.standard.set(["path":selected.path,"libraryId":id],forKey:"GamePortalMojaveFolder:"+html.deletingLastPathComponent().path);let notice=NSAlert();notice.messageText="次回の起動から切り替わります";notice.informativeText="今開いているゲームの保存先は変わりません。";notice.runModal()}catch{let notice=NSAlert();notice.messageText="この保存先を開けません";notice.informativeText=(error as? PortalError)?.message ?? error.localizedDescription;notice.runModal()}}}
+        NSApplication.shared.delegate=menu;menu.install();NSApplication.shared.run();withExtendedLifetime(menu){}
+    }else{dispatchMain()}
+    #else
+    dispatchMain()
+    #endif
+}catch{
+    #if MOJAVE
+    reportMojaveError((error as? PortalError)?.message ?? error.localizedDescription)
+    #else
+    fputs("GAME PORTAL: \((error as? PortalError)?.message ?? error.localizedDescription)\n",stderr);exit(1)
+    #endif
+}

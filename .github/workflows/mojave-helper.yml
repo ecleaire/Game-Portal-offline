@@ -28,5 +28,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-MOJAVE-Intel
-          path: GAME-PORTAL-MOJAVE
+          path: |
+            GAME-PORTAL-MOJAVE
+            GAME-PORTAL-MOJAVE.app/**
           if-no-files-found: error
