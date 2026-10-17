@@ -45,8 +45,23 @@ GodotはWeb書き出し一式を、Scratch（`.sb3`）はHTMLに変換して追�
 <details>
 <summary>起動補助を使う（ベータ版）</summary>
 
-- **フォルダー選択を省略したい** → [Windows・Macの自動接続（ベータ版）](docs/AUTO_CONNECT.md)。プレイ専用で、セーブは各PCのブラウザー内に保存します。
-- **WindowsのEXEゲームを使いたい** → [EXE起動補助（ベータ版）](docs/WINDOWS_EXE.md)。同じ場所の `GAME-PORTAL-WINDOWS.exe` から開きます。
+フォルダー選択を省略して遊びたい場合は、起動補助を使えます。
+
+1. 通常のHTMLで保存先を選び、編集モードで初回設定を済ませます。
+2. 設定の **「共有・バージョン」** で保存先のパスを入力し、**「起動補助の設定ファイルを保存」** を押します。
+3. 保存した `GAME-PORTAL-FOLDER.txt` をHTML・起動補助と同じ場所に置き、次のファイルを開きます。
+
+| PC | 開くファイル |
+| --- | --- |
+| Windows 10 / 11 | `GAME-PORTAL-WINDOWS.exe` |
+| Mac（macOS 12以降） | `GAME-PORTAL-MAC.command`（同じ場所の `GAME-PORTAL-MAC` も必要） |
+
+同じ場所の「ゲーム」フォルダーなら、パスは `./ゲーム` と指定します。NASへの接続・認証はPC側で済ませてください。
+接続に失敗したら、保存先や設定を確認して **「自動接続を再試行」** を押します。
+
+自動接続は**プレイ専用**です。セーブは各PCのブラウザー内に保存します。追加・編集・セーブ共有は、HTMLの設定から保存先を選んで行います。
+
+[自動接続の詳しい準備・注意点](docs/AUTO_CONNECT.md) · [WindowsのEXEゲームを使う](docs/WINDOWS_EXE.md)
 
 </details>
 
