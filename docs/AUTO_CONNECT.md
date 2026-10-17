@@ -46,3 +46,5 @@ Windowsだけで使う場合は `\\NAS名\共有名\ゲーム`、Macだけなら
 Macアプリで起動する場合は、[Macでの使い方](MAC.md)を参照してください。アプリに画面用HTMLを内蔵しています。
 
 このページの `GAME-PORTAL-MAC.command` はmacOS 12以降のIntel・Appleシリコン用の起動補助です。ゲームごとの動作条件も確認してください。
+
+配布ZIPは `Windows`・`Mac`・`HTML` の下に `プレイ用`・`クリエイター用` を分けています。配布フォルダーを丸ごと使う場合、`GAME-PORTAL-CONNECTION.json` と `GAME-PORTAL-FOLDER.txt` はREADMEと同じ場所が共通の設定先です。版のフォルダーだけを別の場所へコピーした場合は、その場所で保存先を指定してください。

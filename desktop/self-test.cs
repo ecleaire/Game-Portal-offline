@@ -31,6 +31,13 @@ internal static class DesktopSelfTest {
         File.WriteAllText(Path.Combine(movedGames,".gameportal/library-id.json"),"{\"schema\":1,\"id\":\""+new String('b',32)+"\"}");Fails(()=>moved.Restore(),"shared ID mismatch never initializes folder",results);
         File.WriteAllText(Path.Combine(movedApp,DesktopSharedConnection.FileName),"{}");Fails(()=>moved.Restore(),"corrupt shared connection rejected",results);
         string second=Path.Combine(app,"second");Directory.CreateDirectory(Path.Combine(second,".gameportal"));File.WriteAllText(Path.Combine(second,".gameportal/library-id.json"),"{\"schema\":1,\"id\":\""+new String('b',32)+"\"}");publisher.Remember(publisher.Register(second));Assert(File.ReadAllText(sharedFile)==sharedText&&publisher.Restore().Path==second&&otherPC.Restore().Path==sharedGames,"private override preserves shared default");results.Add("shared default never silently replaced");
+        File.WriteAllText(Path.Combine(app,"GAME-PORTAL-DISTRIBUTION.json"),"{\"schema\":1,\"project\":\"GAME-PORTAL\",\"layout\":\"platform-role\"}");
+        string creator=Path.Combine(app,"Windows","クリエイター用"),player=Path.Combine(app,"Windows","プレイ用");Directory.CreateDirectory(creator);Directory.CreateDirectory(player);
+        var creatorFiles=new DesktopFiles(Path.Combine(directory,"creator-grouped"),creator);Assert(creatorFiles.Restore().Path==sharedGames,"grouped creator uses bundle connection");results.Add("platform creator connection");
+        var playerFiles=new DesktopFiles(Path.Combine(directory,"player-grouped"),player);Assert(playerFiles.Restore().Path==sharedGames,"grouped player uses bundle connection");results.Add("platform player connection");
+        string movedProfile=Path.Combine(directory,"publisher");var relocatedOld=new DesktopFiles(movedProfile,creator);Assert(relocatedOld.Restore().Path==second,"root profile survives platform move");results.Add("legacy profile preserved after platform move");
+        Assert(PortalNative.ConfigurationDirectory(Path.Combine(app,"other"))==Path.Combine(app,"other"),"no arbitrary parent search");results.Add("configuration discovery bounded");
+        File.WriteAllText(Path.Combine(app,"GAME-PORTAL-DISTRIBUTION.json"),"{}");Fails(()=>new DesktopFiles(Path.Combine(directory,"bad-marker"),player),"corrupt layout marker rejected",results);
         File.WriteAllText(Path.Combine(directory,"result.json"),service.Serialize(new {passed=true,checks=results}),new UTF8Encoding(false));
     }
 }

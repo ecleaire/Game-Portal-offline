@@ -78,14 +78,14 @@ export async function saveMetadata(root, data) {
   data.revision = next.revision;
 }
 export function tagsFrom(text) {
-  return [...new Set(String(text).split(/[,、\n]/).map(s => s.trim()).filter(Boolean))].slice(0, 12).map(s => s.slice(0, 32));
+  return [...new Set(String(text).split(/[,、\n]/).map(s => s.trim()).filter(Boolean))].slice(0, 32).map(s => s.slice(0, 32));
 }
 export function parseGameSettings(text, path = '') {
     if (new TextEncoder().encode(text).length > 2 * 1024 * 1024) throw new Error('ゲーム設定のサイズが大きすぎます。');
     let data;try { data = JSON.parse(text); } catch { throw new Error('ゲーム設定のJSONが壊れています。'); }
     if (!data || data.schema !== 1 || typeof data.id !== 'string' || !/^[a-f0-9]{32}$/.test(data.id) ||
       typeof data.title !== 'string' || !data.title.trim() || data.title.length > 120 ||
-      !Array.isArray(data.tags) || data.tags.length > 12 || data.tags.some(t => typeof t !== 'string' || t.length > 32) ||
+      !Array.isArray(data.tags) || data.tags.length > 32 || data.tags.some(t => typeof t !== 'string' || t.length > 32) ||
       typeof data.developmentEnvironment !== 'string' || data.developmentEnvironment.length > 120 ||
       (data.description !== undefined && (typeof data.description !== 'string' || data.description.length > 2000)) ||
       (data.instructions !== undefined && (typeof data.instructions !== 'string' || data.instructions.length > 4000)) ||
@@ -132,6 +132,7 @@ export async function saveGameSettings(root, game, values, options={}) {
   }
   current||=await loadGameSettings(root, game.path);
   if (current.text !== game.settingsText) throw new Error('このゲームの設定が更新されています。「再読み込み」してから編集してください。');
+  if(!Array.isArray(values.tags)||values.tags.length>32||values.tags.some(tag=>typeof tag!=='string'||tag.trim().length>32))throw new Error('タグは32こまで、1つ32文字以内で設定してください。');
   const next = { ...current.data, schema: 1, id: game.id, title: values.title.trim(),
     tags: tagsFrom(values.tags.join(',')), developmentEnvironment: values.developmentEnvironment.trim(),
     description: values.description ?? current.data?.description ?? '', instructions: values.instructions ?? current.data?.instructions ?? '',
@@ -142,6 +143,7 @@ export async function saveGameSettings(root, game, values, options={}) {
     (next.thumbnail !== null && (typeof next.thumbnail !== 'string' || !/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(next.thumbnail)))) throw new Error('ゲーム設定の入力内容を確認してください。');
   const text = JSON.stringify(next, null, 2) + '\n';
   if (new TextEncoder().encode(text).length > 2 * 1024 * 1024) throw new Error('ゲーム設定のサイズが大きすぎます。');
+  if(next.tags.length>12)await ensureCompatibility(root,{extendedTags:true});
   const attempt={schema:1,id:game.id,gamePath:game.path,historyName:crypto.randomUUID()+'.json',expectedHash:await settingsDigest(text),beforeHash:current.text===null?null:await settingsDigest(current.text),kind:options.kind||'edit',uploadFolder:options.uploadFolder||null};
   const parts = safePath(game.path + '.gameportal.json'); let folder = root;
   for (const part of parts.slice(0, -1)) folder = await folder.getDirectoryHandle(part);

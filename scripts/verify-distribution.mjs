@@ -1,3 +1,5 @@
+import {materializeDistribution} from './distribution.mjs';
+await materializeDistribution();
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -30,3 +32,5 @@ console.log('Code ZIP distribution verified: root HTML v'+version+', matching bu
 await import('./verify-desktop.mjs');
 await import('./verify-mojave.mjs');
 await import('./verify-editions.mjs');
+
+await import('./distribution.mjs').then(module=>module.verifyPublishedDistribution());

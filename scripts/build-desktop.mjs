@@ -1,3 +1,5 @@
+import {materializeDistribution,publishDistribution} from './distribution.mjs';
+await materializeDistribution();
 import {readFile,writeFile,mkdir,access} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -30,3 +32,5 @@ await writeFile(join(root,'DESKTOP-LICENSES.txt'),licenses);
 console.log('Desktop EXE built: '+config.version+', embedded launcher '+pkg.version+'. No adjacent HTML or SDK DLLs needed.');
 
 }
+
+await publishDistribution('windows');

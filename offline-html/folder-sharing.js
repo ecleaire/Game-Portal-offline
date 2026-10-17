@@ -16,3 +16,10 @@ export function portableLauncher(source,info) {
   const json=JSON.stringify(config).replaceAll('<','\\u003c');
   return source.slice(0,start+open.length)+json+source.slice(end);
 }
+
+// One bounded, known relocation; never borrow another launcher's folder scope.
+export function legacyScope(path){
+ const parts=path.split('/');let role;try{role=decodeURIComponent(parts.at(-2));}catch{return null;}
+ if(parts.at(-3)!=='HTML'||!['プレイ用','クリエイター用'].includes(role)||!['GAME-PORTAL.html','GAME-PORTAL-PLAY.html'].includes(parts.at(-1)))return null;
+ return [...parts.slice(0,-3),parts.at(-1)].join('/');
+}

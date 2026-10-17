@@ -138,3 +138,7 @@ html[data-edition="player"] :is(#post,#edit,#contentUpdate,#capture,#history,#in
 #folderDrop{min-height:180px;display:flex;align-items:center;justify-content:center;text-align:center;border-style:dashed}
 .app-edition{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
 @media(max-width:560px){.app-edition{display:none}}
+
+.new-tag-row{display:flex;align-items:center;gap:10px}.new-tag-row input{flex:1;min-width:0}.new-tag-row button{flex-shrink:0;min-height:44px}#newTagStatus:empty{display:none}@media(max-width:420px){.new-tag-row{flex-wrap:wrap}.new-tag-row input{flex-basis:100%}.new-tag-row button{width:100%}}
+
+#playerTags{max-height:108px;overflow-y:auto;overscroll-behavior:contain;align-content:start;padding:2px 4px 4px 0;scrollbar-width:thin}#playerTags .game-tag{flex-shrink:0}#playerTags:focus-visible{outline:2px solid var(--accent);outline-offset:4px}

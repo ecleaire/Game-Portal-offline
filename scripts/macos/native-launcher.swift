@@ -36,6 +36,15 @@ func read(_ url: URL, _ limit: Int) throws -> Data {
     while data.count<Int(before.st_size){let count=Darwin.read(descriptor,&buffer,min(buffer.count,Int(before.st_size)-data.count));if count<0{if errno==EINTR{continue};throw NSError(domain:NSPOSIXErrorDomain,code:Int(errno))};guard count>0 else{throw PortalError("読み込み中にファイルが変わりました。")};data.append(contentsOf:buffer.prefix(count))}
     var after=stat();guard fstat(descriptor,&after)==0,after.st_size==before.st_size else{throw PortalError("読み込み中にファイルが変わりました。もう一度試してください。")};return data
 }
+func sharedConfigurationDirectory(_ directory: URL) throws -> URL {
+    let platform=directory.deletingLastPathComponent(),root=platform.deletingLastPathComponent()
+    guard ["プレイ用","クリエイター用"].contains(directory.lastPathComponent),["Windows","Mac","HTML"].contains(platform.lastPathComponent) else{return directory}
+    let marker=root.appendingPathComponent("GAME-PORTAL-DISTRIBUTION.json")
+    guard fm.fileExists(atPath:marker.path) else{return directory}
+    for url in [directory,platform,root,marker]{guard try url.resourceValues(forKeys:[.isSymbolicLinkKey]).isSymbolicLink != true else{throw PortalError("配布フォルダーのリンクを確認してください。")}}
+    let info=try object(read(marker,1024));guard schema(info["schema"]),info["project"] as? String == "GAME-PORTAL",info["layout"] as? String == "platform-role" else{throw PortalError("配布フォルダーの設定を確認してください。")}
+    return root
+}
 func bound(_ root: URL, _ path: String) throws -> URL {
     var current=root
     for part in path.split(separator:"/",omittingEmptySubsequences:false) {
@@ -55,7 +64,7 @@ func checkLibrary(_ root: URL, _ expected: String? = nil) throws -> String {
     let compatibility=root.appendingPathComponent(".gameportal/compatibility.json")
     if fm.fileExists(atPath:compatibility.path) {
         let info=try object(read(bound(root,".gameportal/compatibility.json"),8192))
-        guard schema(info["schema"]), let minimum=info["minLauncherVersion"] as? String, minimum.range(of:"^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",options:.regularExpression) != nil, minimum.compare(version,options:.numeric) != .orderedDescending, let features=info["requiredFeatures"] as? [String], features.allSatisfy({["per-game-settings-v1","content-selector-v1"].contains($0)}) else { throw PortalError("HTMLとMac起動補助を対応する最新版にしてください。") }
+        guard schema(info["schema"]), let minimum=info["minLauncherVersion"] as? String, minimum.range(of:"^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",options:.regularExpression) != nil, minimum.compare(version,options:.numeric) != .orderedDescending, let features=info["requiredFeatures"] as? [String], features.allSatisfy({["per-game-settings-v1","content-selector-v1","extended-tags-v1"].contains($0)}) else { throw PortalError("HTMLとMac起動補助を対応する最新版にしてください。") }
     }
     return id
 }
@@ -74,9 +83,13 @@ do {
         default:throw PortalError("起動オプションを確認してください。")
         };index+=1
     }
+    if !fm.fileExists(atPath:html.path) && Bundle.main.bundleURL.pathExtension != "app"{html=html.deletingLastPathComponent().appendingPathComponent("GAME-PORTAL-PLAY.html")}
     guard fm.fileExists(atPath:html.path) else {throw PortalError("同じフォルダーにGAME-PORTAL.htmlを置いてください。")}
     var configurationDirectory=html.deletingLastPathComponent()
     if Bundle.main.bundleURL.pathExtension == "app" && !args.contains("--html"){configurationDirectory=Bundle.main.bundleURL.deletingLastPathComponent()}
+    configurationDirectory=try sharedConfigurationDirectory(configurationDirectory)
+    let folderPreferenceKey="GamePortalFolder:"+configurationDirectory.path
+    let legacyPreferenceKeys=["GamePortalMojaveFolder:"+configurationDirectory.path,"GamePortalMojaveFolder:"+html.deletingLastPathComponent().path,"GamePortalMojaveFolder:"+configurationDirectory.appendingPathComponent(Bundle.main.bundleURL.lastPathComponent).appendingPathComponent("Contents/Resources").path]
     let config=configurationDirectory.appendingPathComponent("GAME-PORTAL-FOLDER.txt")
     let sharedConfig=configurationDirectory.appendingPathComponent("GAME-PORTAL-CONNECTION.json")
     var root: URL?=nil, libraryID: String?=nil, configurationError: String?=nil
@@ -105,8 +118,8 @@ do {
     }
     #if MOJAVE
     if !headless {
-      let preference="GamePortalMojaveFolder:"+html.deletingLastPathComponent().path
-      if let saved=UserDefaults.standard.dictionary(forKey:preference),let path=saved["path"] as? String,let expected=validID(saved["libraryId"]),let id=try? checkLibrary(URL(fileURLWithPath:path),expected){root=URL(fileURLWithPath:path);libraryID=id}
+      let preference=folderPreferenceKey
+      if let saved=(UserDefaults.standard.dictionary(forKey:preference) ?? legacyPreferenceKeys.compactMap{UserDefaults.standard.dictionary(forKey:$0)}.first),let path=saved["path"] as? String,let expected=validID(saved["libraryId"]),let id=try? checkLibrary(URL(fileURLWithPath:path),expected){root=URL(fileURLWithPath:path);libraryID=id}
       else {configureRoot()}
       if root == nil {
         NSApplication.shared.setActivationPolicy(.accessory);NSApplication.shared.activate(ignoringOtherApps:true)
@@ -235,7 +248,7 @@ do {
     #if MOJAVE
     if mojaveApp {
         NSApplication.shared.setActivationPolicy(.accessory);let menu=MojaveMenu();menu.open={browser in do{try openPortal(browser)}catch{let notice=NSAlert();notice.messageText="ブラウザーを開けません";notice.informativeText=(error as? PortalError)?.message ?? error.localizedDescription;notice.runModal()}}
-        menu.choose={let dialog=NSOpenPanel();dialog.title="次回の保存先を選んでください";dialog.canChooseFiles=false;dialog.canChooseDirectories=true;dialog.allowsMultipleSelection=false;if dialog.runModal() == .OK,let selected=dialog.url{do{let id=try checkLibrary(selected);UserDefaults.standard.set(["path":selected.path,"libraryId":id],forKey:"GamePortalMojaveFolder:"+html.deletingLastPathComponent().path);let notice=NSAlert();notice.messageText="次回の起動から切り替わります";notice.informativeText="今開いているゲームの保存先は変わりません。";notice.runModal()}catch{let notice=NSAlert();notice.messageText="この保存先を開けません";notice.informativeText=(error as? PortalError)?.message ?? error.localizedDescription;notice.runModal()}}}
+        menu.choose={let dialog=NSOpenPanel();dialog.title="次回の保存先を選んでください";dialog.canChooseFiles=false;dialog.canChooseDirectories=true;dialog.allowsMultipleSelection=false;if dialog.runModal() == .OK,let selected=dialog.url{do{let id=try checkLibrary(selected);UserDefaults.standard.set(["path":selected.path,"libraryId":id],forKey:folderPreferenceKey);let notice=NSAlert();notice.messageText="次回の起動から切り替わります";notice.informativeText="今開いているゲームの保存先は変わりません。";notice.runModal()}catch{let notice=NSAlert();notice.messageText="この保存先を開けません";notice.informativeText=(error as? PortalError)?.message ?? error.localizedDescription;notice.runModal()}}}
         NSApplication.shared.delegate=menu;menu.install();NSApplication.shared.run();withExtendedLifetime(menu){}
     }else{dispatchMain()}
     #else

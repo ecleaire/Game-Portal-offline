@@ -29,6 +29,16 @@ internal static class PortalNative {
     static bool Schema(Dictionary<string,object> value) { return value.ContainsKey("schema") && value["schema"] is int && (int)value["schema"] == 1; }
     static string Id(string value) { if(!Regex.IsMatch(value ?? "", "^[a-f0-9]{32}$")) throw new Exception("作品と保管フォルダーのIDを確認してください。"); return value; }
     static string Read(string path,int limit) { var info=new FileInfo(path);if(info.Length>limit)throw new Exception("設定ファイルが大きすぎます。"); return File.ReadAllText(path,Encoding.UTF8); }
+    internal static string ConfigurationDirectory(string directory) {
+        directory=Path.GetFullPath(directory);if(directory.Length>Path.GetPathRoot(directory).Length)directory=directory.TrimEnd(Path.DirectorySeparatorChar);
+        var role=new DirectoryInfo(directory);var platform=role.Parent;
+        if(platform==null||!(role.Name=="プレイ用"||role.Name=="クリエイター用")||!new[]{"Windows","Mac","HTML"}.Contains(platform.Name)||platform.Parent==null)return directory;
+        string root=platform.Parent.FullName,marker=Path.Combine(root,"GAME-PORTAL-DISTRIBUTION.json");
+        if(!File.Exists(marker))return directory;
+        foreach(string path in new[]{directory,platform.FullName,root,marker})if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new IOException("配布フォルダーのリンクを確認してください。");
+        var record=Parse(Read(marker,1024));if(!Schema(record)||Text(record,"project")!="GAME-PORTAL"||Text(record,"layout")!="platform-role")throw new IOException("配布フォルダーの設定を確認してください。");
+        return root;
+    }
     static string Bound(string root,string relative,bool publicPath) {
         if(String.IsNullOrEmpty(relative) || relative.Length>1000)throw new Exception("保存先のパスが不正です。");
         foreach(string part in relative.Split('/')) {
@@ -53,7 +63,7 @@ internal static class PortalNative {
             string minimum=Text(info,"minLauncherVersion");
             if(!Schema(info)||!Regex.IsMatch(minimum,"^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$") || new System.Version(minimum)>new System.Version(Version))throw new Exception("Windows起動補助を最新に更新してください。");
             object features; if(!info.TryGetValue("requiredFeatures",out features)||!(features is System.Collections.IList))throw new Exception("互換性の設定を確認してください。");
-            foreach(object feature in (System.Collections.IList)features)if(!(feature is string)||!new[]{"per-game-settings-v1","content-selector-v1"}.Contains((string)feature))throw new Exception("このWindows起動補助では対応できないライブラリです。");
+            foreach(object feature in (System.Collections.IList)features)if(!(feature is string)||!new[]{"per-game-settings-v1","content-selector-v1","extended-tags-v1"}.Contains((string)feature))throw new Exception("このWindows起動補助では対応できないライブラリです。");
         }
     }
     static string Root(string id) {
@@ -169,11 +179,12 @@ internal static class PortalNative {
     // Resolve failed configuration again, but pin a successful root/ID for this process.
     static void ConfigureAutoRoot() {
         AutoRootError=null;
-        string config=Path.Combine(Path.GetDirectoryName(Html),"GAME-PORTAL-FOLDER.txt");
+        string directory=ConfigurationDirectory(Path.GetDirectoryName(Html)),config=Path.Combine(directory,"GAME-PORTAL-FOLDER.txt"),shared=Path.Combine(directory,"GAME-PORTAL-CONNECTION.json");
+        if(File.Exists(shared)){try{if((File.GetAttributes(shared)&FileAttributes.ReparsePoint)!=0)throw new IOException("共有接続設定のリンクを確認してください。");var record=Parse(Read(shared,8192));string relative=Text(record,"path"),id=Id(Text(record,"libraryId"));if(!Schema(record)||Text(record,"kind")!="relative"||String.IsNullOrEmpty(relative)||relative.Length>1000||Path.IsPathRooted(relative)||relative.Contains("\\")||relative.Contains(":")||relative.Any(Char.IsControl)||relative.Split('/').Length>32)throw new IOException("共有接続設定を確認してください。");string candidate=Path.GetFullPath(Path.Combine(directory,relative.Replace('/',Path.DirectorySeparatorChar)));CheckLibrary(candidate,id);AutoId=id;AutoRoot=candidate;if(String.IsNullOrEmpty(FixedRoot))FixedRoot=candidate;}catch(Exception error){AutoRootError="共有の保存先へ接続できません："+error.Message;}return;}
         if(!File.Exists(config))return;
         try {
             string path=Read(config,8192).Trim();if(path.Length==0||path.IndexOfAny(new[]{'\r','\n','\0'})>=0)throw new Exception("GAME-PORTAL-FOLDER.txtには保存先を1行で指定してください。");
-            string candidate=Path.GetFullPath(Path.IsPathRooted(path)?path:Path.Combine(Path.GetDirectoryName(Html),path));
+            string candidate=Path.GetFullPath(Path.IsPathRooted(path)?path:Path.Combine(directory,path));
             if(!Directory.Exists(candidate)||(File.GetAttributes(candidate)&FileAttributes.ReparsePoint)!=0)throw new Exception("保存先が見つかりません。NASやドライブの接続を確認して再試行してください。");
             var library=Parse(Read(Bound(candidate,".gameportal/library-id.json",false),1024));string id=Id(Text(library,"id"));CheckLibrary(candidate,id);
             AutoId=id;AutoRoot=candidate;if(String.IsNullOrEmpty(FixedRoot))FixedRoot=AutoRoot;
@@ -181,7 +192,7 @@ internal static class PortalNative {
     }
     [STAThread] static void Main(string[] args) {
         try {
-            Html=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"GAME-PORTAL.html");string ready=null;
+            Html=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"GAME-PORTAL.html");if(!File.Exists(Html))Html=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"GAME-PORTAL-PLAY.html");string ready=null;
             for(int i=0;i<args.Length;i++){if(args[i]=="--headless")Headless=true;else if(args[i]=="--root")FixedRoot=args[++i];else if(args[i]=="--html")Html=Path.GetFullPath(args[++i]);else if(args[i]=="--ready-file")ready=args[++i];else throw new Exception("起動オプションが不正です。");}
             if(!File.Exists(Html))throw new Exception("同じフォルダーにGAME-PORTAL.htmlを置いてください。");
             byte[] secret=new byte[32];using(var rng=RandomNumberGenerator.Create())rng.GetBytes(secret);Token=BitConverter.ToString(secret).Replace("-","").ToLowerInvariant();

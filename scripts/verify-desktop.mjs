@@ -1,3 +1,5 @@
+import {materializeDistribution} from './distribution.mjs';
+await materializeDistribution();
 import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {desktopPage} from '../desktop/page.mjs';

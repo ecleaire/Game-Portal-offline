@@ -1,3 +1,5 @@
+import {materializeDistribution,publishDistribution} from './distribution.mjs';
+await materializeDistribution();
 import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -17,3 +19,5 @@ await writeFile(join(resources,'build.json'),JSON.stringify({schema:1,version,fi
 console.log('Mojave helper built: v'+version+', Intel x86_64, macOS 10.14+, Firefox ESR 115, play-only.');
 
 }
+
+await publishDistribution('mojave');

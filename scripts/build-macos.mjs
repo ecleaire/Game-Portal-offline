@@ -1,3 +1,5 @@
+import {materializeDistribution,publishDistribution} from './distribution.mjs';
+await materializeDistribution();
 import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -21,3 +23,5 @@ for(const edition of ['creator','player']){
  execFileSync('codesign',['--force','--deep','--sign','-','--timestamp=none',join(root,name+'.app')],{stdio:'inherit'});
  execFileSync('codesign',['--verify','--deep','--strict',join(root,name+'.app')],{stdio:'inherit'});
 }
+
+await publishDistribution('mac');

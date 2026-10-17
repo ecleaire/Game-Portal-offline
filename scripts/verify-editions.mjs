@@ -1,3 +1,5 @@
+import {materializeDistribution} from './distribution.mjs';
+await materializeDistribution();
 import {readFile} from 'node:fs/promises';
 const version=JSON.parse(await readFile('package.json','utf8')).version;
 for(const edition of ['creator','player']){

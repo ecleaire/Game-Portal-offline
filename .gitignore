@@ -17,3 +17,20 @@ GAME-PORTAL-FOLDER.txt
 # Personal shared connection configuration next to the app.
 GAME-PORTAL-CONNECTION.json
 GAME-PORTAL-CONNECTION.json.*.tmp
+
+# Private root staging aliases; distribution lives under platform/role folders.
+/GAME-PORTAL-PLAY.html
+/GAME-PORTAL.html
+/GAME-PORTAL-PLAY.exe
+/GAME-PORTAL.exe
+/DESKTOP-LICENSES.txt
+/GAME-PORTAL-WINDOWS.exe
+/README-WINDOWS.txt
+/GAME-PORTAL-PLAY-MAC.app/
+/GAME-PORTAL-MAC.app/
+/GAME-PORTAL-MAC
+/GAME-PORTAL-MAC.command
+/GAME-PORTAL-PLAY-MOJAVE.app/
+/GAME-PORTAL-MOJAVE.app/
+/GAME-PORTAL-MOJAVE
+/GAME-PORTAL-MOJAVE.command

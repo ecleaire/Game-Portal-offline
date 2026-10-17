@@ -1,3 +1,5 @@
+import {materializeDistribution} from './distribution.mjs';
+await materializeDistribution();
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 const bytes=await readFile('GAME-PORTAL-MOJAVE'),{version}=JSON.parse(await readFile('package.json','utf8'));

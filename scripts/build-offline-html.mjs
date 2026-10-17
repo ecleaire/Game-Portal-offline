@@ -1,3 +1,5 @@
+import {materializeDistribution,publishDistribution} from './distribution.mjs';
+await materializeDistribution();
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -35,8 +37,8 @@ const script = [
   'const tagPresets=' + JSON.stringify(JSON.parse(await source('offline-html/tag-presets.json')).tags) + ';',
   "const launcherEdition=document.documentElement.dataset.edition==='player'?'player':'creator';",
   wrap('preview', offlinePreview, 'unpackPrivateZip,webArchiveLayout,privatePreviewDocument'),
-  wrap('readTasks', await source('offline-html/read-task.js'), 'readWithSignal'),
-  wrap('folderSharing', await source('offline-html/folder-sharing.js'), 'connectionInfo,portableLauncher'),
+  wrap('readTasks', await source('offline-html/read-task.js'), 'readWithSignal,prepareTogether'),
+  wrap('folderSharing', await source('offline-html/folder-sharing.js'), 'connectionInfo,portableLauncher,legacyScope'),
   wrap('compatibilityTools', await source('offline-html/compatibility.js'), 'LAUNCHER_VERSION,checkCompatibility,ensureCompatibility'),
   wrap('updateTools', await source('offline-html/updates.js'), 'canUpdateGame,resolveGameContent,replaceGameContent,restoreGameContent,verifyContentUpdate,inspectGameContent,describeContentStorage'),
   wrap('nativeTools', await source('offline-html/native-tools.js'), 'nativeLayout,validateExe,nativeConnection,nativePageConnection,launchNative,nativeFolder'),
@@ -72,3 +74,5 @@ await writeFile(join(output, 'START-HERE.txt'), transferGuide);
 const zip = await packageWebFiles([new File([html], 'GAME-PORTAL.html'), new File([playerHTML], 'GAME-PORTAL-PLAY.html'), new File([readme], 'README.txt'), new File([nasGuide], 'NAS-VALIDATION.txt'), new File([licenses], 'THIRD-PARTY-LICENSES.txt'), new File([transferGuide], 'START-HERE.txt')]);
 await writeFile(join(output, 'GAME-PORTAL-HTML.zip'), Buffer.from(await zip.arrayBuffer()));
 console.log(`Offline launcher built: ${Buffer.byteLength(html)} bytes, ${lock.files.length} verified runtime files. No runtime network required.`);
+
+await publishDistribution('html');

@@ -185,13 +185,13 @@ const cardCache=new Map();
 function resetCards(){for(const url of imageURLs)URL.revokeObjectURL(url);imageURLs=[];cardCache.clear();renderLimit=60;}
 let editBaseline = '';
 function editValues() {
-  return JSON.stringify(['editTitle','editEnvironment','editTags','editDescription','editInstructions','cropZoom','cropX','cropY'].map(id=>$('#'+id).value).concat($('#clearImage').checked,$('#enableCrop').checked,[...$('#editImage').files].map(f=>[f.name,f.size,f.lastModified])));
+  return JSON.stringify(['editTitle','editEnvironment','editTags','editDescription','editInstructions','cropZoom','cropX','cropY'].map(id=>$('#'+id).value).concat($('#clearImage').checked,$('#enableCrop').checked,[...$('#editImage').files].map(f=>[f.name,f.size,f.lastModified]),$('#newTag').value));
 }
 function hasEditChanges(){return $('#edit').open && editValues()!==editBaseline;}
 function updateEditDirty(){
   $('#editDirty').hidden=!hasEditChanges();
   const current=JSON.parse(editValues()),before=JSON.parse(editBaseline||'[]');
-  for(const [name,indexes] of Object.entries({Basic:[0,1,2],Description:[3,4],Image:[5,6,7,8,9,10]})){
+  for(const [name,indexes] of Object.entries({Basic:[0,1,2,11],Description:[3,4],Image:[5,6,7,8,9,10]})){
     const dirty=!!editBaseline&&indexes.some(i=>JSON.stringify(current[i])!==JSON.stringify(before[i]));
     const tab=$('#tab'+name);tab.dataset.dirty=String(dirty);tab.setAttribute('aria-description',dirty?'未保存の変更があります':'');
   }
@@ -212,7 +212,9 @@ const status = message => {
   },message==='一覧を更新しました。'?10000:20000);
 };
 async function cacheHandle(value,remember=true){
-  const record=await localState.cacheHandle(value,remember,folderScope);
+  let record=await localState.cacheHandle(value,remember,folderScope);
+  const legacy=folderSharing.legacyScope(folderScope);
+  if(value===undefined&&!record&&legacy){const old=await localState.cacheHandle(null,true,legacy);if(old?.scope===legacy)record={...old,scope:folderScope};}
   if(value){lastFolderRevision=record.revision;folderChannel?.postMessage('changed');}
   return record;
 }
@@ -230,7 +232,7 @@ async function checkSharedFolder(){
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
   folderWatchPromise=(async()=>{
     try{
-      const record=await read(()=>localState.cacheHandle(null,true,folderScope));if(!available()||!record?.handle||record.scope&&record.scope!==folderScope)return;
+      const record=await read(()=>cacheHandle());if(!available()||!record?.handle||record.scope&&record.scope!==folderScope)return;
       if(record.revision&&record.revision===lastFolderRevision){
         // Another tab may have granted permission since the initial restore.
         if(!folderRecovery&&!syncPaused&&!compatibilityProblem&&remembered&&!$('#reconnect').hidden&&await read(()=>remembered.isSameEntry(record.handle))&&await read(()=>remembered.queryPermission({mode:'read'}))==='granted'&&available())await connectRememberedRead(remembered,false,{signal:controller.signal});
@@ -290,7 +292,8 @@ function writeControls() {
   if(openedGame&&pendingSettings(openedGame.path))$('#captureButton').disabled=true;
   const pendingEdit=!!editing&&pendingSettings(editing.path);$('#saveGameSettings').disabled=pendingEdit||imageProcessing||!!imageError;$('#restoreHistory').disabled||=pendingEdit;
   for(const input of document.querySelectorAll('#edit input,#edit textarea'))input.disabled=pendingEdit;
-  for(const [button]of tagControls)button.disabled=pendingEdit||!button.classList.contains('active')&&library.tagsFrom($('#editTags').value).length>=12;
+  for(const [button]of tagControls)button.disabled=pendingEdit||!button.classList.contains('active')&&library.tagsFrom($('#editTags').value).length>=32;
+  $('#addTag').disabled=pendingEdit;
   $('#cropFields').disabled=pendingEdit||!$('#enableCrop').checked;
   for(const button of document.querySelectorAll('[data-retry-settings]'))button.disabled=!editingEnabled;
   $('#fullscreen').disabled = !activePlay || !stopGame;
@@ -587,6 +590,7 @@ async function render() {
 function editGame(game) {
   if (!editingEnabled || game.settingsError) return;
   autoEnvironmentTag=game.tags.includes(game.developmentEnvironment)?game.developmentEnvironment:'';
+  $('#newTag').value='';$('#newTagStatus').textContent='';
   editing = game; $('#editEnvironment').value = game.developmentEnvironment; $('#editSettingsPath').textContent = game.path + '.gameportal.json'; $('#editTitle').value = game.title; $('#editTags').value = game.tags.join(', '); $('#editImage').value = ''; $('#clearImage').checked = false; renderTagChoices(); $('#edit').showModal();
   $('#editDescription').value=game.description || '';$('#editInstructions').value=game.instructions || '';
   updateFormCounters();
@@ -628,12 +632,12 @@ function addEnvironmentTag(){
 $('#editEnvironment').addEventListener('change',()=>{addEnvironmentTag();renderTagChoices();updateEditDirty();});
 function updateTagChoices() {
   const raw=[...new Set($('#editTags').value.split(/[,、\n]/).map(s=>s.trim()).filter(Boolean))];
-  $('#editTags').setCustomValidity(raw.length>12?'タグは12件までにしてください。':raw.some(t=>t.length>32)?'タグは1件32文字以内にしてください。':'');
+  $('#editTags').setCustomValidity(raw.length>32?'タグは32件までにしてください。':raw.some(t=>t.length>32)?'タグは1件32文字以内にしてください。':'');
   const picked = new Set(library.tagsFrom($('#editTags').value));
-  $('#tagCount').textContent = `${picked.size} / 12`;
+  $('#tagCount').textContent = `${picked.size} / 32`;
   for (const [button, name] of tagControls) {
     const active = picked.has(name); button.setAttribute('aria-pressed', String(active));
-    button.classList.toggle('active', active); button.disabled = !active && picked.size >= 12;
+    button.classList.toggle('active', active); button.disabled = !active && picked.size >= 32;
   }
 }
 function renderTagChoices() {
@@ -651,7 +655,7 @@ function renderTagChoices() {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'tag'; button.textContent = name;
       button.onclick = () => {
         const picked = new Set(library.tagsFrom($('#editTags').value));
-        if (picked.has(name)) picked.delete(name); else if (picked.size < 12) picked.add(name);
+        if (picked.has(name)) picked.delete(name); else if (picked.size < 32) picked.add(name);
         $('#editTags').value = [...picked].join(', '); updateTagChoices();
         updateEditDirty();
       };
@@ -662,6 +666,19 @@ function renderTagChoices() {
   updateTagChoices();
 }
 $('#editTags').addEventListener('input', updateTagChoices);
+function addCustomTag(){
+  if(busy||!editingEnabled||!editing||pendingSettings(editing.path))return false;
+  const input=$('#newTag'),name=input.value.trim(),message=$('#newTagStatus');
+  if(!name){message.textContent='タグ名を入力してください。';input.focus();return false;}
+  if(name.length>32||/[,、\r\n]/.test(name)){message.textContent='タグは1つずつ、32文字以内で入力してください。';input.focus();return false;}
+  const raw=[...new Set($('#editTags').value.split(/[,、\n]/).map(s=>s.trim()).filter(Boolean))];
+  if(raw.includes(name)){input.value='';message.textContent='このタグは追加済みです。';updateEditDirty();return true;}
+  if(raw.length>=32){message.textContent='タグは32こまでです。使わないタグを外してから追加してください。';input.focus();return false;}
+  $('#editTags').value=[...raw,name].join(', ');input.value='';renderTagChoices();updateEditDirty();message.textContent='「'+name+'」を追加しました。保存するとほかのゲームでも選べます。';input.focus();return true;
+}
+$('#addTag').onclick=addCustomTag;
+$('#newTag').addEventListener('input',()=>{$('#newTagStatus').textContent='';});
+$('#newTag').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();addCustomTag();}});
 function updateFormCounters(){
   for(const [id,limit]of[['editTitle',120],['editDescription',2000],['editInstructions',4000]])$('#'+id+'Count').textContent=$('#'+id).value.length+' / '+limit;
   $('#editTitle').setCustomValidity($('#editTitle').value.trim()?'':'ゲーム名を入力してください。');
@@ -760,11 +777,15 @@ async function loadGame(game,task) {
       pyxelRuntime ||= JSON.parse($('#runtime').textContent);
       options = { kind: 'pyxapp', app: player.encodeBase64(bytes), runtime: pyxelRuntime };
     } else {
-      let files = game.kind === 'zip' ? await read(async()=>preview.unpackPrivateZip(await read(()=>file.arrayBuffer()))) : await read(()=>library.readTree(game.folder, new Map([[game.entry, htmlBytes]]), {fileBacked:true,signal:loadController.signal}));
+      const [files,saved]=await readTasks.prepareTogether([
+        signal=>game.kind==='zip'?readTasks.readWithSignal(async()=>preview.unpackPrivateZip(await readTasks.readWithSignal(()=>file.arrayBuffer(),signal),()=>{},{signal}),signal):readTasks.readWithSignal(()=>library.readTree(game.folder,new Map([[game.entry,htmlBytes]]),{fileBacked:true,signal}),signal),
+        async signal=>{
+          const shared=root.nativeReadOnly?{state:'local'}:await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal});
+          if(shared.state==='conflict'){sharedSaveIssues.set(game.id,{game,result:shared});saveSyncRows();throw Error('セーブが別々のPCで進んでいます。ホームに戻り「設定」→「セーブの共有」で使うセーブを選んでください。');}
+          return readTasks.readWithSignal(()=>localState.loadLocalSave(session.libraryId,game.id),signal);
+        }
+      ],loadController.signal);
       if (game.kind === 'html') files.set('index.html', files.get(game.entry));
-      const shared=root.nativeReadOnly?{state:'local'}:await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal:loadController.signal});
-      if(shared.state==='conflict'){sharedSaveIssues.set(game.id,{game,result:shared});saveSyncRows();throw Error('セーブが別々のPCで進んでいます。ホームに戻り「設定」→「セーブの共有」で使うセーブを選んでください。');}
-      const saved = await read(()=>localState.loadLocalSave(session.libraryId, game.id));
       options = { kind: game.kind, files, saved };
     }
     if (activePlay !== session) return;
@@ -1057,7 +1078,7 @@ $('#clearImage').onchange=()=>{
   if(!busy)writeControls();
 };
 $('#editForm').noValidate=true;
-$('#editForm').onsubmit = event => { event.preventDefault();if(busy)return;addEnvironmentTag();updateFormCounters();if(imageProcessing||imageError){selectEditTab('Image');status(imageError||'画像の読み込み完了をお待ちください。');return;}if(editing&&pendingSettings(editing.path)){status('再保存せず、先に保存結果を確認してください。');return;}const invalid=[...event.target.elements].find(e=>e.willValidate&&!e.validity.valid);if(invalid){const panel=invalid.closest('[role=tabpanel]');if(panel)selectEditTab(panel.id.replace('panel',''));event.target.reportValidity();return;}
+$('#editForm').onsubmit = event => { event.preventDefault();if(busy)return;addEnvironmentTag();if($('#newTag').value.trim()&&!addCustomTag()){selectEditTab('Basic');return;}updateFormCounters();if(imageProcessing||imageError){selectEditTab('Image');status(imageError||'画像の読み込み完了をお待ちください。');return;}if(editing&&pendingSettings(editing.path)){status('再保存せず、先に保存結果を確認してください。');return;}const invalid=[...event.target.elements].find(e=>e.willValidate&&!e.validity.valid);if(invalid){const panel=invalid.closest('[role=tabpanel]');if(panel)selectEditTab(panel.id.replace('panel',''));event.target.reportValidity();return;}
   const values={title:$('#editTitle').value,tags:library.tagsFrom($('#editTags').value),developmentEnvironment:$('#editEnvironment').value,description:$('#editDescription').value,instructions:$('#editInstructions').value},imageFile=$('#editImage').files[0],clear=$('#clearImage').checked,adjustment={enabled:$('#enableCrop').checked,zoom:$('#cropZoom').value,x:$('#cropX').value,y:$('#cropY').value};action(async () => {
   if (!editingEnabled) throw new Error('設定で追加・編集を有効にしてください。');
   let image = clear ? null : editing.thumbnail;
@@ -1098,7 +1119,7 @@ Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previ
 }
 
 
-$('#forgetFolder').onclick=()=>action(async()=>{await localState.forgetHandle(folderScope);return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
+$('#forgetFolder').onclick=()=>action(async()=>{if(folderSharing.legacyScope(folderScope))await cacheHandle({name:''},false);else await localState.forgetHandle(folderScope);return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
 
 document.addEventListener('visibilitychange',noteHomeActivity);
 

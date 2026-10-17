@@ -56,22 +56,26 @@ export async function checkWebGameZip(file) {
   if (!webArchiveLayout(names)) throw new Error('web_export_required');
 }
 
-async function inflate(raw, expected) {
+async function inflate(raw, expected,signal) {
+  signal?.throwIfAborted();
   if (typeof DecompressionStream !== 'function') throw new Error('preview_unsupported');
   const reader = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const abort=()=>{void reader.cancel(signal.reason).catch(()=>{});};
+  if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
   const result = new Uint8Array(expected); let size = 0;
   try {
     while (true) {
-      const { value, done } = await reader.read(); if (done) break;
+      signal?.throwIfAborted();const { value, done } = await reader.read();signal?.throwIfAborted();if (done) break;
       if (size + value.length > expected || size + value.length > MAX_UNPACKED) throw new Error('invalid_preview');
       result.set(value,size);size += value.length;
     }
-  } finally { reader.releaseLock(); }
+  } catch(error){void reader.cancel(error).catch(()=>{});throw error;} finally { signal?.removeEventListener('abort',abort);reader.releaseLock(); }
   if (size !== expected) throw new Error('invalid_preview');
   return result;
 }
 
-export async function unpackPrivateZip(buffer, onProgress = () => {}) {
+export async function unpackPrivateZip(buffer, onProgress = () => {}, {signal} = {}) {
+  signal?.throwIfAborted();
   const data = new Uint8Array(buffer);
   if (data.length > MAX_ZIP || data.length < 22) throw new Error('invalid_preview');
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
@@ -106,16 +110,16 @@ export async function unpackPrivateZip(buffer, onProgress = () => {}) {
   if (!layout) throw new Error('web_export_required');
   // Validate the entire directory and size budget before starting any work.
   // Bound concurrent inflation so large exports do not open hundreds of streams.
-  const contents = new Array(entries.length); let cursor = 0, completed = 0;
+  const contents = new Array(entries.length); let cursor = 0, completed = 0,failure;
   onProgress(0,entries.length);
   await Promise.all(Array.from({ length: Math.min(4, entries.length) }, async () => {
-    while (cursor < entries.length) {
+    while (!failure&&!signal?.aborted&&cursor < entries.length) {
       const index = cursor++, entry = entries[index];
       const raw = data.subarray(entry.start, entry.start + entry.packed);
-      contents[index] = entry.method === 0 ? raw : await inflate(raw, entry.size);
-      onProgress(++completed,entries.length);
+      try{contents[index] = entry.method === 0 ? raw : await inflate(raw, entry.size,signal);signal?.throwIfAborted();onProgress(++completed,entries.length);}catch(error){failure??=error;}
     }
   }));
+  signal?.throwIfAborted();if(failure)throw failure;
   const normalized = new Map(entries.flatMap((entry, index) => archiveMetadata(entry.name) ? [] : [[entry.name.slice(layout.root.length), contents[index]]]));
   normalized.set('index.html', normalized.get(layout.entry));
   return normalized;

@@ -1,7 +1,8 @@
 // Raise the floor only when a library format requires new reader/writer behavior.
-export const LAUNCHER_VERSION = '0.21.2';
+export const LAUNCHER_VERSION = '0.22.0';
 const MINIMUM_VERSION = '0.14.0';
-const FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
+const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
+const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
 const FILE = 'compatibility.json';
 function failure(message) {
   const error = new Error(message + ' 全PCのGAME-PORTAL.htmlを対応版へ交換し、再読み込みしてください。互換性情報は削除・書き換えないでください。');
@@ -38,10 +39,11 @@ export async function checkCompatibility(root, version = LAUNCHER_VERSION) {
   const text = await read(root);
   return text === null ? null : validate(text, version);
 }
-export async function ensureCompatibility(root) {
+export async function ensureCompatibility(root,{extendedTags=false}={}) {
+  const minimum=extendedTags?'0.22.0':MINIMUM_VERSION,required=extendedTags?FEATURES:BASE_FEATURES;
   const current = await checkCompatibility(root);
   // Never lower a shared requirement or discard fields written by another version.
-  if (current && !older(current.minLauncherVersion, MINIMUM_VERSION) && FEATURES.every(f => current.requiredFeatures.includes(f))) return current;
+  if (current && !older(current.minLauncherVersion, minimum) && required.every(f => current.requiredFeatures.includes(f))) return current;
   const directory = await root.getDirectoryHandle('.gameportal', { create: true });
   const handle = await directory.getFileHandle(FILE, { create: true });
   const writer = await handle.createWritable({ mode: 'exclusive' });
@@ -50,8 +52,8 @@ export async function ensureCompatibility(root) {
     let previous = current;
     if (live) previous = validate(live, LAUNCHER_VERSION);
     else if (current) throw failure('互換性情報が変更されています。');
-    const next = { ...previous, schema: 1, minLauncherVersion: previous && !older(previous.minLauncherVersion, MINIMUM_VERSION) ? previous.minLauncherVersion : MINIMUM_VERSION,
-      requiredFeatures: [...new Set([...(previous?.requiredFeatures || []), ...FEATURES])] };
+    const next = { ...previous, schema: 1, minLauncherVersion: previous && !older(previous.minLauncherVersion, minimum) ? previous.minLauncherVersion : minimum,
+      requiredFeatures: [...new Set([...(previous?.requiredFeatures || []), ...required])] };
     const text = JSON.stringify(next, null, 2) + '\n';
     await writer.write(text); await writer.close();
     if (await read(root) !== text) throw failure('互換性情報の保存結果を確認できません。再接続して確認してください。');

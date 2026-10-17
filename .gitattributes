@@ -16,3 +16,9 @@ GAME-PORTAL-PLAY.exe binary
 GAME-PORTAL-PLAY-MOJAVE.app/** binary
 GAME-PORTAL-MAC.app/** binary
 GAME-PORTAL-PLAY-MAC.app/** binary
+
+# Public platform / role distribution keeps executable/signature bytes exact.
+Windows/** binary linguist-generated=true
+Mac/** binary linguist-generated=true
+HTML/** binary linguist-generated=true
+HTML/**/*.command text eol=lf

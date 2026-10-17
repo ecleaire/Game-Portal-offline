@@ -1,3 +1,5 @@
+import {materializeDistribution,publishDistribution} from './distribution.mjs';
+await materializeDistribution();
 import {readFile,writeFile,mkdir,access} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -15,3 +17,5 @@ await writeFile(join(root,'README-WINDOWS.txt'),guide);
 const files=await Promise.all(['GAME-PORTAL.html','GAME-PORTAL-WINDOWS.exe','README-WINDOWS.txt','THIRD-PARTY-LICENSES.txt'].map(async name=>new File([await readFile(join(output,name))],name)));
 await writeFile(join(output,'GAME-PORTAL-WINDOWS.zip'),Buffer.from(await(await packageWebFiles(files)).arrayBuffer()));
 console.log('Windows EXE helper built: v'+version+'. HTML remains the main application.');
+
+await publishDistribution('helper');

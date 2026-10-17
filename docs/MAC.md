@@ -49,3 +49,5 @@ macOSにアプリの起動を止められた場合は、配布元を確認した
 Windows用のEXEゲームはMacでは動きません。HTMLなどのWeb版を使ってください。
 
 [ダウンロード・起動手順へ戻る](../README.md)
+
+配布ZIPは `Windows`・`Mac`・`HTML` の下に `プレイ用`・`クリエイター用` を分けています。配布フォルダーを丸ごと使う場合、`GAME-PORTAL-CONNECTION.json` と `GAME-PORTAL-FOLDER.txt` はREADMEと同じ場所が共通の設定先です。版のフォルダーだけを別の場所へコピーした場合は、その場所で保存先を指定してください。

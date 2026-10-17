@@ -1,6 +1,6 @@
 # 開発・配布の手順
 
-使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)を展開し、最上位の `GAME-PORTAL.html` を開きます。以下はソースを変更する人向けの手順です。
+使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。以下はソースを変更する人向けの手順です。
 
 ## 準備・検証
 
@@ -43,19 +43,16 @@ Intel Mac用 `.app` はIntel Mac上で `node scripts/build-mojave.mjs` を実行
 
 | 場所 | 内容 |
 | --- | --- |
-| 最上位の `GAME-PORTAL.html` | Code ZIPからそのまま開く配布HTML |
-| 最上位の `GAME-PORTAL.exe` / `DESKTOP-LICENSES.txt` | Windowsアプリとライセンス |
-| 最上位の `GAME-PORTAL-WINDOWS.exe` / `README-WINDOWS.txt` | Windows起動補助と案内 |
-| 最上位の `GAME-PORTAL-MAC` / `GAME-PORTAL-MAC.command` | Mac起動補助と起動用スクリプト |
-| 最上位の `GAME-PORTAL-MOJAVE.app` | Intel Mac用アプリ。実行ファイル・HTML・ライセンス・ビルド情報・署名を含むbundle全体を公開します。 |
-| 最上位の `GAME-PORTAL-MOJAVE` / `GAME-PORTAL-MOJAVE.command` | Intel Mac用の開発・確認用起動方法 |
+| `HTML/プレイ用`・`HTML/クリエイター用` | そのまま開くHTMLと起動補助 |
+| `Windows/プレイ用`・`Windows/クリエイター用` | Windowsアプリとライセンス |
+| `Mac/プレイ用`・`Mac/クリエイター用` | Macアプリのbundle全体（実行ファイル・HTML・ライセンス・署名） |
 | 最上位の `GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。個人の設定ファイルはGitへ含めません。 |
 | 最上位の `THIRD-PARTY-LICENSES.txt` | 同梱ランタイムのライセンス |
 | `offline-html/` / `assets/` | HTML・画面・実行処理のソース |
 | `scripts/` / `tests/` / `.github/` | ビルド・検証・CI |
 | `docs/` | 利用・運用・開発の資料 |
 
-ビルドは配布物を最上位と `offline-release/` に生成します。生成物を直接編集せず、ソースを変更して再ビルドしてください。最上位の配布物はGitへ含めます。`offline-release/` と `source-release/` はローカル出力です。
+ビルドは配布物を最上位と `offline-release/` に生成します。生成物を直接編集せず、ソースを変更して再ビルドしてください。環境・用途別フォルダーの配布物をGitへ含めます。最上位の作業用ファイルは追跡しません。`offline-release/` と `source-release/` はローカル出力です。
 
 アプリの版を変える場合は `package.json`・`package-lock.json`・`offline-html/compatibility.js`・README・利用案内の表記をそろえ、HTML・Windows補助・Mac補助を同じ版で作り直してください。
 
@@ -66,7 +63,7 @@ npm run source:package
 
 `verify-distribution` は最上位HTMLとビルド出力の一致、ライセンス、Windows・Mac補助の版とMacの対応アーキテクチャー・OS条件を確認します。ソースZIPは `source-release/GAME-PORTAL-SOURCE.zip` へ出力し、ファイルごとのハッシュを記録します。
 
-公開後は実際のCode ZIPをダウンロードし、展開した最上位HTMLの起動とバージョンを確認してください。GitHub Actionsは開発時の自動検証用です。利用者のダウンロード操作には使いません。
+公開後は実際のCode ZIPをダウンロードし、展開したHTMLフォルダー内の両方のHTMLの起動とバージョンを確認してください。GitHub Actionsは開発時の自動検証用です。利用者のダウンロード操作には使いません。
 
 ゲーム本体・個人セーブ・認証情報・ローカル作業資料はGitや配布ZIPへ含めないでください。
 
@@ -77,3 +74,5 @@ npm run source:package
 HTMLビルドは `GAME-PORTAL.html`（クリエイター版）と `GAME-PORTAL-PLAY.html`（プレイ専用版）を生成します。Windowsビルドも用途ごとにEXEを生成し、Macビルドは各OS向けにプレイ専用・クリエイターの署名済みアプリを作成します。`node scripts/verify-distribution.mjs` で役割・内蔵HTML・バージョンを確認します。プレイ専用版はゲームの追加・変更をUIと保存処理の両方で制限し、セーブ共有に必要な保存だけを許可します。新しいUIを追加したときは、プレイ専用版に管理用の操作が表示されないか確認してください。
 
 追加検証：`node tests/offline-html/editions-browser.mjs`、Windows上では `node tests/desktop-player.mjs`。どちらも3回のプレイ・保存・再起動を確認します。Windowsのテストでは、アプリへの直接の変更要求も拒否されることを確認します。Mac実機の操作・実NAS・別PCの実権限は自動テストでは代替できません。
+
+配布ファイルは `Windows`・`Mac`・`HTML` の各用途フォルダーに追跡します。ビルドと既存の検証コマンドが使う最上位の生成ファイルは作業用で、Gitには含めません。`scripts/distribution.mjs` が展開・配置・一致検証を行います。配布フォルダーの目印である `GAME-PORTAL-DISTRIBUTION.json` は削除しないでください。

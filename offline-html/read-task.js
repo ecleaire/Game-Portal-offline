@@ -9,3 +9,15 @@ export function readWithSignal(operation,signal) {
     Promise.resolve().then(()=>{signal.throwIfAborted();return operation();}).then(value=>finish(resolve,value),error=>finish(reject,error));
   });
 }
+
+// Independent startup work overlaps, but a started save must drain before release.
+export async function prepareTogether(operations,signal){
+  const controller=new AbortController(),abort=()=>controller.abort(signal.reason);
+  if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
+  let failure;
+  try{
+    const results=await Promise.allSettled(operations.map(operation=>Promise.resolve().then(()=>{controller.signal.throwIfAborted();return operation(controller.signal);}).catch(error=>{failure??=error;controller.abort(error);throw error;})));
+    if(failure)throw failure;
+    controller.signal.throwIfAborted();return results.map(result=>result.value);
+  }finally{signal?.removeEventListener('abort',abort);}
+}

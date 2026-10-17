@@ -14,7 +14,7 @@ internal sealed class DesktopFiles {
     readonly object gate=new object();
     readonly string config,applicationDirectory;readonly DesktopSharedConnection shared;
     internal readonly JavaScriptSerializer Json=new JavaScriptSerializer {MaxJsonLength=2100000};
-    internal DesktopFiles(string profile,string applicationDirectory=null){Directory.CreateDirectory(profile);config=System.IO.Path.Combine(profile,"folder.json");this.applicationDirectory=applicationDirectory==null?null:NormalizeRoot(applicationDirectory);if(this.applicationDirectory!=null)shared=new DesktopSharedConnection(this,this.applicationDirectory);}
+    internal DesktopFiles(string profile,string applicationDirectory=null){Directory.CreateDirectory(profile);config=System.IO.Path.Combine(profile,"folder.json");this.applicationDirectory=applicationDirectory==null?null:NormalizeRoot(PortalNative.ConfigurationDirectory(applicationDirectory));if(this.applicationDirectory!=null)shared=new DesktopSharedConnection(this,this.applicationDirectory);}
     internal static string Secret(){using(var random=RandomNumberGenerator.Create()){byte[] bytes=new byte[32];random.GetBytes(bytes);return BitConverter.ToString(bytes).Replace("-","").ToLowerInvariant();}}
     internal string Serialize(object value){lock(Json)return Json.Serialize(value);}
     internal Dictionary<string,object> Parse(string text){lock(Json)return Json.Deserialize<Dictionary<string,object>>(text);}
