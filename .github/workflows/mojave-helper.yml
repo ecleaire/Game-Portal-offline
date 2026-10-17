@@ -25,6 +25,10 @@ jobs:
         env:
           PORTAL_NATIVE_EXE: GAME-PORTAL-MOJAVE
           PORTAL_BROWSER: firefox
+      - run: npx playwright install chromium
+      - run: node tests/native-folder-browser.mjs
+        env:
+          PORTAL_NATIVE_EXE: GAME-PORTAL-MOJAVE
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-MOJAVE-Intel

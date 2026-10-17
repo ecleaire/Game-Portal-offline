@@ -7,10 +7,10 @@ import AppKit
 import Darwin
 let mojaveApp = Bundle.main.bundleURL.pathExtension == "app" && !CommandLine.arguments.contains("--headless")
 final class MojaveMenu: NSObject, NSApplicationDelegate {
-    var item: NSStatusItem?;var open: (() -> Void)?;var choose: (() -> Void)?
-    func install(){item=NSStatusBar.system.statusItem(withLength:NSStatusItem.variableLength);item?.button?.title="GAME PORTAL";let menu=NSMenu();for (title,selector) in [("ゲーム一覧を開く",#selector(openPortal)),("次回の保存先を選ぶ",#selector(chooseFolder)),("終了",#selector(quit))]{let entry=NSMenuItem(title:title,action:selector,keyEquivalent:"");entry.target=self;menu.addItem(entry)};item?.menu=menu}
-    @objc func openPortal(){open?()};@objc func chooseFolder(){choose?()};@objc func quit(){NSApplication.shared.terminate(nil)}
-    func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows flag:Bool)->Bool{open?();return false}
+    var item: NSStatusItem?;var open: ((String?) -> Void)?;var choose: (() -> Void)?
+    func install(){item=NSStatusBar.system.statusItem(withLength:NSStatusItem.variableLength);item?.button?.title="GAME PORTAL";let menu=NSMenu();for (title,selector) in [("ゲーム一覧を開く",#selector(openPortal)),("Google Chromeで開く",#selector(openChrome)),("Firefoxで開く",#selector(openFirefox)),("次回の保存先を選ぶ",#selector(chooseFolder)),("終了",#selector(quit))]{let entry=NSMenuItem(title:title,action:selector,keyEquivalent:"");entry.target=self;menu.addItem(entry)};item?.menu=menu}
+    @objc func openPortal(){open?(nil)};@objc func openChrome(){open?("com.google.Chrome")};@objc func openFirefox(){open?("org.mozilla.firefox")};@objc func chooseFolder(){choose?()};@objc func quit(){NSApplication.shared.terminate(nil)}
+    func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows flag:Bool)->Bool{open?(nil);return false}
 }
 func reportMojaveError(_ message:String){
     if mojaveApp{let show:()->Void={NSApplication.shared.setActivationPolicy(.accessory);NSApplication.shared.activate(ignoringOtherApps:true);let alert=NSAlert();alert.messageText="GAME PORTALを開けませんでした";alert.informativeText=message;alert.runModal();exit(1)};if Thread.isMainThread{show()}else{DispatchQueue.main.async(execute:show)}}else{fputs("GAME PORTAL: \(message)\n",stderr);exit(1)}
@@ -137,15 +137,21 @@ do {
     let listener=try NWListener(using:parameters)
     let queue=DispatchQueue(label:"gameportal.listener"), slots=DispatchSemaphore(value:8)
     var port: UInt16=0
-    func openPortal() throws {
+    func openPortal(_ browserID: String? = nil) throws {
         let task=Process();task.executableURL=URL(fileURLWithPath:"/usr/bin/open")
         #if MOJAVE
-        guard let firefox=NSWorkspace.shared.urlForApplication(withBundleIdentifier:"org.mozilla.firefox") else{throw PortalError("Firefox ESR 115を先にインストールしてください。https://www.firefox.com/download/all/desktop-esr/")}
-        task.arguments=["-a",firefox.path,html.absoluteString+"#native=\(port).\(token)"]
+        let key="GamePortalMojaveBrowser:"+html.deletingLastPathComponent().path
+        let preferred=browserID ?? UserDefaults.standard.string(forKey:key)
+        let candidates=browserID.map{[$0]} ?? [preferred,"org.mozilla.firefox","com.google.Chrome"].compactMap{$0}
+        guard let selected=candidates.first(where:{["org.mozilla.firefox","com.google.Chrome"].contains($0) && NSWorkspace.shared.urlForApplication(withBundleIdentifier:$0) != nil}),let browser=NSWorkspace.shared.urlForApplication(withBundleIdentifier:selected) else{throw PortalError("選んだブラウザーが見つかりません。Google ChromeまたはFirefox ESR 115をインストールしてください。")}
+        task.arguments=["-a",browser.path,html.absoluteString+"#native=\(port).\(token)"]
         #else
         task.arguments=[html.absoluteString+"#native=\(port).\(token)"]
         #endif
         try task.run()
+        #if MOJAVE
+        if browserID != nil{UserDefaults.standard.set(selected,forKey:key)}
+        #endif
     }
     func reply(_ connection: NWConnection,_ status: Int,_ body: Data,_ binary: Bool=false,_ cors: Bool=true) {
         var header="HTTP/1.1 \(status) Response\r\nConnection: close\r\nCache-Control: no-store\r\nContent-Type: \(binary ? "application/octet-stream" : "application/json; charset=utf-8")\r\nContent-Length: \(body.count)\r\n"
@@ -233,7 +239,7 @@ do {
     listener.start(queue:queue)
     #if MOJAVE
     if mojaveApp {
-        NSApplication.shared.setActivationPolicy(.accessory);let menu=MojaveMenu();menu.open={do{try openPortal()}catch{reportMojaveError((error as? PortalError)?.message ?? error.localizedDescription)}}
+        NSApplication.shared.setActivationPolicy(.accessory);let menu=MojaveMenu();menu.open={browser in do{try openPortal(browser)}catch{let notice=NSAlert();notice.messageText="ブラウザーを開けません";notice.informativeText=(error as? PortalError)?.message ?? error.localizedDescription;notice.runModal()}}
         menu.choose={let dialog=NSOpenPanel();dialog.title="次回の保存先を選んでください";dialog.canChooseFiles=false;dialog.canChooseDirectories=true;dialog.allowsMultipleSelection=false;if dialog.runModal() == .OK,let selected=dialog.url{do{let id=try checkLibrary(selected);UserDefaults.standard.set(["path":selected.path,"libraryId":id],forKey:"GamePortalMojaveFolder:"+html.deletingLastPathComponent().path);let notice=NSAlert();notice.messageText="次回の起動から切り替わります";notice.informativeText="今開いているゲームの保存先は変わりません。";notice.runModal()}catch{let notice=NSAlert();notice.messageText="この保存先を開けません";notice.informativeText=(error as? PortalError)?.message ?? error.localizedDescription;notice.runModal()}}}
         NSApplication.shared.delegate=menu;menu.install();NSApplication.shared.run();withExtendedLifetime(menu){}
     }else{dispatchMain()}
