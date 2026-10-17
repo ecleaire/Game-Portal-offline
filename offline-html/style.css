@@ -133,3 +133,8 @@ body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--a
 [data-theme=light] body.editing-mode{--accent-fill:#f3bd79;--accent-ink:#302115}
 
 #folderDrop{min-height:160px;display:grid;place-items:center;padding:28px 20px;border:2px dashed var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 6%,var(--panel));font-size:1.067rem;font-weight:650;line-height:1.7;text-align:center;overflow-wrap:anywhere}
+html[data-edition="player"] :is(.settings-editing,#inspectButton,#sharingDetails,#postButton,#emptyPost,#editPlaying,#updatePlaying,#captureButton,#captureReason,#editPlayingReason,#updatePlayingReason,#saveVerificationNotice,[data-verify-settings]){display:none!important}
+html[data-edition="player"] :is(#post,#edit,#contentUpdate,#capture,#history,#inspection){display:none!important}
+#folderDrop{min-height:180px;display:flex;align-items:center;justify-content:center;text-align:center;border-style:dashed}
+.app-edition{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+@media(max-width:560px){.app-edition{display:none}}

@@ -20,6 +20,7 @@ jobs:
       - run: node scripts/verify-desktop.mjs
       - run: node tests/desktop-files.mjs
       - run: node tests/desktop-browser.mjs
+      - run: node tests/desktop-player.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-desktop-prototype

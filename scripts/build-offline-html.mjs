@@ -33,6 +33,7 @@ const wrap = (name, code, exports) => `const ${name}=(()=>{${code.replace(/^expo
 const offlinePreview = (await source('assets/private-preview.js')).replaceAll("script-src 'unsafe-inline' data: blob: 'wasm-unsafe-eval'", "script-src 'unsafe-inline' 'unsafe-eval' data: blob: 'wasm-unsafe-eval'");
 const script = [
   'const tagPresets=' + JSON.stringify(JSON.parse(await source('offline-html/tag-presets.json')).tags) + ';',
+  "const launcherEdition=document.documentElement.dataset.edition==='player'?'player':'creator';",
   wrap('preview', offlinePreview, 'unpackPrivateZip,webArchiveLayout,privatePreviewDocument'),
   wrap('readTasks', await source('offline-html/read-task.js'), 'readWithSignal'),
   wrap('folderSharing', await source('offline-html/folder-sharing.js'), 'connectionInfo,portableLauncher'),
@@ -56,6 +57,9 @@ await mkdir(output, { recursive: true });
 await writeFile(join(output, 'GAME-PORTAL.html'), html);
 // Code > Download ZIP must work without a build or an Actions artifact.
 await writeFile(join(root, 'GAME-PORTAL.html'), html);
+const playerHTML=html.replace('<html lang="ja">','<html lang="ja" data-edition="player">').replace('<title>GAME PORTAL</title>','<title>GAME PORTAL プレイ専用</title>').replace(await source('offline-html/help.html'),await source('offline-html/help-player.html'));
+await writeFile(join(root,'GAME-PORTAL-PLAY.html'),playerHTML);
+await writeFile(join(output,'GAME-PORTAL-PLAY.html'),playerHTML);
 const readme = await source('docs/OFFLINE_HTML.md');
 const nasGuide = await source('docs/NAS_VALIDATION.md');
 const transferGuide = await source('docs/TRANSFER_GUIDE.md');

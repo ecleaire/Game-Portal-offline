@@ -36,4 +36,5 @@ jobs:
           path: |
             GAME-PORTAL-MOJAVE
             GAME-PORTAL-MOJAVE.app/**
+            GAME-PORTAL-PLAY-MOJAVE.app/**
           if-no-files-found: error

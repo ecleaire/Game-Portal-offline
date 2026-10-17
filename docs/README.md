@@ -16,6 +16,8 @@
 | NASで運用する前に確認する | [NAS検証手順](NAS_VALIDATION.md) |
 | 更新内容を確認する | [変更履歴](../CHANGELOG.md) |
 
+プレイ専用版は **`GAME-PORTAL-PLAY.html` / `GAME-PORTAL-PLAY.exe`**、Macは **`GAME-PORTAL-PLAY-MAC.app` / `GAME-PORTAL-PLAY-MOJAVE.app`** です。追加・編集できるクリエイター版と同じ保存先を使えます。
+
 ## ZIPの中で使うファイル
 
 ZIPを展開した `Game-Portal-offline-html-main` の一番上にあります。
@@ -23,10 +25,10 @@ ZIPを展開した `Game-Portal-offline-html-main` の一番上にあります�
 | ファイル | 使う場面 |
 | --- | --- |
 | **`GAME-PORTAL.exe`** | Windowsデスクトップ本体の試作版。HTMLは内蔵しています。 |
-| **`GAME-PORTAL.html`** | 通常の起動。まずこのHTMLをChromeで開きます。 |
+| **`GAME-PORTAL.html`** | 通常の起動。クリエイター版。Chromeで開きます。 |
 | `GAME-PORTAL-WINDOWS.exe` | Windowsの自動接続・EXEゲーム用の起動補助。ベータ版。 |
 | `GAME-PORTAL-MAC.command` ＋ `GAME-PORTAL-MAC` | Macの自動接続用の起動補助。2つを同じ場所に置きます。ベータ版。 |
-| **`GAME-PORTAL-MOJAVE.app`** | Mojave 10.14.6／Intel Mac用アプリ。HTML内蔵。対応するChrome／Firefoxが必要なプレイ専用の試作版。 |
+| **`GAME-PORTAL-MOJAVE.app`** | Mojave 10.14.6／Intel Mac用アプリ。HTML内蔵。Chromeでクリエイター版を開きます。自動接続は読み取り専用。 |
 | `GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。[準備方法](AUTO_CONNECT.md)を参照してください。 |
 | `README-WINDOWS.txt` | Windows起動補助の説明。 |
 | `THIRD-PARTY-LICENSES.txt` | 同梱ソフトのライセンス。 |

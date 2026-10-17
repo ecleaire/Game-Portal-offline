@@ -47,18 +47,19 @@ const desktopHost=(()=>{
   return {current,cancel,fromPath:async path=>desktopHost.attach(record(await rpc('selectPath',{path})).handle),fromDrop:async files=>desktopHost.attach(record(await rpc('dropFolder',{},files)).handle),get pending(){return reads.size;},attach(h){if(!h)return h;h.cancelReads=cancel;Object.defineProperty(h,'pendingReads',{get:()=>reads.size,configurable:true});return h;}};
 })();
 const desktopOriginalNativeFolder=nativeTools.nativeFolder;
+nativeTools.cancelFolderReads=()=>desktopHost.cancel();
 nativeTools.nativeFolder=async()=>desktopHost.attach(await desktopOriginalNativeFolder());
 const desktopOriginalPicker=window.showDirectoryPicker;
 window.showDirectoryPicker=async()=>desktopHost.attach(await desktopOriginalPicker());
 document.addEventListener('drop',event=>{
   const target=event.target.closest('#emptyState,#folderDrop');if(!target)return;
-  event.preventDefault();event.stopImmediatePropagation();if(busy||starting||(target.id==='emptyState'&&root))return;
+  event.preventDefault();event.stopImmediatePropagation();if((target.id==='emptyState'&&root)||!prepareFolderSelection())return;
   const files=[...(event.dataTransfer?.files||[])];
   const selection=files.length===1?desktopHost.fromDrop(files).then(handle=>({handle}),error=>({error})):Promise.resolve({error:new Error('保存先フォルダーを1つドラッグしてください。')});
   openFolderSelection(selection);
 },true);
 document.getElementById('desktopConnectPath').onclick=()=>{
-  if(busy||starting)return;
+  if(!prepareFolderSelection())return;
   return openFolderSelection(desktopHost.fromPath(document.getElementById('desktopFolderPath').value).then(handle=>({handle}),error=>({error})));
 };
 document.getElementById('desktopFolderPath').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();document.getElementById('desktopConnectPath').click();}});

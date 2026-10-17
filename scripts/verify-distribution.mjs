@@ -29,3 +29,4 @@ try{const helper=await readFile('offline-release/GAME-PORTAL-WINDOWS.exe');if(di
 console.log('Code ZIP distribution verified: root HTML v'+version+', matching build and licenses, Windows helper, Intel/Apple silicon macOS 12+ helper, no personal folder connection.');
 await import('./verify-desktop.mjs');
 await import('./verify-mojave.mjs');
+await import('./verify-editions.mjs');

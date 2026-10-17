@@ -14,6 +14,12 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
 internal static class DesktopProgram {
+    internal static readonly bool PlayerOnly="__EDITION__"=="player";
+    internal static void CheckPlayerWrite(string path,bool directory=false){
+        if(!PlayerOnly)return;
+        bool allowed=directory&&(path==".gameportal"||path==".gameportal/shared-saves"||System.Text.RegularExpressions.Regex.IsMatch(path,@"\A\.gameportal/shared-saves/[a-f0-9]{32}\z"))||!directory&&System.Text.RegularExpressions.Regex.IsMatch(path,@"\A\.gameportal/shared-saves/[a-f0-9]{32}/[a-f0-9]{32}\.json\z");
+        if(!allowed)throw new UnauthorizedAccessException("ゲームの追加・変更はクリエイター版で行ってください。");
+    }
     internal const string AppUrl="https://gameportal.desktop.invalid/index.html";
     internal static byte[] Resource(string name){using(var input=Assembly.GetExecutingAssembly().GetManifestResourceStream(name)){if(input==null)throw new IOException("内蔵ファイルがありません："+name);using(var output=new MemoryStream()){input.CopyTo(output);return output.ToArray();}}}
     [DllImport("kernel32",CharSet=CharSet.Unicode,SetLastError=true)]static extern IntPtr LoadLibrary(string path);
@@ -40,7 +46,7 @@ internal sealed class DesktopForm : Form {
     readonly byte[] page=DesktopProgram.Resource("GAME-PORTAL-DESKTOP.html");int nativeGames;
     internal DesktopForm(string profile,string library,int port,string ready,bool testing){
         this.profile=profile;this.initialLibrary=library;this.port=port;this.ready=ready;this.testing=testing;files=new DesktopFiles(profile,AppDomain.CurrentDomain.BaseDirectory);
-        Text="GAME PORTAL デスクトップ試作版 __DESKTOP_VERSION__";Width=1280;Height=900;MinimumSize=new System.Drawing.Size(640,480);StartPosition=FormStartPosition.CenterScreen;
+        Text="GAME PORTAL "+(DesktopProgram.PlayerOnly?"プレイ専用":"クリエイター")+" __DESKTOP_VERSION__";Width=1280;Height=900;MinimumSize=new System.Drawing.Size(640,480);StartPosition=FormStartPosition.CenterScreen;
         if(testing){Opacity=0;ShowInTaskbar=false;}view.Dock=DockStyle.Fill;Controls.Add(view);Shown+=async(sender,eventArgs)=>await Initialize();
         FormClosing+=OnClosing;
     }
@@ -73,6 +79,7 @@ internal sealed class DesktopForm : Form {
                 var read=await Task.Run(()=>{Stream stream=files.Read(root,path);try{return Tuple.Create(stream,stream.Length);}catch{stream.Dispose();throw;}});e.Response=view.CoreWebView2.Environment.CreateWebResourceResponse(read.Item1,200,"OK","Content-Type: application/octet-stream\r\nCache-Control: no-store\r\nContent-Length: "+read.Item2);return;
             }
             if(uri.AbsolutePath=="/io/write"&&e.Request.Method=="POST"){
+                DesktopProgram.CheckPlayerWrite(path);
                 // No timeout or cancellation: a committed write must be verified, never retried blindly.
                 string spool=Path.Combine(profile,"write-"+DesktopFiles.Secret()+".tmp");
                 try{
@@ -114,10 +121,10 @@ internal sealed class DesktopForm : Form {
             case "remember":files.Remember(root);return true;
             case "stat":return files.Stat(root,path);
             case "list":return files.List(root,path);
-            case "directory":files.Entry(root,path,true,DesktopFiles.Flag(data,"create"));return true;
-            case "file":files.Entry(root,path,false,DesktopFiles.Flag(data,"create"));return true;
-            case "beginWrite":return files.BeginWrite(root,path);
-            case "remove":files.Remove(root,path,DesktopFiles.Flag(data,"recursive"));return true;
+            case "directory":if(DesktopFiles.Flag(data,"create"))DesktopProgram.CheckPlayerWrite(path,true);files.Entry(root,path,true,DesktopFiles.Flag(data,"create"));return true;
+            case "file":if(DesktopFiles.Flag(data,"create"))DesktopProgram.CheckPlayerWrite(path);files.Entry(root,path,false,DesktopFiles.Flag(data,"create"));return true;
+            case "beginWrite":DesktopProgram.CheckPlayerWrite(path);return files.BeginWrite(root,path);
+            case "remove":DesktopProgram.CheckPlayerWrite(path);if(DesktopProgram.PlayerOnly&&DesktopFiles.Flag(data,"recursive"))throw new UnauthorizedAccessException("フォルダーは削除できません。");files.Remove(root,path,DesktopFiles.Flag(data,"recursive"));return true;
             default:throw new UnauthorizedAccessException("この操作は許可していません。");
         }
     }

@@ -10,3 +10,9 @@ GAME-PORTAL-MOJAVE.command text eol=lf
 GAME-PORTAL-MOJAVE.app/** binary linguist-generated=true
 README-WINDOWS.txt -text
 THIRD-PARTY-LICENSES.txt -text
+
+GAME-PORTAL-PLAY.html binary
+GAME-PORTAL-PLAY.exe binary
+GAME-PORTAL-PLAY-MOJAVE.app/** binary
+GAME-PORTAL-MAC.app/** binary
+GAME-PORTAL-PLAY-MAC.app/** binary

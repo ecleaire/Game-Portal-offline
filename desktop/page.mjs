@@ -9,7 +9,8 @@ export function desktopPage(html,bootstrap,licenses=''){
   replace('if(root?.nativeReadOnly||nativeReadAbort)','if(root?.nativeReadOnly||root?.nativeDesktop||nativeReadAbort)');
   html=html.replaceAll('gameLoading.folder?.nativeReadOnly','(gameLoading.folder?.nativeReadOnly||gameLoading.folder?.nativeDesktop)');
   replace("if(handle){editingEnabled=false;$('#enableEditing').checked=false;await connect(handle,false,true,false,startupAbort.signal);return;}","if(handle){await connect(handle,false,true,false,startupAbort.signal);return;}");
-  replace('<title>GAME PORTAL</title>','<title>GAME PORTAL デスクトップ試作版</title>');
+  const playerEdition=html.includes('<html lang="ja" data-edition="player">');
+  replace(playerEdition?'<title>GAME PORTAL プレイ専用</title>':'<title>GAME PORTAL</title>',playerEdition?'<title>GAME PORTAL プレイ専用</title>':'<title>GAME PORTAL クリエイター</title>');
   replace('connect-src blob: data: http://127.0.0.1:*',"connect-src 'self' blob: data:");
   // WebView2 exposes this property in opaque frames, but reading it throws.
   // Keep the sandbox and let exports detect that service workers are unavailable.

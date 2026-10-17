@@ -41,5 +41,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-MAC-universal-${{ matrix.os }}
-          path: GAME-PORTAL-MAC
+          path: |
+            GAME-PORTAL-MAC
+            GAME-PORTAL-MAC.app/**
+            GAME-PORTAL-PLAY-MAC.app/**
           if-no-files-found: error

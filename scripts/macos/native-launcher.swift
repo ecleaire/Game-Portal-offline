@@ -5,6 +5,7 @@ import CoreFoundation
 import Darwin
 #if MOJAVE
 import AppKit
+let creatorApp = Bundle.main.object(forInfoDictionaryKey:"GamePortalEdition") as? String == "creator"
 let mojaveApp = Bundle.main.bundleURL.pathExtension == "app" && !CommandLine.arguments.contains("--headless")
 final class MojaveMenu: NSObject, NSApplicationDelegate {
     var item: NSStatusItem?;var open: ((String?) -> Void)?;var choose: (() -> Void)?
@@ -62,9 +63,7 @@ func checkLibrary(_ root: URL, _ expected: String? = nil) throws -> String {
 do {
     let args=CommandLine.arguments
     var html=URL(fileURLWithPath:args[0]).standardizedFileURL.deletingLastPathComponent().appendingPathComponent("GAME-PORTAL.html")
-    #if MOJAVE
     if Bundle.main.bundleURL.pathExtension == "app"{html=Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/GAME-PORTAL.html")}
-    #endif
     var headless=false, ready: URL?=nil, index=1
     while index<args.count {
         switch args[index] {
@@ -77,9 +76,7 @@ do {
     }
     guard fm.fileExists(atPath:html.path) else {throw PortalError("同じフォルダーにGAME-PORTAL.htmlを置いてください。")}
     var configurationDirectory=html.deletingLastPathComponent()
-    #if MOJAVE
     if Bundle.main.bundleURL.pathExtension == "app" && !args.contains("--html"){configurationDirectory=Bundle.main.bundleURL.deletingLastPathComponent()}
-    #endif
     let config=configurationDirectory.appendingPathComponent("GAME-PORTAL-FOLDER.txt")
     let sharedConfig=configurationDirectory.appendingPathComponent("GAME-PORTAL-CONNECTION.json")
     var root: URL?=nil, libraryID: String?=nil, configurationError: String?=nil
@@ -136,11 +133,11 @@ do {
         #if MOJAVE
         let key="GamePortalMojaveBrowser:"+html.deletingLastPathComponent().path
         let preferred=browserID ?? UserDefaults.standard.string(forKey:key)
-        let candidates=browserID.map{[$0]} ?? [preferred,"org.mozilla.firefox","com.google.Chrome"].compactMap{$0}
+        let candidates=browserID.map{[$0]} ?? [preferred,"com.google.Chrome","org.mozilla.firefox"].compactMap{$0}
         guard let selected=candidates.first(where:{["org.mozilla.firefox","com.google.Chrome"].contains($0) && NSWorkspace.shared.urlForApplication(withBundleIdentifier:$0) != nil}),let browser=NSWorkspace.shared.urlForApplication(withBundleIdentifier:selected) else{throw PortalError("選んだブラウザーが見つかりません。Google ChromeまたはFirefox ESR 115をインストールしてください。")}
         task.arguments=["-a",browser.path,html.absoluteString+"#native=\(port).\(token)"]
         #else
-        task.arguments=[html.absoluteString+"#native=\(port).\(token)"]
+        task.arguments=["-a","Google Chrome",html.absoluteString+"#native=\(port).\(token)"]
         #endif
         try task.run()
         #if MOJAVE

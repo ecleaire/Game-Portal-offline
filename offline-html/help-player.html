@@ -1,0 +1,10 @@
+<dialog id="help" class="wide-dialog" aria-labelledby="helpTitle">
+  <div class="help-heading"><div><h2 id="helpTitle" tabindex="-1">ヘルプ</h2><p>遊びたいゲームを選ぶだけで始められます。</p></div><button class="secondary" data-close>閉じる</button></div>
+  <div class="help-layout"><nav class="help-index" aria-label="ヘルプの目次"><span class="help-index-label">目次</span><button class="secondary" data-help-topic="helpSetup" aria-current="location">はじめに</button><button class="secondary" data-help-topic="helpPlay">ゲームで遊ぶ</button><button class="secondary" data-help-topic="helpSave">セーブ</button><button class="secondary" data-help-topic="helpTrouble">困ったとき</button></nav>
+  <div id="helpContent" class="help-content" role="region" aria-label="操作手順" tabindex="0">
+    <section id="helpSetup" class="help-section" tabindex="-1"><h3>はじめに</h3><p>「保存先フォルダーを選ぶ」で、ゲームが入ったフォルダーを開きます。設定の枠へフォルダーをドラッグしても接続できます。次回は、許可が残っていれば自動で接続します。</p><p>このプレイ専用版では、ゲームの追加・編集・削除はできません。ゲームを準備する人はクリエイター版を使ってください。</p></section>
+    <section id="helpPlay" class="help-section" tabindex="-1"><h3>ゲームで遊ぶ</h3><p>一覧のカードを押すとゲームが開きます。検索バーにゲーム名やタグを入力して探せます。「くわしくさがす」で形式やタグでも絞り込めます。</p><p>ゲームの下に説明と操作方法があります。「全画面」で大きく表示し、「← ゲーム一覧」で戻れます。読み込みをやめたいときは「中止して一覧へ戻る」を押してください。</p></section>
+    <section id="helpSave" class="help-section" tabindex="-1"><h3>セーブ</h3><p>対応するゲームのセーブは、このPCのブラウザーやアプリに自動保存します。ゲーム画面の「その他」から、セーブの書き出し・読み込み・履歴を利用できます。</p><p>同じ保存先を使うPCへセーブを共有するには、ホームに戻り、設定の「今すぐセーブを同期」を押して保存を許可します。ホームで3分操作がないときにも同期します。EXE・Pyxel独自のファイルや、ゲーム独自のIndexedDBなどは共有の対象外です。</p></section>
+    <section id="helpTrouble" class="help-section" tabindex="-1"><h3>困ったとき</h3><p>接続が進まないときは「接続待ちを中止」を押し、設定から保存先を選び直すか、枠へドラッグしてください。自動接続は失敗が続くと停止します。</p><p>HTMLはPC版Google Chromeで直接開いてください。NASは、先にエクスプローラーやFinderで開けることを確認します。別PCでの初回は、そのPCでのアクセス許可が必要です。</p><p>ゲームが動かない場合は、ゲームを準備した人へ確認してください。WindowsのEXEゲームはWindows用アプリ・起動補助が必要です。MacではWindowsのEXEは起動できません。</p></section>
+  </div></div><div class="buttons help-footer"><button class="secondary" data-close>閉じる</button></div>
+</dialog>
