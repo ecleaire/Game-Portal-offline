@@ -136,7 +136,7 @@ body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--a
 
 #folderDrop{min-height:160px;display:grid;place-items:center;padding:28px 20px;border:2px dashed var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 6%,var(--panel));font-size:1.067rem;font-weight:650;line-height:1.7;text-align:center;overflow-wrap:anywhere}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.19</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.20.20</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -223,7 +223,7 @@ body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--a
       <section id="helpTrouble" class="help-section" tabindex="-1"><h3>困ったとき</h3>
         <details open><summary>ゲームを追加・編集できない</summary><p>保存先を選び、「設定」→「編集モード」をオンにします。書き込み許可も確認し、ボタン付近の案内に従ってください。</p></details>
         <details><summary>ゲームが起動しない・ファイルが足りない</summary><p>HTMLと素材一式があるか確認します。sb3はHTMLへ変換、GodotはWeb用の一式を追加します。「設定」→「ゲームを点検」で不足や壊れた設定を確認し、接続後に「起動を再試行」を押します。外部サーバー必須の作品・スレッド必須のGodot Web書き出しは対象外です。</p></details>
-        <details><summary>一覧に反映されない・接続が切れた</summary><p>NASなどの接続を戻し、ホームで少し待ちます。一時的な切断は約15秒後から自動で再接続を試し、失敗が続く場合は最大1分間隔で確認します。検索条件はそのままです。ゲーム中・編集中・保存結果の確認中や、画面が非表示の間は待機します。許可の確認が必要な場合は「保存先に再接続する」を押してください。別の保存先に変える場合は、設定から選ぶかフォルダーをドラッグします。どちらも読み取りから接続します。選択画面が拒否された場合は、もう一度「保存先を選ぶ」を押すと簡易設定で選び直せます。</p></details>
+        <details><summary>一覧に反映されない・接続が切れた</summary><p>NASなどの接続を戻し、ホームで少し待ちます。一時的な切断は約15秒後から自動で再接続を試し、失敗が続く場合は最大1分間隔で確認します。検索条件はそのままです。ゲーム中・編集中・保存結果の確認中や、画面が非表示の間は待機します。許可の確認が必要な場合は「保存先に再接続する」を押してください。別の保存先に変える場合は、設定から選ぶかフォルダーをドラッグします。どちらも読み取りから接続します。選択画面が中断した場合は、「保存先を選ぶ」で選び直すか、設定内の枠へフォルダーをドラッグしてください。キャンセルとアクセス制限はエラー名だけでは区別できません。</p></details>
         <details><summary>「保存結果未確認」「更新結果未確認」が出た</summary><p><strong>繰り返し保存・投稿せず、結果を確認します。</strong>設定の保存は「保存結果を確認」。本体更新は「本体を更新」→「更新状態を確認」。投稿途中の作品は「設定」→「ゲームを点検」で確認できます。</p></details>
         <details><summary>EXEを起動できない</summary><p>同じ版のGAME-PORTAL-WINDOWS.exeからHTMLを開き直し、補助側でも同じ保管フォルダーを選びます。Windowsの実行権限とDLL・素材も確認します。起動中ならゲームを終了してから再度起動します。</p></details>
       </section>
@@ -240,7 +240,7 @@ body.editing-mode{--accent:#f3bd79;--accent-ink:#302115;--editing-accent:var(--a
     <p id="settingFolder">未設定</p><p id="nativeFolderNotice" class="hint" hidden>自動接続（ベータ版・プレイ専用）。セーブはこのブラウザー内に保存します。追加・編集・セーブ共有は「保存先を選ぶ」から接続してください。</p>
     <div class="buttons settings-folder-actions"><button id="chooseFolder">保存先を選ぶ</button><button id="retryNativeConnection" class="secondary" hidden>自動接続を再試行</button><button id="reconnect" class="secondary" hidden>再接続する</button><button id="cancelFolderRead" class="secondary" hidden>接続待ちを中止</button></div>
     <div id="folderDrop" class="notice" role="group" aria-label="保存先フォルダーをドラッグして接続">保存先フォルダーをここへドラッグ</div>
-    <details id="folderSelectionHelp" class="settings-detail"><summary>フォルダーを選べないとき</summary><p class="hint">選択後にChromeのアクセス確認を許可してください。ドライブ全体ではなく、ゲーム専用のフォルダーを選びます。</p><p class="hint">接続だけを行います。ゲームのコピー・投稿はしません。PCやブラウザーのアクセス制限がある場合は接続できません。</p></details>
+    <details id="folderSelectionHelp" class="settings-detail"><summary>フォルダーを選べないとき</summary><p class="hint">選択画面は、キャンセルやChromeのアクセス制限などで中断されることがあります。許可の確認が出た場合は内容を確認してください。選べない場合は、下の枠へフォルダーをドラッグできます。許可を確認できない画面では、HTMLをアプリ内ではなくPC版Google Chromeで直接開いてください。</p><p class="hint">接続だけを行います。ゲームのコピー・投稿はしません。PCやブラウザーのアクセス制限がある場合は接続できません。</p><details id="folderSelectionError" hidden><summary>エラーの詳細</summary><p id="folderSelectionErrorText" class="hint game-text"></p></details></details>
   </section>
   <section class="settings-card settings-preferences" aria-label="基本設定">
     <div class="settings-option"><label for="colorTheme">表示モード</label><select id="colorTheme"><option value="dark">ダーク</option><option value="light">ライト</option></select></div>
@@ -522,7 +522,7 @@ function portableLauncher(source,info) {
 
 return {connectionInfo,portableLauncher};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.20.19';
+const LAUNCHER_VERSION = '0.20.20';
 const MINIMUM_VERSION = '0.14.0';
 const FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FILE = 'compatibility.json';
@@ -2040,7 +2040,7 @@ for(const button of document.querySelectorAll('[data-verify-settings]'))button.o
 $('#verifySettingsSaves').onclick=()=>action(async()=>{
   await requireLibraryConnection(editingEnabled);
   if(!root)throw new Error('保存した保管フォルダーを指定してください。');
-  if(await root.requestPermission({mode:editingEnabled?'readwrite':'read'})!=='granted')throw new Error('保管フォルダーへのアクセスを許可してください。');
+  if(await requestFolderPermission(root,editingEnabled?'readwrite':'read')!=='granted')throw new Error('保管フォルダーへのアクセスを許可してください。');
   settingsReceipts=await localState.loadSettingsReceipts();const results=[];let confirmedAny=false;
   for(const receipt of [...settingsReceipts].filter(a=>a.libraryId===localLibrary)){
     const result=await library.verifySettingsSave(root,receipt);const box=document.createElement('div');box.className='maintenance-item';const label=document.createElement('strong');label.textContent=receipt.gamePath;const text=document.createElement('p');
@@ -2259,7 +2259,7 @@ function saveSyncRows(){
   }));
 }
 function requestSaveSync(operation){
-  if(busy)return;const folder=root,permission=folder?.requestPermission({mode:'readwrite'}).catch(error=>({error}));
+  if(busy)return;const folder=root,permission=(folder?requestFolderPermission(folder,'readwrite').catch(error=>({error})):null);
   void action(async()=>{const granted=await permission;if(granted?.error)throw granted.error;if(!folder||granted!=='granted')throw Error('セーブ共有にはフォルダーへの保存許可が必要です。');await requireLibraryConnection();if(root!==folder)throw Error('フォルダーが変わりました。');return operation();},false,true);
 }
 async function syncAllSaves(signal){
@@ -2345,7 +2345,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   signal?.throwIfAborted();
   if(connectionError)throw new Error(connectionError);
   const mode = restoring||readOnlySelection ? 'read' : editingEnabled || request ? 'readwrite' : 'read';
-  const permission = request ? await handle.requestPermission({ mode }) : await handle.queryPermission({ mode });
+  const permission = request ? await requestFolderPermission(handle,mode) : await handle.queryPermission({ mode });
   signal?.throwIfAborted();
   if (permission !== 'granted') throw new DOMException('保管フォルダーへのアクセスを許可してください。','NotAllowedError');
   // Read and validate before replacing the current folder or cached handle.
@@ -2604,7 +2604,7 @@ async function loadGame(game,task) {
     task.presented=true;const folder=root,path=game.path;openedGame=game;$('#frame').hidden=true;$('#saveTools').hidden=true;
     $('#playerStatus').textContent='準備しています…';if(!$('#player').open)$('#player').showModal();updatePlayerInfo();
     try{
-      if(await folder.queryPermission({mode:'readwrite'})!=='granted'&&await folder.requestPermission({mode:'readwrite'})!=='granted')throw new Error('初回だけフォルダーへの保存許可が必要です。「起動を再試行」を押して許可してください。');
+      if(await folder.queryPermission({mode:'readwrite'})!=='granted'&&await requestFolderPermission(folder,'readwrite')!=='granted')throw new Error('初回だけフォルダーへの保存許可が必要です。「起動を再試行」を押して許可してください。');
       if(root!==folder||playRevision!==requested)return;
       const id=await library.ensureLibraryId(folder);if(root!==folder||playRevision!==requested)return;
       localLibrary=id;await refresh();if(playRevision!==requested)return;
@@ -2708,15 +2708,28 @@ function renderActiveFilters(){
   for(const [label,clear]of filters){const b=document.createElement('button');b.className='filter-chip';b.textContent=label+' ×';b.setAttribute('aria-label',label+'を解除');b.onclick=()=>{clear();render().catch(e=>status(e.message));$('#search').focus();};$('#activeFilters').append(b);}
 }
 for(const id of ['searchScope','kindFilter','environmentFilter','tagMatch','sortGames'])$('#'+id).onchange=()=>render().catch(e=>status(e.message));
+function folderErrorDetail(error){
+ $('#folderSelectionError').hidden=false;$('#folderSelectionError').open=false;$('#folderSelectionErrorText').textContent='v'+compatibilityTools.LAUNCHER_VERSION+' / '+(error.name||'Error')+'\n'+(error.message||'');
+}
+function requestFolderPermission(handle,mode){
+ const adapt=error=>{
+  if(error?.name==='SecurityError'&&/Not allowed to request permissions in this context/.test(error.message)){
+   automaticPermissionAttempted=true;folderErrorDetail(error);$('#folderSelectionHelp').open=true;
+   const message=new Error('この画面ではフォルダーのアクセス許可を確認できません。エクスプローラーでGAME-PORTAL.htmlを右クリックし、「プログラムから開く」→ Google Chromeで直接開いてください。');message.name='SecurityError';message.code='FOLDER_PERMISSION_CONTEXT';return message;
+  }
+  return error;
+ };
+ try{return Promise.resolve(handle.requestPermission({mode})).catch(error=>{throw adapt(error);});}catch(error){return Promise.reject(adapt(error));}
+}
 function openFolderSelection(selection) {
   return action(async()=>{
     const {handle,error}=await selection;
     if(error){
       $('#folderSelectionHelp').open=true;
       if(!$('#settings').open)$('#settings').showModal();
-      const detail='（v'+compatibilityTools.LAUNCHER_VERSION+' / '+(error.name||'Error')+'）'+(error.message||'');
-      if(error.name==='AbortError')throw new Error('フォルダー選択が完了しませんでした。選択後にChromeのアクセス確認を許可してください。もう一度「保存先を選ぶ」を押すと、簡易設定で選び直せます。下の枠へのドラッグでも接続できます。'+detail);
-      if(error.name==='SecurityError'||error.name==='NotAllowedError')throw new Error('Chromeがフォルダーへのアクセスを許可しませんでした。ChromeでHTMLを直接開き、ゲーム専用フォルダーを選んでください。'+detail);
+      folderErrorDetail(error);
+      if(error.name==='AbortError')throw new Error('フォルダー選択が完了しませんでした。選び直すか、下の枠へ保存先フォルダーをドラッグしてください。');
+      if(error.name==='SecurityError'||error.name==='NotAllowedError')throw new Error('Chromeがフォルダーへのアクセスを許可しませんでした。ChromeでHTMLを直接開き、ゲーム専用フォルダーを選ぶか、下の枠へドラッグしてください。');
       throw error;
     }
     if(!handle||handle.kind!=='directory')throw new Error('ファイルではなく、ゲームを保管しているフォルダーを1つドラッグしてください。');
@@ -2726,19 +2739,18 @@ function openFolderSelection(selection) {
       if(error.name==='AbortError')throw new Error('フォルダーは選択されましたが、接続処理が中断しました。保存先への接続とアクセス権を確認してください。詳細：'+error.message);
       throw error;
     }
-    $('#folderSelectionHelp').open=false;
+    $('#folderSelectionHelp').open=false;$('#folderSelectionError').hidden=true;$('#folderSelectionErrorText').textContent='';
   },true);
 }
-let simpleFolderPicker=false;
 $('#chooseFolder').onclick = () => {
   if(busy||starting)return;
   // Open the picker in the click itself; waiting for sync can lose user activation.
   let selection;
   try{
     if(!window.showDirectoryPicker)throw new Error('フォルダー選択に対応したPC版Chromeを使用してください。');
-    // Let Chrome remember its own location; stale cached handles can break startIn.
-    selection=Promise.resolve(window.showDirectoryPicker({mode:'read',...(simpleFolderPicker?{}:{id:'game-portal-library'})})).then(handle=>({handle}),error=>{simpleFolderPicker=true;return {error};});
-  }catch(error){simpleFolderPicker=true;selection=Promise.resolve({error});}
+    // Avoid restoring a picker-ID location or passing a stale directory handle.
+    selection=Promise.resolve(window.showDirectoryPicker({mode:'read'})).then(handle=>({handle}),error=>({error}));
+  }catch(error){selection=Promise.resolve({error});}
   return openFolderSelection(selection);
 };
 const folderDrop=$('#folderDrop');
@@ -2787,7 +2799,7 @@ $('#reconnect').onclick = () => {
   if(busy||starting||!remembered)return;
   const handle=remembered,expectedLibrary=handle===root?localLibrary:null,preserveSearch=handle===root;
   // Ask in the trusted gesture, before any await; browsing only needs read access.
-  let permission;try{permission=Promise.resolve(handle.requestPermission({mode:'read'})).then(value=>({value}),error=>({error}));}catch(error){permission=Promise.resolve({error});}
+  let permission;try{permission=Promise.resolve(requestFolderPermission(handle,'read')).then(value=>({value}),error=>({error}));}catch(error){permission=Promise.resolve({error});}
   return action(async()=>{const result=await permission;if(result.error)throw result.error;if(result.value!=='granted')throw new Error('保存先へのアクセスを許可してください。');await connectRememberedRead(handle,false,{expectedLibrary,preserveSearch});},true);
 };
 let automaticPermissionAttempted=false;
@@ -2951,15 +2963,19 @@ $('#forgetFolder').onclick=()=>action(async()=>{await localState.forgetHandle();
 
 document.addEventListener('visibilitychange',noteHomeActivity);
 
-$('#enableEditing').onchange = () => action(async () => {
-  const requested = $('#enableEditing').checked;
+$('#enableEditing').onchange = () => {
+  if(busy||starting)return;
+  const requested=$('#enableEditing').checked,folder=root;
+  const permission=requested&&folder&&!syncPaused?requestFolderPermission(folder,'readwrite').then(value=>({value}),error=>({error})):null;
+  return action(async () => {
   if(requested&&syncPaused)throw new Error('保管フォルダーへの接続を確認し、再読み込み・再接続してください。');
-  if (requested && root && await root.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('追加・編集には保管フォルダーの書き込み許可が必要です。');
+  if(permission){const result=await permission;if(result.error)throw result.error;if(root!==folder)throw new Error('保存先が変わりました。編集モードをもう一度オンにしてください。');if(result.value!=='granted')throw new Error('追加・編集には保管フォルダーの書き込み許可が必要です。');}
   if (requested && root) {await requireLibraryConnection(true);localLibrary = await library.ensureLibraryId(root);await checkLibraryCompatibility();}
   editingEnabled = requested;
   try { localStorage.setItem('game-portal.offline-editing', String(editingEnabled)); } catch { /* The setting applies for this session. */ }
   if (root) await render(); writeControls();
-});
+  });
+};
 window.addEventListener('beforeunload', event => { if (pendingSave || flushing || hasEditChanges() || busy) { event.preventDefault(); event.returnValue = ''; } });
 document.addEventListener('visibilitychange', () => { if (document.hidden) flushSave(); });
 writeControls();
