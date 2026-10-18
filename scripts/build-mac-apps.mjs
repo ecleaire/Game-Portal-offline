@@ -10,11 +10,11 @@ import {publishDistribution} from './distribution.mjs';
 export const macDesktopSources=['scripts/macos/desktop-files.swift','scripts/macos/cef-desktop-host.swift','scripts/macos/desktop-engine.swift','scripts/macos/desktop-self-test.swift','scripts/macos/desktop-page.mjs','scripts/macos/cef-bridge.mm','scripts/macos/cef/CMakeLists.txt','scripts/macos/cef-lock.json','scripts/build-mac-apps.mjs','scripts/prepare-cef.mjs','desktop/bootstrap.js','desktop/page.mjs'];
 export async function macDesktopManifest(root,version,edition){
  const files={};for(const path of macDesktopSources)files[path]=createHash('sha256').update((await readFile(join(root,path),'utf8')).replaceAll('\r\n','\n')).digest('hex');
- return {schema:1,version,edition,kind:'mac-cef-standalone-v1',files};
+ return {schema:1,version,edition,kind:'mac-cef-standalone-v1',htmlSHA256:createHash('sha256').update(await readFile(join(root,edition==='player'?'GAME-PORTAL-PLAY.html':'GAME-PORTAL.html'))).digest('hex'),files};
 }
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 async function compileCEF(root,build,arch){
- const cef=await prepareCEF(arch),directory=join(build,'cef-'+arch);
+ const cef=await prepareCEF(arch),toolchain=execFileSync('xcrun',['clang','--version'],{encoding:'utf8'}),directory=join(root,'.tools/cef/build-'+arch+'-'+digest(Buffer.from(cef.version+'\n'+toolchain)).slice(0,16));
  execFileSync('cmake',['-S',join(root,'scripts/macos/cef'),'-B',directory,'-DCEF_ROOT='+cef.sdk,'-DPROJECT_ARCH='+arch,'-DCMAKE_BUILD_TYPE=Release','-DCMAKE_POLICY_VERSION_MINIMUM=3.5','-DCMAKE_OSX_ARCHITECTURES='+arch,'-DCMAKE_CXX_FLAGS=-ffile-prefix-map='+root+'=. -Wno-deprecated-declarations'],{stdio:'inherit'});
  execFileSync('cmake',['--build',directory,'--config','Release','--parallel','4'],{stdio:'inherit'});
  return {...cef,directory};

@@ -46,6 +46,16 @@ func desktopSelfTest(_ directory: URL) throws {
     try desktopJSON(["schema": 1, "id": String(repeating: "b", count: 32)]).write(to: disk.appendingPathComponent(".gameportal/library-id.json"))
     try denied { _ = try files.get(root.token) }
     try desktopJSON(["schema": 1, "id": id]).write(to: disk.appendingPathComponent(".gameportal/library-id.json"))
+    let blank = directory.appendingPathComponent("初回フォルダー")
+    try fm.createDirectory(at: blank.appendingPathComponent(".gameportal"), withIntermediateDirectories: true)
+    let initial = try files.register(blank.path)
+    _ = try files.operate(["op": "file", "root": initial.token, "path": ".gameportal/library-id.json", "create": true])
+    let pending = try files.operate(["op": "beginWrite", "root": initial.token, "path": ".gameportal/library-id.json"]) as! [String: String]
+    let empty = try files.operate(["op": "beginRead", "root": initial.token, "path": ".gameportal/library-id.json"]) as! [String: Any]
+    try check(empty["size"] as? Int == 0, "initial ID is virtually empty")
+    _ = try files.operate(["op": "endRead", "root": initial.token, "reader": empty["reader"]!])
+    _ = try files.operate(["op": "abortWrite", "root": initial.token, "writer": pending["token"]!])
+    try check(!fm.fileExists(atPath: blank.appendingPathComponent(".gameportal/library-id.json").path), "cancelled initial setup must not leave a corrupt ID")
     try desktopJSON(["ok": true, "checks": ["identity", "remember/restore", "traversal", "symlink", "atomic replacement", "write lock", "abort retains bytes", "chunk read", "ID preservation", "player restrictions", "corrupt schema", "changed identity"]]).write(to: directory.appendingPathComponent("result.json"))
     print("Mac native filesystem self tests passed.")
 }

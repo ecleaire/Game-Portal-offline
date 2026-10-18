@@ -17,10 +17,16 @@ jobs:
           cache: npm
       - run: npm ci
       - uses: actions/cache@v4
+        id: cef-cache
         with:
           path: .tools/cef
-          key: cef-mac-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
+          key: cef-mac-v2-macos-15-intel-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
       - run: node scripts/build-mojave.mjs
+      - uses: actions/cache/save@v4
+        if: always() && !cancelled() && steps.cef-cache.outputs.cache-hit != 'true'
+        with:
+          path: .tools/cef
+          key: cef-mac-v2-macos-15-intel-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
       - run: node scripts/verify-mojave.mjs
       - run: node tests/mac-desktop.mjs
         env:

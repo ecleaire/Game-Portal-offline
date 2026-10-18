@@ -67,7 +67,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let engine = try prepareDesktopEngine(bundle: Bundle.main.bundleURL, profile: self.profile.deletingLastPathComponent().appendingPathComponent("runtime"))
                 DispatchQueue.main.async {
                     if self.closing { return }
-                    guard portal_cef_initialize(engine.framework.path, engine.helper.path, self.profile.appendingPathComponent("Chromium").path, Bundle.main.bundleURL.path, portalSwiftCallback) else { self.fail(DesktopError("内蔵の表示エンジンを開始できませんでした。配布フォルダーを展開し直してください。")); return }
+                    guard portal_cef_initialize(engine.framework.path, engine.helper.path, self.profile.appendingPathComponent("Chromium").path, engine.bundle.path, portalSwiftCallback) else { self.fail(DesktopError("内蔵の表示エンジンを開始できませんでした。配布フォルダーを展開し直してください。")); return }
                     self.engineReady = true; preparing.removeFromSuperview()
                 }
             } catch { DispatchQueue.main.async { self.fail(error) } }
@@ -92,7 +92,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
             switch kind {
             case "initialized": if !portal_cef_open(Unmanaged.passUnretained(view).toOpaque(), appURL.absoluteString) { fail(DesktopError("ゲーム画面を開けませんでした。")) }
             case "ready": didLoad()
-            case "closed": browserClosed = true; closing = true; NSApplication.shared.terminate(nil)
+            case "closed": browserClosed = true; closing = true; DispatchQueue.main.async { NSApplication.shared.terminate(nil) }
             case "closeRequested": requestClose()
             case "folderDrag": droppedFolder = ((data["text"] as? String ?? ""), Date())
             case "loadError": notice("画面を読み込めませんでした", data["text"] as? String ?? "アプリを開き直してください。")

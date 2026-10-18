@@ -33,11 +33,11 @@ final class DesktopFiles {
         let root: Root, descriptor: Int32, before: stat
         var offset = 0
         init(_ root: Root, _ descriptor: Int32, _ before: stat) { self.root = root; self.descriptor = descriptor; self.before = before }
-        deinit { Darwin.close(descriptor) }
+        deinit { if descriptor >= 0 { Darwin.close(descriptor) } }
     }
     final class Root {
         let url: URL, token = desktopSecret(), secret = desktopSecret()
-        var id: String?, initializing = false
+        var id: String?
         init(_ url: URL, _ id: String?) { self.url = url; self.id = id }
     }
     final class Writer {
@@ -92,16 +92,15 @@ final class DesktopFiles {
         guard !path.isEmpty, path.utf8.count <= 4000 else { throw DesktopError("保存先のパスを確認してください。") }
         var url = root
         for part in path.split(separator: "/", omittingEmptySubsequences: false) {
-            guard !part.isEmpty, part != ".", part != "..", part.utf8.count <= 255, !part.contains("\\"), !part.contains(where: { $0.asciiValue.map { $0 < 32 } == true }) else { throw DesktopError("保存先の外は操作できません。") }
+            guard !part.isEmpty, part != ".", part != "..", part.utf16.count <= 255, !part.contains("\\"), !part.contains(where: { $0.asciiValue.map { $0 < 32 } == true }) else { throw DesktopError("保存先の外は操作できません。") }
             url.appendPathComponent(String(part))
         }
         try checkAncestors(url); return url
     }
-    func libraryID(_ url: URL, initializing: Bool = false) throws -> String? {
+    func libraryID(_ url: URL) throws -> String? {
         let file = try bound(url, ".gameportal/library-id.json")
         guard fm.fileExists(atPath: file.path) else { return nil }
         let bytes = try regularRead(file, limit: 1024)
-        if initializing && bytes.isEmpty { return nil }
         let record = try desktopObject(bytes)
         guard desktopSchema(record["schema"]), let id = record["id"] as? String, desktopID(id) else { throw DesktopError("保存先のID設定が壊れています。") }; return id
     }
@@ -120,7 +119,7 @@ final class DesktopFiles {
         guard let root = roots[token] else { throw DesktopError("保存先に接続し直してください。") }
         try checkAncestors(root.url)
         let values = try root.url.resourceValues(forKeys: [.isDirectoryKey]); guard values.isDirectory == true else { throw DesktopError("保存先への接続を確認してください。") }
-        let id = try libraryID(root.url, initializing: root.initializing)
+        let id = try libraryID(root.url)
         if let expected = root.id, id != expected { throw DesktopError("保存先のIDが変わりました。") }
         if root.id == nil { root.id = id }; return root
     }
@@ -214,9 +213,11 @@ final class DesktopFiles {
             if op == "abortRead" { readers.removeValue(forKey: key); return true }
             if op == "endRead" {
                 defer { readers.removeValue(forKey: key) }; _ = try get(token)
+                if reader.descriptor < 0 { guard !fm.fileExists(atPath: reader.root.url.appendingPathComponent(".gameportal/library-id.json").path) else { throw DesktopError("初期設定中に別の更新がありました。") }; return true }
                 var after = stat(); guard fstat(reader.descriptor, &after) == 0, after.st_size == reader.before.st_size, after.st_mtimespec.tv_sec == reader.before.st_mtimespec.tv_sec, after.st_mtimespec.tv_nsec == reader.before.st_mtimespec.tv_nsec, reader.offset == Int(after.st_size) else { throw DesktopError("読み込み中にファイルが変わりました。もう一度開いてください。") }; return true
             }
             guard let offset = data["offset"] as? Int, offset == reader.offset else { throw DesktopError("読み込み位置を確認してください。") }
+            if reader.descriptor < 0 { return ["data": "", "size": 0] as [String: Any] }
             var bytes = [UInt8](repeating: 0, count: min(1048576, Int(reader.before.st_size) - offset))
             let count = Darwin.read(reader.descriptor, &bytes, bytes.count); guard count >= 0 else { throw posixError() }; reader.offset += count
             return ["data": Data(bytes.prefix(count)).base64EncodedString(), "size": reader.before.st_size] as [String: Any]
@@ -238,9 +239,17 @@ final class DesktopFiles {
             if fm.fileExists(atPath: url.path, isDirectory: &isDirectory) { guard isDirectory.boolValue == directory else { throw DesktopError("ファイルとフォルダーの種類が違います。", "TypeMismatchError") }; return true }
             guard create else { throw DesktopError("項目が見つかりません。", "NotFoundError") }; try checkWrite(path, directory: directory)
             if directory { try fm.createDirectory(at: url, withIntermediateDirectories: false) }
-            else { let fd = Darwin.open(url.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o666); guard fd >= 0 else { throw posixError() }; Darwin.close(fd); if path == ".gameportal/library-id.json" && root.id == nil { root.initializing = true } }; return true
+            else {
+                // Do not leave an empty, corrupt library ID when setup is cancelled.
+                // The exclusive writer can read its own virtual empty ID before commit.
+                if path == ".gameportal/library-id.json" && root.id == nil { return true }
+                let fd = Darwin.open(url.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o666); guard fd >= 0 else { throw posixError() }; Darwin.close(fd)
+            }; return true
         case "beginRead":
             guard readers.count < 8 else { throw DesktopError("読み込み中のゲームを中止してから、もう一度開いてください。") }
+            if path == ".gameportal/library-id.json" && root.id == nil && !fm.fileExists(atPath: url.path) && writers.values.contains(where: { $0.root === root && $0.path == path }) {
+                let key = desktopSecret(); readers[key] = Reader(root, -1, stat()); return ["reader": key, "size": 0] as [String: Any]
+            }
             let fd = Darwin.open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK); guard fd >= 0 else { throw posixError() }
             var info = stat(); guard fstat(fd, &info) == 0, info.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG), info.st_size >= 0, info.st_size <= desktopLimit else { Darwin.close(fd); throw DesktopError("ファイルの大きさを確認してください。") }
             let key = desktopSecret(); readers[key] = Reader(root, fd, info); return ["reader": key, "size": info.st_size] as [String: Any]
@@ -268,7 +277,7 @@ final class DesktopFiles {
             guard fsync(writer.descriptor) == 0 else { throw posixError() }
             if path == ".gameportal/library-id.json" {
                 let value = try desktopObject(regularRead(writer.temporary, limit: 1024)); guard desktopSchema(value["schema"]), let id = value["id"] as? String, desktopID(id), root.id == nil || root.id == id else { throw DesktopError("保存先のIDを変更できません。") }
-                guard Darwin.rename(writer.temporary.path, url.path) == 0 else { throw posixError() }; root.id = id; root.initializing = false
+                guard Darwin.rename(writer.temporary.path, url.path) == 0 else { throw posixError() }; root.id = id
             } else { guard Darwin.rename(writer.temporary.path, url.path) == 0 else { throw posixError() } }; return true
         case "remove":
             try checkWrite(path); guard path != ".gameportal", path != ".gameportal/library-id.json" else { throw DesktopError("保存先のIDは削除できません。") }

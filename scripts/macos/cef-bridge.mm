@@ -21,7 +21,14 @@ static PortalCallback portal_callback = nullptr;
 static CefRefPtr<CefBrowser> portal_browser;
 static std::string portal_url;
 static std::atomic<bool> portal_running(false);
+static bool portal_pumping = false, portal_deferred_pump = false;
 static bool portal_closing = false;
+static void PortalPump() {
+  if (!portal_running.load()) return;
+  if (portal_pumping) { portal_deferred_pump = true; return; }
+  portal_pumping = true; CefDoMessageLoopWork(); portal_pumping = false;
+  if (portal_deferred_pump) { portal_deferred_pump = false; dispatch_async(dispatch_get_main_queue(), ^{ PortalPump(); }); }
+}
 static void PortalNotice(const std::string& kind, const std::string& text = "") {
   if (!portal_callback) return;
   CefRefPtr<CefDictionaryValue> data = CefDictionaryValue::Create();
@@ -62,9 +69,12 @@ class PortalApp : public CefApp, public CefBrowserProcessHandler, public CefRend
  public:
   CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() override { return this; }
   CefRefPtr<CefRenderProcessHandler> GetRenderProcessHandler() override { return this; }
+  void OnBeforeCommandLineProcessing(const CefString& type, CefRefPtr<CefCommandLine> command) override {
+    if (type.empty() && command->HasSwitch("test-mode")) command->AppendSwitchWithValue("use-angle", "swiftshader");
+  }
   void OnContextInitialized() override { dispatch_async(dispatch_get_main_queue(), ^{ PortalNotice("initialized"); }); }
   void OnScheduleMessagePumpWork(int64_t delay) override {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, MAX((int64_t)0, delay) * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ if (portal_running.load()) CefDoMessageLoopWork(); });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, MAX((int64_t)0, delay) * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ PortalPump(); });
   }
   void OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra) override {
     if (extra && extra->HasKey("portal-url")) allowed_[browser->GetIdentifier()] = extra->GetString("portal-url");
