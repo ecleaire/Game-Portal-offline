@@ -28,10 +28,11 @@ Windows補助のビルドには.NET FrameworkのC#コンパイラーが必要で
 
 Windowsアプリ（ベータ版）の開発は[デスクトップ版の開発手順](DESKTOP.md#開発する人へ)を参照してください。HTML版とは別に `node scripts/build-desktop.mjs --prepare` で生成します。画面やデスクトップ用ソースを変えた場合はEXEを再ビルドし、`node scripts/verify-desktop.mjs` と `npm run test:desktop` で確認します。
 
-Mac補助はmacOS上で、Xcodeのコマンドラインツールを使ってビルドします。
+MacアプリとHTML用の起動補助はmacOS上で、XcodeのコマンドラインツールとCMakeを使ってビルドします。初回だけ、固定SHA256で照合した公式CEF SDKを取得します。アプリの利用時にダウンロードは行いません。
 
 ```sh
 npm run build:macos
+node tests/mac-desktop.mjs
 npm run test:native-folder
 ```
 

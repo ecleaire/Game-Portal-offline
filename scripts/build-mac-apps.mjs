@@ -60,6 +60,9 @@ export async function buildMacApps(suffix){
  const families=suffix==='MAC'?['MAC','MOJAVE']:['MOJAVE'];
  for(const family of families)for(const edition of ['creator','player']){
   const name=(edition==='player'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-')+family,app=join(root,name+'.app'),contents=join(app,'Contents'),resources=join(contents,'Resources');
+  // Rebuild the dedicated output bundle from scratch; never retain a private
+  // runtime cache, an old signature or resources from a previous build.
+  await rm(app,{recursive:true,force:true});
   await mkdir(join(contents,'MacOS'),{recursive:true});await mkdir(resources,{recursive:true});
   await copyFile(family==='MOJAVE'?outputs[0]:binary,join(contents,'MacOS/GAME-PORTAL-'+family));
   const html=await readFile(join(root,edition==='player'?'GAME-PORTAL-PLAY.html':'GAME-PORTAL.html'),'utf8');

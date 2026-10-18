@@ -7,6 +7,8 @@ import assert from 'node:assert/strict';
 if(process.platform!=='darwin')process.exit(0);
 const temporary=await mkdtemp(join(tmpdir(),'portal-mac-desktop-')),root=await import('node:fs/promises').then(async fs=>fs.realpath(temporary));
 const suffix=process.env.PORTAL_MAC_SUFFIX||'MAC',disk=join(root,'ゲーム # +');let processHandle;
+async function waitForExit(child,timeout){return Promise.race([new Promise(resolve=>child.exitCode!==null||child.signalCode!==null?resolve(true):child.once('exit',()=>resolve(true))),delay(timeout).then(()=>false)]);}
+async function terminate(child){if(child.exitCode!==null||child.signalCode!==null)return;try{process.kill(-child.pid,'SIGTERM');}catch{}if(!await waitForExit(child,2000)){try{process.kill(-child.pid,'SIGKILL');}catch{}assert(await waitForExit(child,3000),'Native app did not terminate');}}
 try{
  await mkdir(disk,{recursive:true});
  await writeFile(join(disk,'game.html'),'<!doctype html><h1>Native Mac play</h1><script>localStorage.setItem("mac-retained","yes");parent.postMessage({macGameReady:true,title:document.querySelector("h1").textContent,webgl2:!!document.createElement("canvas").getContext("webgl2"),wasm:WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0]))},"*");window.addEventListener("message",event=>{if(event.data==="security-test"){let parentBlocked=false;try{void parent.document;}catch{parentBlocked=true;}parent.postMessage({macSecurity:true,denied:typeof window.__portalSend==="undefined"&&parentBlocked},"*");}});</script>');
@@ -41,12 +43,12 @@ await until(()=>activePlay?.latest?.['mac-retained']==='yes','game save received
 stopPlayer();return {edition:launcherEdition,cycle:${cycle},library,version:document.getElementById('appVersion').textContent};`;
    // Tests execute the actual bundled Chromium application on macOS CI.
    // This does not claim physical macOS 10.14.6 testing.
-   await writeFile(script,body);let logs='';processHandle=spawn(executable,['--test-mode','--profile',join(root,'profile-'+edition),'--test-script',script,'--result-file',result],{stdio:['ignore','pipe','pipe']});processHandle.stdout.on('data',data=>logs+=data);processHandle.stderr.on('data',data=>logs+=data);
+   await writeFile(script,body);let logs='';processHandle=spawn(executable,['--test-mode','--profile',join(root,'profile-'+edition),'--test-script',script,'--result-file',result],{detached:true,stdio:['ignore','pipe','pipe']});processHandle.stdout.on('data',data=>logs+=data);processHandle.stderr.on('data',data=>logs+=data);
    let value;for(let count=0;count<900;count++){value=await readFile(result,'utf8').then(JSON.parse).catch(()=>null);if(value)break;if(processHandle.exitCode!==null)break;await delay(100);}
    assert(value,'Mac app test did not finish: '+logs);assert.equal(value.ok,true,JSON.stringify(value)+'\n'+logs);
-   await new Promise(resolve=>processHandle.exitCode!==null?resolve():processHandle.once('exit',resolve));assert.equal(processHandle.exitCode,0,logs);processHandle=null;
+   assert(await waitForExit(processHandle,10000),'Mac window did not close after test: '+logs);assert.equal(processHandle.exitCode,0,logs);processHandle=null;
   }
  }
  assert.equal(JSON.parse(await readFile(join(disk,'game.html.gameportal.json'))).title,'Mac edited');
  console.log('Actual Mac standalone app passed: native filesystem invariants, Creator/Player, no external browser, native edit/write, help/settings, sandboxed play and persistent saves across restarts.');
-}finally{if(processHandle){processHandle.kill();await new Promise(resolve=>processHandle.exitCode!==null?resolve():processHandle.once('exit',resolve));}await rm(root,{recursive:true,force:true});}
+}finally{if(processHandle)await terminate(processHandle);await rm(root,{recursive:true,force:true});}

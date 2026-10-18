@@ -11,7 +11,7 @@
 | Macで使う | [Macアプリの使い方](MAC.md) |
 | ゲームの追加・編集・プレイ、保存と同期 | [詳しい使い方](OFFLINE_HTML.md) |
 | 別のPC・他の人へ渡す | [受け渡し手順](TRANSFER_GUIDE.md) |
-| Windows・Macでフォルダー選択を省略する | [自動接続（ベータ版）](AUTO_CONNECT.md) |
+| HTML版を起動補助から自動接続する | [HTML版の起動補助（ベータ版）](AUTO_CONNECT.md) |
 | WindowsのEXEゲームを起動する | [EXE起動補助（ベータ版）](WINDOWS_EXE.md) |
 | NASで運用する前に確認する | [NAS検証手順](NAS_VALIDATION.md) |
 | 更新内容を確認する | [変更履歴](CHANGELOG.md) |

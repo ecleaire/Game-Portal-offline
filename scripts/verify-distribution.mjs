@@ -22,5 +22,6 @@ console.log('Code ZIP distribution verified: root HTML v'+version+', matching bu
 await import('./verify-desktop.mjs');
 await import('./verify-mojave.mjs');
 await import('./verify-editions.mjs');
+await import('./verify-mac-engines.mjs').then(module=>module.verifyMacEngines());
 
 await import('./distribution.mjs').then(module=>module.verifyPublishedDistribution());
