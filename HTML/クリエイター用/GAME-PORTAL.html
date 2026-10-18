@@ -1941,8 +1941,13 @@ const syncTools=(()=>{// Ignore handle object identity: each scan returns fresh 
 function libraryViewKey(games) {
   return JSON.stringify(games.map(({handle,folder,...game})=>game));
 }
+// Reuse the visible card even when a save receipt, timestamp or content release
+// changes. Click handlers resolve the latest game and fresh file handles.
+function cardViewKey(game) {
+  return JSON.stringify([game.id,game.path,game.kind,game.title,game.tags,game.developmentEnvironment,game.description?.slice(0,100),game.description?.length>100,game.thumbnail,game.settingsError,game.thumbnail===true?game.updatedAt:null]);
+}
 
-return {libraryViewKey};})();
+return {libraryViewKey,cardViewKey};})();
 const player=(()=>{function decodeBase64(value) {
   if(typeof Uint8Array.fromBase64==='function')return Uint8Array.fromBase64(value);
   const binary=atob(value),bytes=new Uint8Array(binary.length);
@@ -2216,7 +2221,7 @@ function contentControls(){
   $('#verifyContentUpdate').hidden=!contentTarget?.contentPending;
   for(const input of document.querySelectorAll('#updateContent input'))input.disabled=!!contentTarget?.contentPending;
 }
-let syncPromise=null, syncController=null, syncPaused=false, compatibilityProblem='';
+let syncPromise=null, syncController=null, syncPaused=false, compatibilityProblem='',folderWatchStarted=0;
 let pyxelRuntime=null;
 function compatibilityFailure(error){
   if(error.code!=='LIBRARY_INCOMPATIBLE')return;
@@ -2343,7 +2348,8 @@ function folderSharingControls(){
 async function checkSharedFolder(){
   const available=()=>!automaticConnectionPaused&&!folderRecovery&&!root?.nativeReadOnly&&!folderRecoveryPromise&&!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!contentTarget?.contentPending&&!games.some(game=>game.contentPending)&&!document.hidden;
   if(folderWatchPromise||!available())return;
-  const controller=new AbortController(),watchRoot=root;folderWatchAbort=controller;nativeReadControls();
+  const controller=new AbortController(),watchRoot=root;folderWatchAbort=controller;folderWatchStarted=performance.now();nativeReadControls();
+  const progress=setTimeout(()=>nativeReadControls(),1500);
   const timer=setTimeout(()=>controller.abort(new DOMException('保存先の確認が応答しません。再接続するか、保存先を選び直してください。','TimeoutError')),12000);
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
   folderWatchPromise=(async()=>{
@@ -2365,14 +2371,14 @@ async function checkSharedFolder(){
       })();
     }catch(error){if(root!==watchRoot||controller.signal.aborted&&controller.signal.reason?.name!=='TimeoutError')return;failedAutomaticConnection();lastFolderRevision='';status('保存先の共有を確認できません。設定から選び直せます：'+error.message);}
   })();
-  try{await folderWatchPromise;}finally{clearTimeout(timer);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();}
+  try{await folderWatchPromise;}finally{clearTimeout(timer);clearTimeout(progress);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();}
 }
 setInterval(()=>{void checkSharedFolder();},5000);
 window.addEventListener('focus',()=>{void checkSharedFolder();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)void checkSharedFolder();});
 
 function nativeReadControls(count=root?.pendingReads||0){
-  const connecting=!!(nativeReadAbort||startupConnection&&!startupConnection.signal.aborted&&starting||manualConnection||folderRecoveryAbort||folderWatchAbort||busy&&count);
+  const connecting=!!(nativeReadAbort||startupConnection&&!startupConnection.signal.aborted&&starting||manualConnection||folderRecoveryAbort||folderWatchAbort&&performance.now()-folderWatchStarted>=1500||busy&&count);
   if(connecting)for(const id of ['helpButton','settingsButton'])$('#'+id).disabled=false;
   for(const id of ['cancelConnection','cancelFolderRead']){const button=$('#'+id);button.hidden=!connecting;button.disabled=!connecting;}
 }
@@ -2537,7 +2543,7 @@ async function syncLibrary({idle=false}={}){
       if(root!==folder||busy||document.hidden||document.querySelector('dialog[open]:not(#player)')||idle&&!homeIsIdle())return;
       const changed=syncTools.libraryViewKey(games)!==syncTools.libraryViewKey(nextGames)||localLibrary!==nextId;
       metadata=nextMetadata;games=nextGames;localLibrary=nextId;
-      if(changed){const limit=renderLimit;resetCards();renderLimit=limit;await render();updatePlayerInfo();writeControls();}
+      if(changed){await render();updatePlayerInfo();writeControls();}
       if(idle){controller.signal.throwIfAborted();await syncAllSaves(controller.signal);}
       syncStatus('共有フォルダー確認済み：'+new Date().toLocaleTimeString('ja-JP')+(changed?'（変更を反映しました）':''));
     }catch(error){if(root!==folder||controller.signal.aborted&&error===controller.signal.reason&&error?.name!=='TimeoutError')return;compatibilityFailure(error);syncPaused=true;queueFolderRecovery(error);$('#reconnect').hidden=false;syncStatus((folderRecovery?'保存先との接続を確認しています。接続が戻ると自動で再開します：':'自動確認を停止しました。再読み込み・再接続で再開：')+error.message);if(!busy)writeControls();}
@@ -2675,7 +2681,8 @@ async function render() {
   $('#emptyReset').hidden=!root||!games.length||matches.length>0;
   $('#emptyPost').hidden=!root||games.length>0||!editingEnabled;
   for (const game of matches.slice(0,renderLimit)) {
-    const cached=cardCache.get(game.path);if(cached?.game===game){visibleCards.push(cached.node);continue;}
+    const cached=cardCache.get(game.path);
+    if(cached&&(cached.game===game||cached.viewKey===syncTools.cardViewKey(game))){cached.game=game;visibleCards.push(cached.node);continue;}
     const article = document.createElement('article'); article.className = 'card';
     const cover = document.createElement('div'); cover.className = 'cover'; cover.textContent = '▶\uFE0E';
     if (typeof game.thumbnail === 'string') { const img = document.createElement('img'); img.src = game.thumbnail; img.alt = ''; cover.replaceChildren(img); }
@@ -2690,19 +2697,23 @@ async function render() {
     const type = document.createElement('p'); type.className = 'type'; type.textContent = game.developmentEnvironment || (game.kind === 'pyxapp' ? 'Pyxel' : game.kind === 'exe' ? 'Windowsゲーム' : 'Webゲーム');
     const tags = document.createElement('div'); tags.className = 'tags';
     for(const tag of game.tags)tags.append(gameTagButton(tag));tags.hidden=!game.tags.length;
-    if(game.tags.length){const more=document.createElement('button');more.type='button';more.className='tag game-tags-more';more.textContent='＋'+game.tags.length;more.setAttribute('aria-label','すべてのタグをゲーム情報で見る');more.onclick=()=>action(()=>playGame(game),false,true);tags.append(more);}
-    const open=document.createElement('a');open.href='#player';open.className='game-title-link';const titleText=document.createElement('span');titleText.className='game-title-text';titleText.textContent=game.title;open.append(titleText);open.onclick=event=>{event.preventDefault();action(()=>playGame(game),false,true);};title.replaceChildren(open);
+    const playCurrent=()=>{const current=games.find(item=>item.path===game.path&&item.id===game.id);if(current)return action(()=>playGame(current),false,true);};
+    if(game.tags.length){const more=document.createElement('button');more.type='button';more.className='tag game-tags-more';more.textContent='＋'+game.tags.length;more.setAttribute('aria-label','すべてのタグをゲーム情報で見る');more.onclick=playCurrent;tags.append(more);}
+    const open=document.createElement('a');open.href='#player';open.className='game-title-link';const titleText=document.createElement('span');titleText.className='game-title-text';titleText.textContent=game.title;open.append(titleText);open.onclick=event=>{event.preventDefault();playCurrent();};title.replaceChildren(open);
     const thumb=document.createElement('a');thumb.href='#player';thumb.className='game-thumb-link';thumb.tabIndex=-1;thumb.setAttribute('aria-label',game.title+'の画面を開く');thumb.onclick=open.onclick;thumb.append(cover);
     for(const img of cover.querySelectorAll('img')){img.loading='lazy';img.decoding='async';}
     body.append(type,title,tags);
     if(game.description){const summary=document.createElement('p');summary.className='game-summary';summary.textContent=game.description.slice(0,100)+(game.description.length>100?'…':'');body.append(summary);}
     if(game.settingsError){const warning=document.createElement('p');warning.className='hint';warning.textContent='設定の確認が必要です：'+game.settingsError;body.append(warning);}
     article.onclick=event=>{if(!event.target.closest('a,button,input,select,textarea'))open.onclick(event);};
-    article.append(thumb,body);cardCache.set(game.path,{game,node:article});visibleCards.push(article);
+    article.append(thumb,body);cardCache.set(game.path,{game,viewKey:syncTools.cardViewKey(game),node:article});visibleCards.push(article);
   }
   if(revision!==renderRevision)return;
   const wanted=new Set(visibleCards);for(const card of [...$('#games').children])if(!wanted.has(card))card.remove();
   visibleCards.forEach((card,index)=>{const current=$('#games').children[index];if(current!==card)$('#games').insertBefore(card,current||null);});fitCardTags();
+  const paths=new Set(games.map(game=>game.path));for(const path of cardCache.keys())if(!paths.has(path))cardCache.delete(path);
+  const retained=new Set([...cardCache.values()].flatMap(({node})=>[...node.querySelectorAll('img')].map(img=>img.src)));
+  imageURLs=imageURLs.filter(url=>{if(retained.has(url))return true;URL.revokeObjectURL(url);return false;});
 }
 function editGame(game) {
   if (!editingEnabled || game.settingsError) return;

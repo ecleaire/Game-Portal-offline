@@ -51,7 +51,7 @@ const script = [
   wrap('localState', await source('offline-html/local-state.js'), 'cacheHandle,forgetHandle,loadSettingsReceipts,trackSettingsReceipt,loadLocalSave,writeLocalSave,acquirePlaySession,validSave,validSaveBackups,loadSaveBackups,backupLocalSave,restoreLocalSaveBackup,saveDeviceId,loadSaveSync,commitSaveSync'),
   wrap('sharedSaves', (await source('offline-html/shared-saves.js')).replace("import {readWithSignal} from './read-task.js';",'const {readWithSignal}=readTasks;'), 'syncSave,saveText,saveHeads,validSnapshot,validClock'),
   wrap('usageTools', await source('offline-html/usage.js'), 'measureLibraryUsage'),
-  wrap('syncTools', await source('offline-html/sync.js'), 'libraryViewKey'),
+  wrap('syncTools', await source('offline-html/sync.js'), 'libraryViewKey,cardViewKey'),
   wrap('player', await source('offline-html/player.js'), 'startPlayer,decodeBase64,encodeBase64'),
   await source('offline-html/app.js'),
   await source('offline-html/information-ui.js'),
