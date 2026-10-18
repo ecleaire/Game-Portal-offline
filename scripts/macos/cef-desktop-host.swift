@@ -29,6 +29,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var view: NSView!, window: NSWindow!, listener: NWListener!, page: Data
     var appURL: URL!, closing = false, closePending = false, testStarted = false, engineReady = false, browserClosed = false
     var closeTimer: DispatchWorkItem?, connections = 0, droppedFolder: (String, Date)?
+    var contextReady = false, browserOpening = false
     var pendingWrites = 0
     var fullscreenFromGame = false
     var installedProcess: Process?
@@ -72,11 +73,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let preparing = NSTextField(labelWithString: "起動の準備をしています…（初回のみ少し時間がかかります）")
         preparing.frame = NSRect(x: 40, y: view.bounds.height / 2 - 20, width: view.bounds.width - 80, height: 40); preparing.autoresizingMask = [.width, .minYMargin, .maxYMargin]; preparing.font = NSFont.systemFont(ofSize: 16); view.addSubview(preparing)
         window.makeKeyAndOrderFront(nil); NSApplication.shared.activate(ignoringOtherApps: true)
-        let bundledFramework = Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework")
-        if FileManager.default.fileExists(atPath: bundledFramework.appendingPathComponent("Chromium Embedded Framework").path) {
-            guard portal_cef_initialize(bundledFramework.path, Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/GAME PORTAL Helper.app/Contents/MacOS/GAME PORTAL Helper").path, profile.appendingPathComponent("Chromium").path, Bundle.main.bundleURL.path, portalSwiftCallback) else { fail(DesktopError("内蔵の表示エンジンを開始できませんでした。")); return }
-            engineReady = true; preparing.removeFromSuperview(); return
-        }
+        if engineReady { preparing.removeFromSuperview(); openBrowserWhenReady(); return }
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 let engine = try prepareDesktopEngine(bundle: Bundle.main.bundleURL, profile: self.profile.deletingLastPathComponent().appendingPathComponent("runtime"), application: self.application)
@@ -87,6 +84,19 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             } catch { DispatchQueue.main.async { self.fail(error) } }
         }
+    }
+    func initializeBundledEngine() throws {
+        let bundledFramework = Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework")
+        guard FileManager.default.fileExists(atPath: bundledFramework.appendingPathComponent("Chromium Embedded Framework").path) else { return }
+        // Chromium installs CFRunLoop entry/exit observers during initialization.
+        // Register them before AppKit enters its loop so the initial entry is seen.
+        guard portal_cef_initialize(bundledFramework.path, Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/GAME PORTAL Helper.app/Contents/MacOS/GAME PORTAL Helper").path, profile.appendingPathComponent("Chromium").path, Bundle.main.bundleURL.path, portalSwiftCallback) else { throw DesktopError("内蔵の表示エンジンを開始できませんでした。") }
+        engineReady = true
+    }
+    func openBrowserWhenReady() {
+        guard engineReady, contextReady, view != nil, appURL != nil, !browserOpening else { return }
+        browserOpening = true
+        if !portal_cef_open(Unmanaged.passUnretained(view).toOpaque(), appURL.absoluteString) { fail(DesktopError("ゲーム画面を開けませんでした。")) }
     }
     func runInstalled(_ bundle: URL) throws {
         guard let name = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String else { throw DesktopError("アプリの起動ファイルを確認してください。") }
@@ -135,7 +145,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let kind = data["kind"] as? String {
             if testMode { fputs("GAME PORTAL event: \(kind) \(data["text"] as? String ?? "")\n", stderr) }
             switch kind {
-            case "initialized": if !portal_cef_open(Unmanaged.passUnretained(view).toOpaque(), appURL.absoluteString) { fail(DesktopError("ゲーム画面を開けませんでした。")) }
+            case "initialized": contextReady = true; openBrowserWhenReady()
             case "ready": didLoad()
             case "closed": browserClosed = true; closing = true; DispatchQueue.main.async { NSApplication.shared.terminate(nil) }
             case "closeRequested": requestClose()
@@ -278,7 +288,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let value = try desktopObject(origin); if desktopSchema(value["schema"]), let path = value["application"] as? String, path.hasPrefix("/"), path.utf8.count <= 4000 { directory = URL(fileURLWithPath: path) }
             }
             let delegate = try PortalDesktop(profile: profile ?? base.appendingPathComponent("GAME-PORTAL/" + desktopEdition), application: directory.resolvingSymlinksInPath(), testMode: test, library: library, testScript: script, resultFile: result, readyFile: ready)
-            portal_cef_application(); let app = NSApplication.shared; app.delegate = delegate; app.run(); withExtendedLifetime(delegate) {}
+            portal_cef_application(); let app = NSApplication.shared; app.delegate = delegate; try delegate.initializeBundledEngine(); app.run(); withExtendedLifetime(delegate) {}
         } catch {
             let message = (error as? DesktopError)?.message ?? error.localizedDescription
             fputs("GAME PORTAL: \(message)\n", stderr)
