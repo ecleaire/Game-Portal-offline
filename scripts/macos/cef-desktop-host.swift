@@ -98,7 +98,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         process.arguments = Array(CommandLine.arguments.dropFirst()) + ["--profile", profile.path, "--application-directory", application.path]
         if testMode && ProcessInfo.processInfo.environment["PORTAL_CEF_DEBUGGER"] == "1" {
             process.executableURL = URL(fileURLWithPath: "/usr/bin/lldb")
-            process.arguments = ["--batch", "-o", "run", "-o", "thread backtrace -c 24", "-o", "quit", "--", executable.path] + (process.arguments ?? [])
+            process.arguments = ["--batch", "-k", "thread backtrace -c 24", "-o", "run", "-o", "thread backtrace -c 24", "-o", "quit", "--", executable.path] + (process.arguments ?? [])
         }
         process.standardOutput = FileHandle.standardOutput; process.standardError = FileHandle.standardError
         process.terminationHandler = { child in DispatchQueue.main.async {

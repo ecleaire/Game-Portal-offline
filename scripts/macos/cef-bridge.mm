@@ -81,7 +81,7 @@ class PortalApp : public CefApp, public CefBrowserProcessHandler, public CefRend
       command->AppendSwitch("disable-component-update");
       command->AppendSwitch("disable-sync");
       command->AppendSwitch("no-first-run");
-      if (command->HasSwitch("test-mode")) command->AppendSwitchWithValue("use-angle", "swiftshader");
+      if (command->HasSwitch("test-mode")) { command->AppendSwitchWithValue("use-gl", "angle"); command->AppendSwitchWithValue("use-angle", "swiftshader"); }
     }
   }
   void OnContextInitialized() override {
@@ -168,6 +168,7 @@ extern "C" bool portal_cef_initialize(const char* framework, const char* helper,
   portal_library = std::make_unique<CefScopedLibraryLoader>();
   if (!portal_library->LoadInMain()) return false;
   CefSettings settings;
+  if (diagnostic) settings.log_severity = LOGSEVERITY_VERBOSE;
   CefString(&settings.browser_subprocess_path) = helper;
   CefString(&settings.cache_path) = profile;
   CefString(&settings.root_cache_path) = profile;

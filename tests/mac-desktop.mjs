@@ -1,4 +1,4 @@
-import {mkdtemp,mkdir,writeFile,readFile,cp,rm,readdir,stat} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,cp,rm,readdir,stat,open} from 'node:fs/promises';
 import {tmpdir,homedir} from 'node:os';
 import {resolve,join} from 'node:path';
 import {spawn,execFileSync} from 'node:child_process';
@@ -48,10 +48,11 @@ stopPlayer();return {edition:launcherEdition,cycle:${cycle},library,version:docu
    if(!value){console.error('Native application exit:',processHandle.exitCode,processHandle.signalCode);await delay(1500);const reports=join(homedir(),'Library/Logs/DiagnosticReports');for(const name of (await readdir(reports).catch(()=>[])).filter(name=>/^GAME-PORTAL.*\.(ips|crash)$/.test(name))){const file=join(reports,name),info=await stat(file);if(Date.now()-info.mtimeMs<600000&&info.size<2*1024*1024)console.error('Native crash report:',name,(await readFile(file,'utf8')).slice(0,16000));}}
    if(!value){
     await terminate(processHandle);
+    try{const file=await open(join(root,'profile-'+edition,'Chromium/cef.log'),'r');try{const size=(await file.stat()).size,bytes=Buffer.alloc(Math.min(size,16000));await file.read(bytes,0,bytes.length,Math.max(0,size-bytes.length));console.error('Native Chromium log:',bytes.toString());}finally{await file.close();}}catch{}
     const runtime=join(root,'runtime');for(const entry of await readdir(runtime).catch(()=>[])){
      if(!/^(arm64|x86_64)-[a-f0-9]{64}-[a-f0-9]{64}$/.test(entry))continue;
      const bundle=join(runtime,entry,'GAME PORTAL Runtime.app');const manifest=await readFile(join(bundle,'Contents/Resources/build.json'),'utf8').then(JSON.parse).catch(()=>null);if(manifest?.edition!==edition)continue;
-     const args=['--batch','-o','run','-o','thread backtrace -c 24','-o','quit','--',join(bundle,'Contents/MacOS/GAME-PORTAL-'+suffix),'--test-mode','--profile',join(root,'profile-'+edition),'--application-directory',join(root,'Mac',edition==='creator'?'クリエイター用':'プレイ用'),'--test-script',script,'--result-file',result];
+     const args=['--batch','-k','thread backtrace -c 24','-o','run','-o','thread backtrace -c 24','-o','quit','--',join(bundle,'Contents/MacOS/GAME-PORTAL-'+suffix),'--test-mode','--profile',join(root,'profile-'+edition),'--application-directory',join(root,'Mac',edition==='creator'?'クリエイター用':'プレイ用'),'--test-script',script,'--result-file',result];
      try{console.error('Native debugger:',execFileSync('/usr/bin/lldb',args,{encoding:'utf8',timeout:45000,maxBuffer:2*1024*1024}).slice(-16000));}catch(error){console.error('Native debugger:',String(error.stdout||'').slice(-16000),String(error.stderr||'').slice(-2000));}break;
     }
    }
