@@ -10,8 +10,9 @@ const suffix=process.env.PORTAL_MAC_SUFFIX||'MAC',disk=join(root,'ゲーム # +'
 try{
  await mkdir(join(disk,'.gameportal'),{recursive:true});await writeFile(join(disk,'.gameportal/library-id.json'),JSON.stringify({schema:1,id}));
  await writeFile(join(disk,'game.html'),'<!doctype html><h1>Native Mac play</h1><script>window.addEventListener("message",event=>{if(event.data==="security-test"){let denied=false;try{window.webkit.messageHandlers.gamePortal.postMessage({id:777,op:"remove",root:"fake",path:"game.html"});}catch{denied=true;}parent.postMessage({gameTest:true,denied},"*");}});</script>');
+ await mkdir(join(root,'Mac/_内部ファイル'),{recursive:true});await cp(resolve('Mac/_内部ファイル/engine'),join(root,'Mac/_内部ファイル/engine'),{recursive:true});
  for(const edition of ['creator','player']){
-  const name=(edition==='player'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-')+suffix,app=join(root,name+'.app');await cp(resolve(name+'.app'),app,{recursive:true});
+  const name=(edition==='player'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-')+suffix,app=join(root,'Mac',edition==='player'?'プレイ用':'クリエイター用',name+'.app');await cp(resolve(name+'.app'),app,{recursive:true});
   const executable=join(app,'Contents/MacOS/GAME-PORTAL-'+suffix);
   const selftest=join(root,'self-test-'+edition);execFileSync(executable,['--self-test',selftest],{timeout:30000,stdio:'pipe'});assert.equal(JSON.parse(await readFile(join(selftest,'result.json'))).ok,true);
   for(let cycle=0;cycle<2;cycle++){
@@ -33,8 +34,8 @@ await playGame(games[0]);await until(()=>!busy&&document.getElementById('frame')
 check(document.getElementById('frame').sandbox.contains('allow-scripts')&&!document.getElementById('frame').sandbox.contains('allow-same-origin'),'game sandbox retained');
 if(${cycle}===0)await localState.writeLocalSave(library,games[0].id,{'mac-retained':'yes'});else check((await localState.loadLocalSave(library,games[0].id))['mac-retained']==='yes','save survives real app restart');
 stopPlayer();return {edition:launcherEdition,cycle:${cycle},library,version:document.getElementById('appVersion').textContent};`;
-   // Latest-system WebKit is tested here. The shipped launcher is separately
-   // transformed for Safari 12 syntax; this is not old-OS physical testing.
+   // Tests execute the actual bundled Chromium application on macOS CI.
+   // This does not claim physical macOS 10.14.6 testing.
    await writeFile(script,body);let logs='';processHandle=spawn(executable,['--test-mode','--profile',join(root,'profile-'+edition),'--library',disk,'--test-script',script,'--result-file',result],{stdio:['ignore','pipe','pipe']});processHandle.stdout.on('data',data=>logs+=data);processHandle.stderr.on('data',data=>logs+=data);
    let value;for(let count=0;count<900;count++){value=await readFile(result,'utf8').then(JSON.parse).catch(()=>null);if(value)break;if(processHandle.exitCode!==null)break;await delay(100);}
    assert(value,'Mac app test did not finish: '+logs);assert.equal(value.ok,true,JSON.stringify(value)+'\n'+logs);

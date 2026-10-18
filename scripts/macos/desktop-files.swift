@@ -216,7 +216,7 @@ final class DesktopFiles {
             try checkWrite(path); guard path != ".gameportal", path != ".gameportal/library-id.json" else { throw DesktopError("保存先のIDは削除できません。") }
             var directory: ObjCBool = false; guard fm.fileExists(atPath: url.path, isDirectory: &directory) else { throw DesktopError("項目が見つかりません。", "NotFoundError") }
             let recursive = data["recursive"] as? Bool == true
-            if directory.boolValue { guard !player else { throw DesktopError("フォルダーは削除できません。", "NotAllowedError") }; if !recursive && !(try fm.contentsOfDirectory(atPath: url.path)).isEmpty { throw DesktopError("フォルダーが空ではありません。") }; try checkTree(url) }
+            if directory.boolValue { guard !player else { throw DesktopError("フォルダーは削除できません。", "NotAllowedError") }; if !recursive { let entries = try fm.contentsOfDirectory(atPath: url.path); if !entries.isEmpty { throw DesktopError("フォルダーが空ではありません。") } }; try checkTree(url) }
             try fm.removeItem(at: url); return true
         default: throw DesktopError("この操作は許可していません。", "NotAllowedError")
         }

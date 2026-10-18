@@ -8,6 +8,7 @@ on:
       - 'scripts/macos/**'
       - 'scripts/build-macos.mjs'
       - 'scripts/build-mac-apps.mjs'
+      - 'scripts/prepare-cef.mjs'
       - 'desktop/bootstrap.js'
       - 'desktop/page.mjs'
       - 'tests/mac-desktop.mjs'
@@ -36,7 +37,7 @@ jobs:
       matrix:
         os: [macos-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
@@ -44,6 +45,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: .tools/cef
+          key: cef-mac-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
       - run: node scripts/build-macos.mjs
       - run: node scripts/verify-mac-system.mjs
       - run: node tests/mac-desktop.mjs
@@ -59,4 +64,7 @@ jobs:
             GAME-PORTAL-MAC
             GAME-PORTAL-MAC.app/**
             GAME-PORTAL-PLAY-MAC.app/**
+            GAME-PORTAL-MOJAVE.app/**
+            GAME-PORTAL-PLAY-MOJAVE.app/**
+            Mac/_内部ファイル/engine/**
           if-no-files-found: error

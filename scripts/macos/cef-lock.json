@@ -1,0 +1,17 @@
+{
+  "version": "116.0.27+gd8c85ac+chromium-116.0.5845.190",
+  "targets": {
+    "x86_64": {
+      "platform": "macosx64",
+      "size": 99466025,
+      "sha1": "da9f1c4f5c3d0a71e4047452902c7073c52de2b9",
+      "sha256": "8eb252a072523a256f84af1f12930bf62bf3dda00eb20fee59bbe4a7fd137fba"
+    },
+    "arm64": {
+      "platform": "macosarm64",
+      "size": 95331429,
+      "sha1": "8f1f296da1ad24cebd4543e75a6175a9ad502884",
+      "sha256": "71a97fffd3f415402bdb330aa128a6622677a307720d5b60440069992fcc47f6"
+    }
+  }
+}
