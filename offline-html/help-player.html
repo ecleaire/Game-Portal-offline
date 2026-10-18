@@ -1,10 +1,33 @@
 <dialog id="help" class="wide-dialog" aria-labelledby="helpTitle">
-  <div class="help-heading"><div><h2 id="helpTitle" tabindex="-1">ヘルプ</h2><p>遊びたいゲームを選ぶだけで始められます。</p></div><button class="secondary" data-close>閉じる</button></div>
-  <div class="help-layout"><nav class="help-index" aria-label="ヘルプの目次"><span class="help-index-label">目次</span><button class="secondary" data-help-topic="helpSetup" aria-current="location">はじめに</button><button class="secondary" data-help-topic="helpPlay">ゲームで遊ぶ</button><button class="secondary" data-help-topic="helpSave">セーブ</button><button class="secondary" data-help-topic="helpTrouble">困ったとき</button></nav>
-  <div id="helpContent" class="help-content" role="region" aria-label="操作手順" tabindex="0">
-    <section id="helpSetup" class="help-section" tabindex="-1"><h3>はじめに</h3><p>「保存先フォルダーを選ぶ」で、ゲームが入ったフォルダーを開きます。設定の枠へフォルダーをドラッグしても接続できます。次回は、許可が残っていれば自動で接続します。</p><p>このプレイ専用版では、ゲームの追加・編集・削除はできません。ゲームを準備する人はクリエイター版を使ってください。</p></section>
-    <section id="helpPlay" class="help-section" tabindex="-1"><h3>ゲームで遊ぶ</h3><p>一覧のカードを押すとゲームが開きます。検索バーにゲーム名やタグを入力して探せます。「くわしくさがす」で形式やタグでも絞り込めます。</p><p>ゲームの下に説明と操作方法があります。「全画面」で大きく表示し、「← ゲーム一覧」で戻れます。読み込みをやめたいときは「中止して一覧へ戻る」を押してください。</p></section>
-    <section id="helpSave" class="help-section" tabindex="-1"><h3>セーブ</h3><p>対応するゲームのセーブは、このPCのブラウザーやアプリに自動保存します。ゲーム画面の「その他」から、セーブの書き出し・読み込み・履歴を利用できます。</p><p>同じ保存先を使うPCへセーブを共有するには、ホームに戻り、設定の「今すぐセーブを同期」を押して保存を許可します。ホームで3分操作がないときにも同期します。EXE・Pyxel独自のファイルや、ゲーム独自のIndexedDBなどは共有の対象外です。</p></section>
-    <section id="helpTrouble" class="help-section" tabindex="-1"><h3>困ったとき</h3><p>接続が進まないときは「接続待ちを中止」を押し、設定から保存先を選び直すか、枠へドラッグしてください。自動接続は失敗が続くと停止します。</p><p>HTMLはPC版Google Chromeで直接開いてください。NASは、先にエクスプローラーやFinderで開けることを確認します。別PCでの初回は、そのPCでのアクセス許可が必要です。</p><p>ゲームが動かない場合は、ゲームを準備した人へ確認してください。WindowsのEXEゲームはWindows用アプリ・起動補助が必要です。MacではWindowsのEXEは起動できません。</p></section>
-  </div></div><div class="buttons help-footer"><button class="secondary" data-close>閉じる</button></div>
+  <div class="help-heading"><div><h2 id="helpTitle" tabindex="-1">ヘルプ</h2><p>目次から、知りたい操作を選んでください。</p></div><button class="secondary" data-close>閉じる</button></div>
+  <div class="help-layout">
+    <nav class="help-index" aria-label="ヘルプの目次"><span class="help-index-label">目次</span><button class="secondary" data-help-topic="helpSetup" aria-current="location">はじめに</button><button class="secondary" data-help-topic="helpPlay">遊ぶ・ゲームを探す</button><button class="secondary" data-help-topic="helpSave">セーブ</button><button class="secondary" data-help-topic="helpTrouble">困ったとき</button></nav>
+    <div id="helpContent" class="help-content" role="region" aria-label="操作手順" tabindex="0">
+      <section id="helpSetup" class="help-section" tabindex="-1"><h3>はじめに</h3>
+        <p class="help-lead">保存先を選ぶ → ゲームのカードを押す</p>
+        <ol><li><strong>「保存先フォルダーを選ぶ」</strong>で、ゲームが入ったフォルダーを選びます。設定の枠へのドラッグでも接続できます。</li><li>アクセスの確認が出たら許可します。HTMLはPC版Google Chromeで開いてください。</li><li>一覧のカードを押して遊びます。</li></ol>
+        <p>ゲームはこのアプリに付属していません。使う保存先が分からないときは、ゲームを管理する人に確認してください。このプレイ専用版は、ゲームを探して遊ぶための版です。ゲームの追加・編集にはクリエイター版を使います。</p>
+        <details><summary>次回の起動・表示モード</summary><p>保存先を記憶し、アクセスできれば次回は自動接続します。HTMLで許可が切れたときは、ホーム画面をクリックしてChromeの確認を許可してください。別PCでは、そのPCでの許可が必要です。HTMLは同じ場所に置き、ブックマークしておくと便利です。</p><p>ライト／ダークは「設定」→「表示モード」で選びます。初期状態はダークです。選択は開き直しても引き継ぎます。</p></details>
+      </section>
+      <section id="helpPlay" class="help-section" tabindex="-1"><h3>遊ぶ・ゲームを探す</h3>
+        <h4>ゲームを開く・一覧に戻る</h4><ol><li><strong>カードの画像かゲーム名</strong>を押します。</li><li>概要と操作方法は、ゲーム画面の下で確認できます。</li><li><strong>「← ゲーム一覧」</strong>で戻ります。読み込みをやめるときは「中止して一覧へ戻る」を押します。</li></ol>
+        <p>「全画面」で大きく表示し、Escキーで戻れます。セーブの操作は、概要の下の<strong>「その他」</strong>にあります。</p>
+        <h4>検索・タグで探す</h4><ul><li>検索欄にゲーム名などを入力します。空白で区切ると、すべてのキーワードに一致するゲームを探します。</li><li>検索欄を押すと出る<strong>「くわしくさがす」</strong>で、形式・作成ツール・タグ・並べ替えを選べます。</li><li>カードやゲーム画面の<strong>タグを押す</strong>と、同じタグが付いたゲームを探せます。タグが多い場合は、ゲーム画面のタグ枠をスクロールできます。</li><li><strong>「絞り込みを解除」</strong>で条件を戻します。ロゴの「GAME PORTAL」でも、検索条件を解除してホームへ戻れます。</li></ul>
+      </section>
+      <section id="helpSave" class="help-section" tabindex="-1"><h3>セーブ</h3>
+        <p>対応するゲームのセーブは、このPCのブラウザーやアプリに保存します。WindowsアプリとChromeは別の保存場所を使います。</p>
+        <h4>ほかのPCと続きを共有する</h4><ol><li>各PCで<strong>同じゲームの保存先</strong>を選びます。</li><li>ゲームを終了し、<strong>「設定」→「今すぐセーブを同期」</strong>を押します。初回は保存を許可します。</li><li>別PCでも同じ保存先からゲームを開きます。起動前に共有セーブを確認します。</li></ol>
+        <p>ホームで3分間操作しないときにも同期します。両方のPCで進めた場合は、使うセーブを選びます。HTMLの起動補助・Macアプリで自動接続している場合は、Chrome画面の設定から保存先を選び、保存を許可してください。</p>
+        <details><summary>ファイルで持ち運ぶ・以前のセーブに戻す</summary><p>ゲーム画面の<strong>「その他」→「セーブ書き出し」</strong>でJSONを保存します。移行先で同じ作品を開き、「その他」→「セーブ読み込み」でそのJSONを選びます。</p><p>「その他」→「セーブ履歴」で日時を選び、「このセーブに戻す」で復元できます。復元直前のセーブも残り、履歴は作品ごとに直近10件です。</p></details>
+        <details><summary>対応するセーブ・保存データの注意</summary><p>対象はHTML・ZIPのlocalStorage相当のデータです。EXE・Pyxel独自ファイル・ゲーム独自のIndexedDBなどは対象外です。セーブ自体がないゲームでは、続きを保存できません。</p><p>ブラウザーやアプリの保存データを消すと、このPCのセーブと履歴も削除されます。必要なものは先にJSONへ書き出してください。</p></details>
+      </section>
+      <section id="helpTrouble" class="help-section" tabindex="-1"><h3>困ったとき</h3>
+        <details open><summary>保存先に接続できない・待ち続ける</summary><ol><li>待ち続ける場合は<strong>「接続待ちを中止」</strong>を押します。</li><li>NASなら先にエクスプローラーやFinderで保存先を開けるか確認します。</li><li>「設定」→「保存先を選ぶ」で選び直すか、設定の枠へフォルダーをドラッグします。Windowsアプリではパス入力も使えます。</li><li>アクセスの確認が出たら許可します。HTMLはPC版Google Chromeで直接開いてください。</li></ol><p>自動接続は失敗が続くと停止します。画面の案内に従って接続し直してください。</p></details>
+        <details><summary>ゲームが見つからない・変更が反映されない</summary><p>使っている保存先を確認し、検索中なら<strong>「絞り込みを解除」</strong>、続いて<strong>「一覧を更新」</strong>を押します。同じ共有フォルダーの変更は、ホームで3分間操作しないときにも確認します。別々にコピーしたフォルダーの間では自動同期しません。</p></details>
+        <details><summary>ゲームが起動しない・読み込みが終わらない</summary><p>「中止して一覧へ戻る」で待機をやめ、保存先との接続を確認してください。接続を戻しても動かない場合は、ゲームを管理する人に確認します。</p><p>WindowsのEXEゲームは、WindowsアプリまたはHTMLのWindows用起動補助が必要です。MacではWindows用EXEは起動できません。</p></details>
+        <details><summary>セーブの確認を求められた</summary><p>共有セーブが複数ある場合は、続けたいものを選びます。保存結果の確認が必要と表示された場合は、操作を繰り返さず、接続を戻して画面の確認ボタンを使ってください。</p></details>
+      </section>
+      <div class="buttons help-footer"><button class="secondary" data-help-topic="helpTitle">先頭に戻る</button><button class="secondary" data-close>閉じる</button></div>
+    </div>
+  </div>
 </dialog>

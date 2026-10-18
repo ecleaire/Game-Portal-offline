@@ -20,6 +20,6 @@ export function desktopPage(html,bootstrap,licenses=''){
   replace('</style>','#exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}.desktop-path{margin-top:8px}.desktop-path input{flex:1 1 240px;min-width:0;width:100%}</style>');
   html=html.replaceAll('このPCのChrome','このアプリ').replaceAll('このブラウザー内','このアプリ内');
   const escaped=licenses.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-  replace('<div class="buttons help-footer">','<section class="help-section"><h3>デスクトップ試作版</h3><p>保存先の選択と読み書きはWindowsアプリが行います。初回に保存先を選び、次回はEXEを開くと前回の保存先へ接続します。セーブはこのアプリ内に保存します。Chrome内のセーブは必要に応じて書き出し・読み込みで移してください。</p><details><summary>ライセンス</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px">'+escaped+'</pre></details></section><div class="buttons help-footer">');
+  replace('<div class="buttons help-footer">','<section class="help-section"><h3>Windowsアプリ（ベータ版）</h3><p>保存先の選択と読み書きはWindowsアプリが行います。初回に保存先を選び、次回はEXEを開くと前回の保存先へ接続します。セーブはこのアプリ内に保存します。Chromeとは保存場所が異なります。続きを移すときは、対応セーブを同期するか、書き出し・読み込みを使ってください。</p><details><summary>ライセンス</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px">'+escaped+'</pre></details></section><div class="buttons help-footer">');
   return html;
 }

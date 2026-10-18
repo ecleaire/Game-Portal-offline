@@ -1,13 +1,13 @@
 <dialog id="help" class="wide-dialog" aria-labelledby="helpTitle">
-  <div class="help-heading"><div><h2 id="helpTitle" tabindex="-1">ヘルプ</h2><p>目次を押すと、読みたい手順へ移動できます。</p></div><button class="secondary" data-close>閉じる</button></div>
+  <div class="help-heading"><div><h2 id="helpTitle" tabindex="-1">ヘルプ</h2><p>目次から、知りたい操作を選んでください。</p></div><button class="secondary" data-close>閉じる</button></div>
   <div class="help-layout">
     <nav class="help-index" aria-label="ヘルプの目次">
       <span class="help-index-label">目次</span>
       <button class="secondary" data-help-topic="helpSetup" aria-current="location">はじめに</button>
-      <button class="secondary" data-help-topic="helpPost">ゲームを追加</button>
+      <button class="secondary" data-help-topic="helpPlay">遊ぶ・ゲームを探す</button>
+      <button class="secondary" data-help-topic="helpPost">追加・情報を編集</button>
       <button class="secondary" data-help-topic="helpScratch">Scratch → HTML</button>
       <button class="secondary" data-help-topic="helpExport">Godot・Pyxel</button>
-      <button class="secondary" data-help-topic="helpPlay">遊ぶ・情報を編集</button>
       <button class="secondary" data-help-topic="helpWindows">Windows EXE</button>
       <button class="secondary" data-help-topic="helpUpdate">ゲーム本体を更新</button>
       <button class="secondary" data-help-topic="helpShare">共有・持ち運び</button>
@@ -17,17 +17,26 @@
     </nav>
     <div id="helpContent" class="help-content" role="region" aria-label="操作手順" tabindex="0">
       <section id="helpSetup" class="help-section" tabindex="-1"><h3>はじめに</h3>
-        <p class="help-lead">保存先を選ぶ → カードを押して遊ぶ</p>
-        <ol><li><strong>GAME-PORTAL.html</strong>をPC版Chromeで開きます。</li><li>ホームの<strong>「保存先フォルダーを選ぶ」</strong>で保存先を選び、アクセスを許可します。</li><li>追加・変更する人は<strong>「設定」→「編集モード」</strong>をオンにします。オンの間はボタンなどがオレンジになり、ホームに「編集モード オン」と表示します。遊ぶだけならオフのままで使えます。</li></ol>
-        <details><summary>次回も同じフォルダーを使う</summary><p>保存先は自動で記憶します。許可が残っていれば次回は自動接続します。許可が切れたら、ホーム画面をクリックしてChromeのアクセス確認を許可します。「前回の保存先を開く」ボタンからも再接続できます。ヘルプや設定を開くだけでは許可確認を出しません。許可画面に継続して許可する選択肢が表示される場合は、それを選ぶと次回の手間を減らせます。初回設定は保存先を選ぶと自動で済みます。HTMLを同じ場所に置き、ブックマークしておくと次回も開きやすくなります。</p></details>
-        <details><summary>ライト／ダークを切り替える</summary><p>「設定」→「表示モード」で選びます。初期状態はダークです。このPCのブラウザーに選択を記憶し、開き直しても同じモードで表示します。ゲームそのものの色は変わりません。</p></details>
-      </section>
-      <section id="helpPost" class="help-section" tabindex="-1"><h3>ゲームを追加する</h3>
-        <ol><li>編集モードで<strong>「＋ ゲームを追加」</strong>を押します。</li><li>HTML・WebゲームZIP・PYXAPPは<strong>「ファイルを選ぶ」</strong>。展開済みなら<strong>「フォルダーを選ぶ」</strong>で素材一式を選びます。</li><li>チェック結果と追加先を確認して<strong>「追加する」</strong>を押します。</li><li><strong>ゲーム名・作成ツール</strong>を入力して「保存」。タグ・サムネイル・概要・操作方法も設定できます。</li></ol>
-        <p>サムネイルは<strong>JPG・PNG</strong>がおすすめです。「あとで設定」で閉じても追加した作品は残り、後から編集できます。</p>
-        <details><summary>追加できる形式・サイズ</summary><ul><li>HTML・HTM、WebゲームZIP、Pyxel PYXAPP。Scratchのsb3は先にHTMLに変換します。</li><li>ZIP・PYXAPPは50MB以内。展開後・フォルダー一式は200MB・500ファイル以内です。</li><li>JS・画像・音声などを別ファイルで使う作品は、すべて含めてZIPまたはフォルダーで追加します。</li><li>EXEは「Windows EXE」の手順を確認してください。</li></ul></details>
-        <details><summary>「アップロード」で元のゲームは変わる？</summary><p>選んだゲームを保管フォルダーへコピーします。元のファイルは変更しません。選択だけでは保存せず、「追加する」を押す前ならキャンセルできます。</p></details>
-      </section>
+<p class="help-lead">保存先を選ぶ → ゲームのカードを押す</p>
+<ol><li><strong>「保存先フォルダーを選ぶ」</strong>で、ゲームを保管しているフォルダーを選びます。設定の枠へフォルダーをドラッグしても接続できます。</li><li>アクセスの確認が出たら許可します。HTMLはPC版Google Chromeで開いてください。</li><li>一覧に出たカードを押すと遊べます。ゲームはこのアプリに付属していません。</li></ol>
+<p>クリエイター版でもそのまま遊べます。追加・変更するときだけ<strong>「設定」→「編集モード」</strong>をオンにします。オンの間はボタンなどがオレンジになり、ホームに「編集モード オン」と表示します。</p>
+<details><summary>次回の起動・保存先の変更</summary><p>前回の保存先を記憶し、アクセスできれば自動接続します。HTMLで許可が切れた場合は、ホーム画面をクリックしてChromeの確認を許可してください。「前回の保存先を開く」からも再接続できます。ヘルプや設定を開くだけでは許可を求めません。</p><p>保存先を変えるときは「設定」→「保存先を選ぶ」を使うか、設定の枠へドラッグします。Windowsアプリでは保存先のパス入力も使えます。HTMLは同じ場所に置き、ブックマークしておくと便利です。</p></details>
+<details><summary>ライト／ダークを切り替える</summary><p>「設定」→「表示モード」で選びます。初期状態はダークです。選択はこのPCに記憶し、開き直しても引き継ぎます。ゲームそのものの色は変わりません。</p></details>
+</section>
+      <section id="helpPlay" class="help-section" tabindex="-1"><h3>遊ぶ・ゲームを探す</h3>
+<h4>ゲームを開く・一覧に戻る</h4><ol><li><strong>カードの画像かゲーム名</strong>を押します。</li><li>概要と操作方法は、ゲーム画面の下で確認できます。</li><li><strong>「← ゲーム一覧」</strong>で戻ります。読み込みをやめるときは「中止して一覧へ戻る」を押します。</li></ol>
+<p>「全画面」で大きく表示し、Escキーで戻れます。セーブの書き出し・読み込みなどは、概要の下の<strong>「その他」</strong>にあります。</p>
+<h4>検索・タグで探す</h4><ul><li>検索欄にゲーム名などを入力します。空白で区切ると、すべてのキーワードに一致するゲームを探します。</li><li>検索欄を押すと出る<strong>「くわしくさがす」</strong>で、形式・作成ツール・タグ・並べ替えを選べます。</li><li>カードやゲーム画面の<strong>タグを押す</strong>と、同じタグが付いたゲームを探せます。ゲーム画面でタグが多いときは、タグの枠をスクロールできます。</li><li><strong>「絞り込みを解除」</strong>で検索条件を戻します。ロゴの「GAME PORTAL」でも、検索条件を解除してホームへ戻れます。</li></ul>
+</section>
+      <section id="helpPost" class="help-section" tabindex="-1"><h3>ゲームの追加・情報の編集</h3>
+<p class="help-lead">クリエイター版の「編集モード」で行います。</p>
+<h4>ゲームを追加する</h4><ol><li><strong>「＋ ゲームを追加」</strong>を押します。</li><li>HTML・WebゲームZIP・PYXAPPは<strong>「ファイルを選ぶ」</strong>。展開済みのゲームは<strong>「フォルダーを選ぶ」</strong>で素材一式を選びます。</li><li>チェック結果と追加先を確認し、<strong>「追加する」</strong>を押します。元のファイルは変更しません。</li><li><strong>ゲーム名・作成ツール</strong>を入力して「保存」します。「あとで設定」で閉じても、追加したゲームは残ります。</li></ol>
+<h4>名前・タグ・概要を変更する</h4><ol><li>ゲームを開き、<strong>「編集」</strong>を押します。</li><li>「基本情報・タグ」「概要・操作方法」「サムネイル」から変更する項目を選びます。</li><li><strong>「保存」</strong>で反映します。「キャンセル」では変更を保存しません。</li></ol>
+<p>ゲーム名と作成ツールは必須です。作成ツールはタグにも自動で加わります。新しいタグは「新しいタグを作る」に入力し、「タグを追加」→「保存」で登録します。タグは1作品32個までです。</p>
+<details><summary>サムネイルを付ける・変更を元に戻す</summary><p>画像は<strong>JPG・PNGがおすすめ</strong>です。「プレイ画面を撮影」と切り抜きは補助として使えます。「保存時にサムネイルを削除」を選んで保存すると、画像を外せます。</p><p>保存後の名前・タグ・画像などを戻すには、編集画面の<strong>「設定履歴」</strong>で以前の情報を選び、内容を確認して復元します。</p></details>
+<details><summary>ゲーム情報をファイルに保存・読み込み</summary><p><strong>1作品：</strong>編集画面の「このゲームの情報をファイルに保存・読み込み」を開きます。「情報を書き出す」は保存済みの情報が対象です。編集中の変更は先に「保存」してください。読み込んだ情報は、内容を確認して「保存」で反映します。</p><p><strong>複数作品：</strong>「設定」→「ゲーム情報の保存・読み込み」で作品を選びます。「すべて選ぶ」で一括保存もできます。読み込みでは取り込み先と内容を確認し、反映する作品を選んでください。途中で止めたときは、保存できた件数を確認します。</p><p>JSONファイルにはゲーム名・作成ツール・タグ・サムネイル・概要・操作方法をまとめます。ゲーム本体・セーブは含みません。読み込んでも取り込み先の作品IDは変わらず、変更前の情報は設定履歴に残ります。1000作品・64MBを超える場合は分けて保存してください。</p></details>
+<details><summary>追加できる形式・サイズ</summary><ul><li>HTML・HTM、WebゲームZIP、Pyxel PYXAPP。Scratchのsb3は先にHTMLへ変換します。</li><li>ZIP・PYXAPPは50MB以内。展開後・フォルダー一式は200MB・500ファイル以内です。</li><li>JS・画像・音声などを使う作品は、必要なファイルをすべて含めます。</li><li>WindowsのEXEゲームは「Windows EXE」の手順を確認してください。</li></ul></details>
+</section>
       <section id="helpScratch" class="help-section" tabindex="-1"><h3>Scratch（sb3）をHTMLにする</h3>
         <p class="help-lead">TurboWarp Packagerで変換したHTMLを追加します。</p>
         <h4>1. Scratchの作品を保存する</h4><p>Scratchで作品を開き、<strong>「ファイル」→「コンピューターに保存する」</strong>から <code>.sb3</code> を保存します。すでにsb3があれば次へ進みます。</p>
@@ -42,47 +51,47 @@
         <h4>Godot</h4><ol><li><strong>Web向け</strong>に書き出します。</li><li>出力されたHTML・JS・WASM・PCKなどを<strong>すべて</strong>まとめます。</li><li>ZIPにして「ファイルを選ぶ」、または一式を「フォルダーを選ぶ」で追加します。</li></ol><p>HTMLやPCKだけでは動きません。スレッド必須のWeb書き出しは対象外です。</p>
         <h4>Pyxel</h4><p>Pyxelでpackageした <strong>.pyxapp</strong> を追加します。準備後にゲーム画面をクリックして開始します。同梱版はPyxel 2.9.9です。ネットから追加パッケージを取得する作品は対象外です。</p>
       </section>
-      <section id="helpPlay" class="help-section" tabindex="-1"><h3>遊ぶ・ゲーム情報を編集する</h3>
-        <h4>遊ぶ</h4><p><strong>カードの画像かゲーム名</strong>を押すと開きます。「全画面」で広げ、Escキーで戻ります。「← ゲーム一覧」で一覧へ戻ります。読み込み中は<strong>「中止して一覧へ戻る」</strong>で別のゲームを選べます。概要と操作方法はゲーム画面の下で読めます。ヘルプやセーブの操作は、概要の下の<strong>「その他」</strong>を開きます。普段は閉じておけます。</p>
-        <h4>情報を編集する</h4><ol><li>編集モードでゲームを開き、<strong>「編集」</strong>を押します。</li><li>名前・作成ツール・タグ・サムネイル・概要・操作方法を変更して<strong>「保存」</strong>します。</li></ol><p>ゲーム名と作成ツールは必須です。作成ツールはタグにも自動で加わります。ゲーム本体を変える場合は「ゲーム本体を更新」を使います。</p>
-        <details><summary>サムネイル・設定を元に戻す</summary><p>JPG・PNGの指定がおすすめです。「プレイ画面を撮影」と切り抜きは補助として使えます。変更を戻したい場合は、編集画面の「設定履歴」から以前の名前・タグ・画像などを復元できます。</p></details>
-        <details><summary>ゲーム情報をファイルに保存・読み込み</summary><p>編集画面の<strong>「このゲームの情報をファイルに保存・読み込み」</strong>で、1作品の保存済み情報を書き出せます。読み込んだ情報は、編集画面で確認して<strong>「保存」</strong>を押すと反映します。</p><p>複数のゲームを選ぶ場合は、<strong>「設定」→「ゲーム情報の保存・読み込み」</strong>を使います。「すべて選ぶ」で一括保存もできます。JSONファイル1つに名前・タグ・サムネイル・概要・操作方法をまとめます。ゲーム本体やセーブは含みません。</p><p>一括読み込みは編集モードで行い、取り込み先を確認して選びます。作品IDは変えず、変更前の情報は設定履歴に残します。途中で止めたときは、保存できた件数を確認してください。1000作品・64MBを超えるときは、分けて保存してください。</p></details><h4>自分のタグを作る</h4><p>クリエイター版でゲームを開いて「編集」→「基本情報・タグ」を選びます。「新しいタグを作る」に名前を入力し、「タグを追加」を押して保存してください。保存したタグは、ほかのゲームの「マイタグ」からも選べます。同じ保存先を使うWindows・Mac・HTMLでも共有できます。</p><h4>ゲームを探す</h4><p>検索欄にキーワードを入力します。検索欄を押すと出る<strong>「くわしくさがす」</strong>では形式・作成ツール・タグも組み合わせられます。<strong>カードやゲーム情報のタグ</strong>を押して、そのタグのゲームだけを探すこともできます。カードのタグは1行に収まる分を表示し、「＋件数」を押すとゲーム情報ですべて確認できます。「絞り込みを解除」で条件を戻します。ロゴの<strong>「GAME PORTAL」</strong>を押すと、検索条件を解除してホームへ戻ります。</p>
-      </section>
-      <section id="helpWindows" class="help-section" tabindex="-1"><h3>Windows EXEゲーム対応（ベータ版）</h3>
-        <p class="help-lead">メイン画面はHTMLです。EXE対応はベータ版です。起動にだけWindows用の補助を使います。</p>
-        <ol><li>HTMLの横にある<strong>起動補助 → Windowsで起動.cmd</strong>を開きます。</li><li>単体EXEは「ファイルを選ぶ」。DLL・素材がある場合は「フォルダーを選ぶ」で一式を追加します。ZIPは先に展開します。</li><li>カードを開き、<strong>「EXEを起動」</strong>を押します。初回は補助側でもHTMLと同じ保管フォルダーを選びます。</li></ol>
-        <p>Windowsの別ウィンドウで動きます。信頼できるゲームだけ実行してください。セーブはゲーム自身が管理し、HTMLのセーブ履歴・画面撮影の対象外です。</p>
-        <details><summary>フォルダーのまとめ方・更新・再接続</summary><ul><li>選ぶフォルダーの直下に主な起動用EXEを1つ置きます。Godotの同名consoleとUnity CrashHandlerは付属として扱います。合計200MB・500ファイル以内です。</li><li>更新はゲーム終了後、同じ場所のEXEと素材を交換します。作品情報JSONとゲーム固有セーブは残します。</li><li>同じタブの再読み込みは接続を引き継ぎます。起動補助を終了した場合や別のタブで開く場合は、タスクトレイのGAME PORTALから「HTMLを開く」を選びます。補助を終了しても起動中のゲームは終了しません。</li></ul></details>
-      </section>
+
+      <section id="helpWindows" class="help-section" tabindex="-1"><h3>Windows EXEゲーム（ベータ版）</h3>
+<p>Windows用のゲームを、別ウィンドウで起動します。MacではWindowsのEXEゲームは動きません。</p>
+<ol><li><strong>Windowsアプリ：</strong>そのまま使えます。<strong>HTML：</strong>横にある「起動補助」→「Windowsで起動.cmd」から開きます。</li><li>追加はクリエイター版で行います。単体EXEは「ファイルを選ぶ」、DLL・素材もある場合は「フォルダーを選ぶ」で一式を追加します。ZIPは先に展開してください。</li><li>カードを開き、<strong>「EXEを起動」</strong>を押します。HTMLの起動補助で保存先を求められたら、同じゲーム保管フォルダーを選びます。</li></ol>
+<p>信頼できるゲームだけ実行してください。セーブはゲーム自身が管理し、GAME PORTALのセーブ同期・セーブ履歴・画面撮影の対象外です。</p>
+<details><summary>付属ファイル・更新・再接続</summary><ul><li>選ぶフォルダーの直下に主な起動用EXEを1つ置きます。Godotの同名consoleとUnity CrashHandlerは付属として扱います。合計200MB・500ファイル以内です。</li><li>更新はゲーム終了後、保管フォルダー内のEXEと素材を入れ替えます。作品情報JSONとゲーム固有のセーブは残してください。</li><li>HTMLの起動補助を終了した場合は、「Windowsで起動.cmd」から開き直します。補助を終了しても起動中のゲームは終了しません。</li></ul></details>
+</section>
       <section id="helpUpdate" class="help-section" tabindex="-1"><h3>ゲーム本体を更新する</h3>
         <ol><li>編集モードでゲームを開き、<strong>「本体を更新」</strong>を押します。</li><li>新しいファイル・フォルダー一式を選び、チェック結果を確認します。</li><li><strong>「確認して本体を更新」</strong>を押します。「起動を再試行」で新版を確認できます。</li></ol>
         <p>名前・タグ・画像・概要・操作方法・作品IDは引き継ぎます。<strong>「前の本体に戻す」</strong>で旧版へ戻せます。</p>
-        <details><summary>対象とセーブについて</summary><p>対象は「ゲームを追加」で追加したWebゲーム・PYXAPPです。直接配置した作品は、投稿で専用フォルダーへ追加してから更新します。EXEは「Windows EXE」の手順を使います。</p><p>更新・旧版復元前に、対応するこのPCのセーブを自動退避します。退避に失敗した場合は本体を切り替えません。セーブが新版で使えるかはゲーム側の互換性に依存します。旧版は残るため、更新すると使用容量が増えます。</p></details>
+        <details><summary>対象とセーブについて</summary><p>対象は「ゲームを追加」で追加したWebゲーム・PYXAPPです。直接配置した作品は、「ゲームを追加」で専用フォルダーへコピーしてから更新します。EXEは「Windows EXE」の手順を使います。</p><p>更新・旧版復元前に、対応するこのPCのセーブを自動退避します。退避に失敗した場合は本体を切り替えません。セーブが新版で使えるかはゲーム側の互換性に依存します。旧版は残るため、更新すると使用容量が増えます。</p></details>
       </section>
       <section id="helpShare" class="help-section" tabindex="-1"><h3>共有・別PCへ持ち運ぶ</h3>
-        <details><summary>フォルダー選択なしで開く（ベータ版）</summary><p>準備する人が、設定の「共有・バージョン」で保存先のパスを入力し、「起動補助の設定ファイルを保存」を押します。保存した<strong>GAME-PORTAL-FOLDER.txt</strong>を配布フォルダーのREADMEと同じ場所に置いてください。HTMLの用途別フォルダーだけをコピーした場合は、HTMLの横に置きます。保存先を1行で書いて作ることもできます。同じ場所の「ゲーム」なら <code>./ゲーム</code>。接続できない場合はNASや設定を確認し、「自動接続を再試行」でやり直せます。一度接続した保存先を変える場合は、起動補助を開き直してください。フォルダー名は自由です。先に通常のHTMLの編集モードで、その保存先の初回設定を済ませてください。</p><p>HTMLの横の「起動補助」から、Windowsは<strong>Windowsで起動.cmd</strong>、Macは<strong>Macで起動.command</strong>を開きます。相対パスならPC間で同じ配置を使えます。NASへの接続とOSのアクセス権は必要です。MacはmacOS 12以降のIntel・Appleシリコン向けで、起動中はTerminalを閉じないでください。最新ChromeにはmacOS 13以降が必要です。</p><p><strong>この自動接続はプレイ専用です。</strong>セーブは各PCのブラウザー内に保存します。追加・編集・セーブ共有には「設定」→「保存先を選ぶ」を使います。接続が外れたら起動補助から開き直すか、「設定」で保存先を選び直してください。待ち続ける場合は「接続待ちを中止」で戻れます。セーブの保存は強制中断しません。Windows用EXEゲームはMacでは動きません。</p></details>
-        <h4>同じゲームを共有する</h4><ol><li>各PCで<strong>同じNAS・共有フォルダー</strong>を選び、アクセスを許可します。</li><li>ほかのPCの変更は自動で確認します。ホームで3分ほど操作がないときに一覧へ反映し、「一覧を更新」ですぐ確認できます。</li></ol><p>ゲームと作品情報は共有できます。対応セーブも同じフォルダー経由で共有します。同じ作品の同時編集・同時更新は避けてください。</p>
-        <h4>フォルダーごと渡す</h4><p><strong>HTMLとゲーム保管フォルダー全体</strong>をコピーし、相手PCでも初回は保存先を選びます。別々にコピーしたフォルダー同士は、その後は自動同期しません。</p>
-        <details><summary>共有用HTML・バージョンの注意</summary><p>「設定」→「共有・バージョン」→「共有用HTMLを保存」で案内用パスを含むHTMLを作れます。ゲーム・セーブ・アクセス許可はHTMLに含めません。同じPC・Chromeで同じHTMLを使う場合は保存先の選択も共有し、プレイ・編集後に切り替えます。</p><p><strong>全PCのHTMLを先に v0.14.0 以降の対応版へ交換してください。</strong>必要版と合わない場合は新規起動・投稿・編集を止めます。v0.13.1以前にはこの判定がありません。古いHTML・ショートカットも交換し、互換性情報は削除しないでください。Windows補助はHTMLと同じ版を使います。</p><p>情報・履歴・更新版・旧版も含めてコピーし、管理用ファイルを個別に改名しないでください。プレイ中のゲームは他PCの更新で終了せず、開き直すと新版になります。</p></details>
-      </section>
+<h4>同じ保存先を使う</h4><ol><li>各PCで<strong>同じNAS・共有フォルダー</strong>を選びます。NASは先にエクスプローラーやFinderで開けるか確認します。</li><li>必要なアクセス許可を与えます。HTMLの許可はPC・ブラウザーごとに必要です。</li><li>ホームで<strong>3分間操作しない</strong>と、ほかのPCの変更を確認します。すぐ反映するには「一覧を更新」を押します。</li></ol>
+<p>Windows・Mac・HTMLでゲーム名・タグ・サムネイル・概要・操作方法を共有できます。同じ作品の同時編集・同時更新は避けてください。セーブの共有は「セーブ」の手順を確認します。</p>
+<h4>コピーして渡す</h4><p><strong>配布フォルダーとゲームの保管フォルダー全体</strong>を渡します。相手PCでも保存先を確認してください。別々にコピーしたフォルダー同士は、その後の変更を自動同期しません。作品情報だけを渡す場合は「ゲームの追加・情報の編集」にあるJSONの書き出しを使います。</p>
+<details><summary>フォルダー選択を減らす</summary><p>Windows・Macアプリは前回の保存先を記憶します。共有の接続設定がある場合も自動接続を試します。NASへのサインインとOSのアクセス権は各PCで必要です。</p><p>HTMLで起動補助を使う場合は、「設定」→「共有・バージョン」で保存先のパスを入力し、「起動補助の設定ファイルを保存」を押します。保存した<strong>GAME-PORTAL-FOLDER.txt</strong>を配布フォルダーのREADMEと同じ場所に置きます。HTMLの用途別フォルダーだけをコピーした場合はHTMLの横に置いてください。相対パスなら、例えば <code>./ゲーム</code> と指定できます。事前にクリエイター版で保存先を初期設定してください。</p><p>HTMLの横の「起動補助」から、Windowsは「Windowsで起動.cmd」、Macは使う環境に合った「Macで起動.command」または「古いMacで起動.command」を開きます。起動補助による自動接続は<strong>プレイ専用</strong>です。追加・編集・セーブ共有にはChrome画面の「設定」→「保存先を選ぶ」で接続してください。</p></details>
+<details><summary>共有用HTML・バージョンの注意</summary><p>「設定」→「共有・バージョン」→「共有用HTMLを保存」で、案内用パスを含むHTMLを作れます。ゲーム・セーブ・アクセス許可はHTMLに含めません。同じPC・Chromeで同じHTMLを使う場合は、保存先の選択をほかの画面にも通知し、プレイ・編集後に切り替えます。</p><p><strong>共有するPCは同じ最新版へそろえてください。</strong>13個以上のタグにはv0.22.0以降が必要です。全PCのHTMLを先にv0.14.0以降へ交換してください。v0.13.1以前には互換性の判定がないため、古いHTMLやショートカットも交換します。互換性情報を削除しないでください。</p><p>履歴・更新版・旧版を含めてフォルダー全体をコピーし、管理用ファイルを個別に改名しないでください。プレイ中のゲームは他PCの更新で終了せず、開き直すと新版になります。</p></details>
+</section>
       <section id="helpSave" class="help-section" tabindex="-1"><h3>セーブを守る・持ち運ぶ</h3>
-        <p class="help-lead">対応Webゲームのセーブは、このPCに保存し、ホームで3分操作がないと共有フォルダーへ同期します。ゲームを開く前にも共有セーブを確認します。全PCでv0.20.0以降を使ってください。</p>
-        <h4>今すぐ共有する</h4><p>ゲームを終了し、<strong>「設定」→「今すぐセーブを同期」</strong>。初回は保存許可が必要です。別PCも同じフォルダーを選びます。両方のPCで進めた場合は、自動で上書きせず使うセーブを選びます。選ぶ前のこのPCのデータは「セーブ履歴」へ退避します。</p><h4>JSONで持ち運ぶ</h4><ol><li>ゲームを開き、概要の下の<strong>「その他」→「セーブ書き出し」</strong>からJSONを保存します。</li><li>相手PCで同じ作品を開き、<strong>「その他」→「セーブ読み込み」</strong>でそのJSONを選びます。</li></ol>
-        <h4>以前のセーブに戻す</h4><p>概要の下の<strong>「その他」→「セーブ履歴」</strong>で日時を選び、「このセーブに戻す」。復元直前のセーブも残るので戻し直せます。履歴は作品ごとに直近10件です。</p>
-        <details><summary>保存の対象・気をつけること</summary><p>対象はHTML・ZIPのlocalStorage相当のデータです。ゲーム独自のIndexedDB・Pyxel独自ファイル・EXEのセーブは対象外です。本体更新・旧版復元前に対応セーブを自動退避します。ブラウザーの保存データを消すとセーブと履歴も失われるため、必要なものはJSONへ書き出します。同じChromeプロファイルを使う人同士はセーブを共有します。</p></details>
-      </section>
+<p class="help-lead">対応するWebゲームのセーブを、このPCに保存します。</p>
+<p>WindowsアプリとChromeは別の保存場所を使います。切り替えて続きを遊ぶ場合は、共有セーブを同期するか、JSONに書き出して読み込んでください。</p>
+<h4>ほかのPCと続きを共有する</h4><ol><li>各PCで<strong>同じゲームの保存先</strong>を選びます。全PCでv0.20.0以降を使ってください。</li><li>ゲームを終了し、<strong>「設定」→「今すぐセーブを同期」</strong>を押します。初回は保存を許可します。</li><li>別PCでも同じ保存先からゲームを開きます。起動前に共有セーブを確認します。</li></ol>
+<p>ホームで3分間操作しないときにも同期します。両方のPCで進めた場合は、自動で上書きせず使うセーブを選びます。選ぶ前のこのPCのデータは「セーブ履歴」に残します。</p>
+<h4>ファイルで持ち運ぶ</h4><ol><li>ゲーム画面の<strong>「その他」→「セーブ書き出し」</strong>でJSONを保存します。</li><li>移行先で同じ作品を開き、<strong>「その他」→「セーブ読み込み」</strong>からJSONを選びます。</li></ol>
+<h4>以前のセーブに戻す</h4><p><strong>「その他」→「セーブ履歴」</strong>で日時を選び、「このセーブに戻す」を押します。復元直前のセーブも残るので戻し直せます。履歴は作品ごとに直近10件です。</p>
+<details><summary>対応するセーブ・保存データの注意</summary><p>対象はHTML・ZIPのlocalStorage相当のデータです。ゲーム独自のIndexedDB・Pyxel独自ファイル・EXEのセーブは対象外です。セーブ自体がないゲームでは、続きを保存できません。</p><p>本体更新・旧版復元前に、対応セーブを自動退避します。ブラウザーやアプリの保存データを消す前に、必要なセーブを書き出してください。このPCのセーブ履歴も削除されるため、履歴だけをバックアップ代わりにしないでください。同じChromeプロファイルを使う人同士はセーブを共有します。</p></details>
+</section>
       <section id="helpRemove" class="help-section" tabindex="-1"><h3>ゲームを一覧から外す・削除する</h3>
-        <p>HTML内に削除ボタンはありません。保管フォルダーで操作します。</p>
+        <p>アプリ内に削除ボタンはありません。ゲームの保管フォルダーで操作します。</p>
         <ol><li>編集モードでゲームを開き、<strong>「編集」→「保存先を確認」</strong>で対象を確認します。</li><li>ゲームを終了します。EXEはWindows側のゲームも終了します。</li><li>追加した作品のフォルダーを<strong>保管フォルダーの外へ丸ごと移動</strong>します。戻す予定がなければ削除します。</li><li>「一覧を更新」。共有先の他PCでも自動確認後に一覧から消えます。</li></ol>
         <details><summary>直接置いたゲーム・セーブについて</summary><p>直接配置した作品は本体・情報JSON・専用素材が対象です。他作品と共用の素材は削除しないでください。各PCのWebゲームのセーブは、作品フォルダーを削除しても自動削除されません。</p></details>
       </section>
       <section id="helpTrouble" class="help-section" tabindex="-1"><h3>困ったとき</h3>
-        <details open><summary>ゲームを追加・編集できない</summary><p>保存先を選び、「設定」→「編集モード」をオンにします。書き込み許可も確認し、ボタン付近の案内に従ってください。</p></details>
-        <details><summary>ゲームが起動しない・ファイルが足りない</summary><p>HTMLと素材一式があるか確認します。sb3はHTMLへ変換、GodotはWeb用の一式を追加します。「設定」→「ゲームを点検」で不足や壊れた設定を確認し、接続後に「起動を再試行」を押します。外部サーバー必須の作品・スレッド必須のGodot Web書き出しは対象外です。</p></details>
-        <details><summary>一覧に反映されない・接続が切れた</summary><p>NASなどの接続を戻し、ホームで少し待ちます。一時的な切断は約15秒後から自動で再接続を試し、失敗が続く場合は最大1分間隔で確認します。検索条件はそのままです。ゲーム中・編集中・保存結果の確認中や、画面が非表示の間は待機します。許可の確認が必要な場合は「保存先に再接続する」を押してください。別の保存先に変える場合は、設定から選ぶかフォルダーをドラッグします。どちらも読み取りから接続します。選択画面が中断した場合は、「保存先を選ぶ」で選び直すか、設定内の枠へフォルダーをドラッグしてください。キャンセルとアクセス制限はエラー名だけでは区別できません。</p></details>
-        <details><summary>「保存結果未確認」「更新結果未確認」が出た</summary><p><strong>繰り返し保存・投稿せず、結果を確認します。</strong>設定の保存は「保存結果を確認」。本体更新は「本体を更新」→「更新状態を確認」。投稿途中の作品は「設定」→「ゲームを点検」で確認できます。</p></details>
-        <details><summary>EXEを起動できない</summary><p>「起動補助」のWindowsで起動.cmdからHTMLを開き直し、補助側でも同じ保管フォルダーを選びます。Windowsの実行権限とDLL・素材も確認します。起動中ならゲームを終了してから再度起動します。</p></details>
-      </section>
+<details open><summary>保存先に接続できない・待ち続ける</summary><ol><li>待ち続ける場合は<strong>「接続待ちを中止」</strong>を押します。</li><li>NASなら、エクスプローラーやFinderで保存先を開けるか確認します。</li><li>「設定」→「保存先を選ぶ」で選び直すか、設定の枠へフォルダーをドラッグします。Windowsアプリではパス入力も使えます。</li><li>Chromeのアクセス確認が出たら許可します。HTMLはPC版Google Chromeで直接開いてください。</li></ol><p>自動接続は失敗が続くと停止します。キャンセルとアクセス制限はエラー名だけでは区別できないため、ボタンやドラッグで接続し直してください。</p></details>
+<details><summary>一覧にゲームがない・変更が反映されない</summary><p>使っている保存先が正しいか確認し、検索中なら「絞り込みを解除」、続いて<strong>「一覧を更新」</strong>を押します。別々にコピーした保存先には、ほかのPCの変更は届きません。プレイ中や編集中は自動確認を待つため、ホームへ戻ってください。</p></details>
+<details><summary>ゲームを追加・編集できない</summary><p><strong>クリエイター版</strong>を使い、「設定」→「編集モード」をオンにします。書き込み許可と、ボタン付近の案内も確認してください。Macの自動接続では、Chrome画面の「設定」から保存先を選び直して保存を許可します。</p></details>
+<details><summary>ゲームが起動しない・読み込みが終わらない</summary><p>待機をやめる場合は<strong>「中止して一覧へ戻る」</strong>を押します。HTMLと素材一式があるか確認してください。sb3はHTMLへ変換、GodotはWeb用の一式を追加します。クリエイター版の「設定」→「ゲームを点検」で不足や壊れた設定も確認できます。</p><p>接続を戻した後は「起動を再試行」を使います。外部サーバー必須の作品・スレッド必須のGodot Web書き出しは対象外です。</p></details>
+<details><summary>「保存結果未確認」「更新結果未確認」が出た</summary><p><strong>保存・追加・更新を繰り返さず、結果を確認してください。</strong>設定の保存は「保存結果を確認」、本体更新は「本体を更新」→「更新状態を確認」を使います。追加途中の作品は「設定」→「ゲームを点検」で確認できます。</p><p>情報の一括読み込みを中止した場合は、表示された保存件数を確認します。保存済みの作品は元に戻らず、残りの作品は変更しません。</p></details>
+<details><summary>EXEを起動できない</summary><p>Windowsアプリを使うか、HTMLの「起動補助」→「Windowsで起動.cmd」から開き直します。起動補助でも同じ保管フォルダーを選んでください。DLL・素材とWindowsの実行権限を確認し、ゲームがすでに起動中なら終了してからやり直します。MacではWindows用EXEは起動できません。</p></details>
+</section>
       <div class="buttons help-footer"><button class="secondary" data-help-topic="helpTitle">先頭に戻る</button></div>
     </div>
   </div>
