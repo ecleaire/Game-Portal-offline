@@ -22,3 +22,16 @@ Windows/** binary linguist-generated=true
 Mac/** binary linguist-generated=true
 HTML/** binary linguist-generated=true
 HTML/**/*.command text eol=lf
+HTML/**/*.cmd -text
+# Code > Download ZIP is for players and creators. Sources remain in Git.
+/.github export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/assets export-ignore
+/desktop export-ignore
+/offline-html export-ignore
+/scripts export-ignore
+/tests export-ignore
+/package.json export-ignore
+/package-lock.json export-ignore
+/docs/DEVELOPMENT.md export-ignore

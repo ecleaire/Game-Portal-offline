@@ -26,6 +26,8 @@ jobs:
           key: pyxel-runtime-${{ hashFiles('offline-html/runtime-lock.json') }}
       - run: npm run prepare:runtime
       - run: node scripts/verify-distribution.mjs
+      - run: git archive --format=zip --output=.tools/distribution-check.zip HEAD
+      - run: node scripts/verify-code-zip.mjs .tools/distribution-check.zip
       - run: npm test
       - run: npx playwright install chromium
       - run: npm run test:browser

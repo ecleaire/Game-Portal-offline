@@ -14,7 +14,7 @@
 | Windows・Macでフォルダー選択を省略する | [自動接続（ベータ版）](AUTO_CONNECT.md) |
 | WindowsのEXEゲームを起動する | [EXE起動補助（ベータ版）](WINDOWS_EXE.md) |
 | NASで運用する前に確認する | [NAS検証手順](NAS_VALIDATION.md) |
-| 更新内容を確認する | [変更履歴](../CHANGELOG.md) |
+| 更新内容を確認する | [変更履歴](CHANGELOG.md) |
 
 遊ぶときはプレイ専用版、ゲームを追加・管理するときはクリエイター版を選びます。どちらも同じゲームの保存先を使えます。
 
@@ -26,4 +26,4 @@
 
 ## 開発する人へ
 
-ソースの配置・ビルド・検証・配布物の更新は、[開発手順](DEVELOPMENT.md)を参照してください。
+開発コードやテストは配布ZIPから除外しています。変更する場合はGitでリポジトリを取得し、[GitHubの開発手順](https://github.com/ecleaire/Game-Portal-offline-html/blob/main/docs/DEVELOPMENT.md)を参照してください。

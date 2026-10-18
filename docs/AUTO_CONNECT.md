@@ -7,15 +7,17 @@
 ## 自動接続を設定する
 
 1. `GAME-PORTAL.html`（クリエイター版）をChromeで開き、保存先を選んで「編集モード」をオンにします。書き込みを許可すると初回設定が完了します。既存のゲームやIDはそのまま使えます。
-2. HTMLの「設定」→「共有・バージョン」で保存先のパスを入力し、「起動補助の設定ファイルを保存」を押します。保存した `GAME-PORTAL-FOLDER.txt` をHTML・起動補助と同じ場所に置きます。UTF-8のテキストで、パスだけを1行で書いて作ることもできます。引用符は不要です。
-3. 保存先が同じ場所の「ゲーム」フォルダーなら `./ゲーム` と書きます。フォルダー名は自由です。相対パスはHTMLのある場所を基準にします。
+2. HTMLの「設定」→「共有・バージョン」で保存先のパスを入力し、「起動補助の設定ファイルを保存」を押します。保存した `GAME-PORTAL-FOLDER.txt` を **配布フォルダーのREADMEと同じ場所** に置きます。UTF-8のテキストで、パスだけを1行で書いて作ることもできます。引用符は不要です。
+3. READMEと同じ場所の「ゲーム」フォルダーなら `./ゲーム` と書きます。フォルダー名は自由です。配布一式を使う場合、相対パスはREADMEのある場所が基準です。HTMLの用途別フォルダーだけをコピーした場合は、HTMLのある場所に設定ファイルを置きます。
 
 ```text
 共有フォルダー/
-├ GAME-PORTAL.html
-├ GAME-PORTAL-WINDOWS.exe
-├ GAME-PORTAL-MAC
-├ GAME-PORTAL-MAC.command
+├ README.md
+├ Windows/
+├ Mac/
+├ HTML/プレイ用/GAME-PORTAL-PLAY.html
+│             └ 起動補助/
+├ _内部ファイル/          ← 変更しません
 ├ GAME-PORTAL-FOLDER.txt  ← 内容は ./ゲーム
 └ ゲーム/
 ```
@@ -26,8 +28,8 @@ Windowsだけで使う場合は `\\NAS名\共有名\ゲーム`、Macだけなら
 
 ## 設定した保存先を開く
 
-- **Windows 10 / 11**：`GAME-PORTAL-WINDOWS.exe` を開きます。
-- **Mac（macOS 12以降、Intel・Appleシリコン）**：`GAME-PORTAL-MAC.command` を開きます。起動中はTerminalのウィンドウを残します。閉じると接続が終了します。
+- **Windows 10 / 11**：HTMLの横にある「起動補助」→ `Windowsで起動.cmd` を開きます。
+- **Mac（macOS 12以降、Intel・Appleシリコン）**：「起動補助」→ `Macで起動.command` を開きます。それ以前の対応Intel Macは `古いMacで起動.command` を使います。起動中はTerminalのウィンドウを残します。閉じると接続が終了します。
 
 ブラウザーにゲーム一覧が開きます。カードを押すと遊べます。
 設定ファイルがなければフォルダー選択から使えます。後から設定ファイルを置いた場合も「自動接続を再試行」で接続できます。
@@ -45,6 +47,6 @@ Windowsだけで使う場合は `\\NAS名\共有名\ゲーム`、Macだけなら
 
 Macアプリで起動する場合は、[Macでの使い方](MAC.md)を参照してください。アプリに画面用HTMLを内蔵しています。
 
-このページの `GAME-PORTAL-MAC.command` はmacOS 12以降のIntel・Appleシリコン用の起動補助です。ゲームごとの動作条件も確認してください。
+`Macで起動.command` はmacOS 12以降のIntel・Appleシリコン用です。ゲームごとの動作条件も確認してください。
 
 配布ZIPは `Windows`・`Mac`・`HTML` の下に `プレイ用`・`クリエイター用` を分けています。配布フォルダーを丸ごと使う場合、`GAME-PORTAL-CONNECTION.json` と `GAME-PORTAL-FOLDER.txt` はREADMEと同じ場所が共通の設定先です。版のフォルダーだけを別の場所へコピーした場合は、その場所で保存先を指定してください。

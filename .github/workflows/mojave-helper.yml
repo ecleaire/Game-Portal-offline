@@ -1,7 +1,7 @@
 name: Build Mojave play helper
 on:
   push:
-    paths: ['HTML/**', 'scripts/distribution.mjs', 'tests/native-distribution.mjs', 'scripts/macos/**', 'scripts/build-mojave.mjs', 'scripts/prepare-mojave-test.mjs', 'tests/mojave-esr-browser.mjs', 'tests/native-folder-browser.mjs', 'GAME-PORTAL.html', '.github/workflows/mojave-helper.yml']
+    paths: ['HTML/**', 'scripts/distribution.mjs', 'tests/native-distribution.mjs', 'scripts/macos/**', 'scripts/build-mojave.mjs', 'scripts/prepare-mojave-test.mjs', 'tests/mojave-esr-browser.mjs', 'tests/native-folder-browser.mjs', 'tests/offline-html/information-browser.mjs', 'GAME-PORTAL.html', '.github/workflows/mojave-helper.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -37,6 +37,9 @@ jobs:
           PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
           PORTAL_EXPECT_BROWSER: '116.'
       - run: node tests/offline-html/editions-browser.mjs
+        env:
+          PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+      - run: node tests/offline-html/information-browser.mjs
         env:
           PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
       - uses: actions/upload-artifact@v4

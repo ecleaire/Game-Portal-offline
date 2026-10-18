@@ -39,7 +39,10 @@ func read(_ url: URL, _ limit: Int) throws -> Data {
 func sharedConfigurationDirectory(_ directory: URL) throws -> URL {
     let platform=directory.deletingLastPathComponent(),root=platform.deletingLastPathComponent()
     guard ["プレイ用","クリエイター用"].contains(directory.lastPathComponent),["Windows","Mac","HTML"].contains(platform.lastPathComponent) else{return directory}
-    let marker=root.appendingPathComponent("GAME-PORTAL-DISTRIBUTION.json")
+    let internalDirectory=root.appendingPathComponent("_内部ファイル")
+    if fm.fileExists(atPath:internalDirectory.path){guard try internalDirectory.resourceValues(forKeys:[.isSymbolicLinkKey]).isSymbolicLink != true else{throw PortalError("配布フォルダーのリンクを確認してください。")}}
+    var marker=internalDirectory.appendingPathComponent("GAME-PORTAL-DISTRIBUTION.json")
+    if !fm.fileExists(atPath:marker.path){marker=root.appendingPathComponent("GAME-PORTAL-DISTRIBUTION.json")}
     guard fm.fileExists(atPath:marker.path) else{return directory}
     for url in [directory,platform,root,marker]{guard try url.resourceValues(forKeys:[.isSymbolicLinkKey]).isSymbolicLink != true else{throw PortalError("配布フォルダーのリンクを確認してください。")}}
     let info=try object(read(marker,1024));guard schema(info["schema"]),info["project"] as? String == "GAME-PORTAL",info["layout"] as? String == "platform-role" else{throw PortalError("配布フォルダーの設定を確認してください。")}

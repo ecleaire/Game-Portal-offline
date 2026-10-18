@@ -37,7 +37,8 @@ internal static class DesktopSelfTest {
         var playerFiles=new DesktopFiles(Path.Combine(directory,"player-grouped"),player);Assert(playerFiles.Restore().Path==sharedGames,"grouped player uses bundle connection");results.Add("platform player connection");
         string movedProfile=Path.Combine(directory,"publisher");var relocatedOld=new DesktopFiles(movedProfile,creator);Assert(relocatedOld.Restore().Path==second,"root profile survives platform move");results.Add("legacy profile preserved after platform move");
         Assert(PortalNative.ConfigurationDirectory(Path.Combine(app,"other"))==Path.Combine(app,"other"),"no arbitrary parent search");results.Add("configuration discovery bounded");
-        File.WriteAllText(Path.Combine(app,"GAME-PORTAL-DISTRIBUTION.json"),"{}");Fails(()=>new DesktopFiles(Path.Combine(directory,"bad-marker"),player),"corrupt layout marker rejected",results);
+        Directory.CreateDirectory(Path.Combine(app,"_内部ファイル"));File.Move(Path.Combine(app,"GAME-PORTAL-DISTRIBUTION.json"),Path.Combine(app,"_内部ファイル","GAME-PORTAL-DISTRIBUTION.json"));Assert(PortalNative.ConfigurationDirectory(player)==app,"internal marker retains shared connection");results.Add("internal distribution marker");
+        File.WriteAllText(Path.Combine(app,"_内部ファイル","GAME-PORTAL-DISTRIBUTION.json"),"{}");Fails(()=>new DesktopFiles(Path.Combine(directory,"bad-marker"),player),"corrupt layout marker rejected",results);
         File.WriteAllText(Path.Combine(directory,"result.json"),service.Serialize(new {passed=true,checks=results}),new UTF8Encoding(false));
     }
 }

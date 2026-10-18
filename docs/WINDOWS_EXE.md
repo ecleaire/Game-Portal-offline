@@ -4,8 +4,8 @@
 
 メイン画面は **GAME-PORTAL.html** です。Webゲームは従来どおりHTMLだけで使えます。
 
-EXEゲームを使う場合は、同じフォルダーに **GAME-PORTAL-WINDOWS.exe** を置いて開きます。
-GitHubの「Code → Download ZIP」を展開すると、HTMLと起動補助が同じフォルダーに入っています。
+HTMLでEXEゲームを使う場合は、HTMLの横にある **起動補助 → Windowsで起動.cmd** を開きます。
+GitHubの「Code → Download ZIP」に必要なファイルを同梱しています。`_runtime` 内のファイルを個別に起動・移動する必要はありません。
 補助アプリが同じHTMLをChromeなどの標準ブラウザーで開き、EXE起動に接続します。
 Windows 10 / 11向けで、Node.js・Python・Electronのインストールは不要です。
 

@@ -1,6 +1,6 @@
 # 開発・配布の手順
 
-使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。以下はソースを変更する人向けの手順です。
+使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。配布ZIPから開発コード・テスト・Git用設定を除外しています。開発するときは `git clone https://github.com/ecleaire/Game-Portal-offline-html.git` で取得してください。以下はソースを変更する人向けの手順です。
 
 ## 準備・検証
 
@@ -46,7 +46,7 @@ Intel Mac用 `.app` はIntel Mac上で `node scripts/build-mojave.mjs` を実行
 | `HTML/プレイ用`・`HTML/クリエイター用` | そのまま開くHTMLと起動補助 |
 | `Windows/プレイ用`・`Windows/クリエイター用` | Windowsアプリとライセンス |
 | `Mac/プレイ用`・`Mac/クリエイター用` | Macアプリのbundle全体（実行ファイル・HTML・ライセンス・署名） |
-| 最上位の `GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。個人の設定ファイルはGitへ含めません。 |
+| `docs/GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。個人の設定ファイルはGitへ含めません。 |
 | 最上位の `THIRD-PARTY-LICENSES.txt` | 同梱ランタイムのライセンス |
 | `offline-html/` / `assets/` | HTML・画面・実行処理のソース |
 | `scripts/` / `tests/` / `.github/` | ビルド・検証・CI |

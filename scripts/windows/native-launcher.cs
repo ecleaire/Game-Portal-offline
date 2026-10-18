@@ -33,7 +33,9 @@ internal static class PortalNative {
         directory=Path.GetFullPath(directory);if(directory.Length>Path.GetPathRoot(directory).Length)directory=directory.TrimEnd(Path.DirectorySeparatorChar);
         var role=new DirectoryInfo(directory);var platform=role.Parent;
         if(platform==null||!(role.Name=="プレイ用"||role.Name=="クリエイター用")||!new[]{"Windows","Mac","HTML"}.Contains(platform.Name)||platform.Parent==null)return directory;
-        string root=platform.Parent.FullName,marker=Path.Combine(root,"GAME-PORTAL-DISTRIBUTION.json");
+        string root=platform.Parent.FullName,internalDirectory=Path.Combine(root,"_内部ファイル"),marker=Path.Combine(internalDirectory,"GAME-PORTAL-DISTRIBUTION.json");
+        if(Directory.Exists(internalDirectory)&&(File.GetAttributes(internalDirectory)&FileAttributes.ReparsePoint)!=0)throw new IOException("配布フォルダーのリンクを確認してください。");
+        if(!File.Exists(marker))marker=Path.Combine(root,"GAME-PORTAL-DISTRIBUTION.json");
         if(!File.Exists(marker))return directory;
         foreach(string path in new[]{directory,platform.FullName,root,marker})if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new IOException("配布フォルダーのリンクを確認してください。");
         var record=Parse(Read(marker,1024));if(!Schema(record)||Text(record,"project")!="GAME-PORTAL"||Text(record,"layout")!="platform-role")throw new IOException("配布フォルダーの設定を確認してください。");
