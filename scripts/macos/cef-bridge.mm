@@ -81,6 +81,13 @@ class PortalApp : public CefApp, public CefBrowserProcessHandler, public CefRend
       command->AppendSwitch("disable-component-update");
       command->AppendSwitch("disable-sync");
       command->AppendSwitch("no-first-run");
+      // Hosted ARM Macs expose no Metal device. Tests can explicitly select
+      // ANGLE's OpenGL backend without changing users' graphics defaults.
+      const char* test_gl = getenv("PORTAL_CEF_TEST_GL");
+      if (command->HasSwitch("test-mode") && test_gl && std::string(test_gl) == "gl") {
+        command->AppendSwitchWithValue("use-gl", "angle");
+        command->AppendSwitchWithValue("use-angle", "gl");
+      }
     }
   }
   void OnContextInitialized() override {
