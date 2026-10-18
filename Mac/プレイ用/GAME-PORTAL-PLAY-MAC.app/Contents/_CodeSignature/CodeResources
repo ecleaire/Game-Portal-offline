@@ -4,22 +4,76 @@
 <dict>
 	<key>files</key>
 	<dict>
+		<key>Resources/GAME-PORTAL-DESKTOP.html</key>
+		<data>
+		nMKsf0HnYvDZYff+F0MEY7fMV+A=
+		</data>
 		<key>Resources/GAME-PORTAL.html</key>
 		<data>
-		qAVAh/ETcnpJ9/m2T9CgVbMajZU=
+		9ARIxoq8x59rQ8B9qtvZJbqKMhM=
+		</data>
+		<key>Resources/MAC-DESKTOP-LICENSES.txt</key>
+		<data>
+		teq9NslDEAJFwAJTBlXIhltCWnw=
 		</data>
 		<key>Resources/THIRD-PARTY-LICENSES.txt</key>
 		<data>
 		nbtdfG9Ld3cqnVU7qIRhohit0gw=
 		</data>
+		<key>Resources/build.json</key>
+		<data>
+		SqBModDVwpj7crcqhQAdCrBQ2ww=
+		</data>
+		<key>Resources/engine.json</key>
+		<data>
+		X7i5bGPdQP0u9PfAgZZeJQcIrzU=
+		</data>
+		<key>Resources/engine/arm64/engine.part00</key>
+		<data>
+		l5tsBPsF/t9qck3n/uKJFUjzeIU=
+		</data>
+		<key>Resources/engine/arm64/engine.part01</key>
+		<data>
+		jfhzsHg2EZwXaa7aPsthbEpP+q0=
+		</data>
+		<key>Resources/engine/arm64/engine.part02</key>
+		<data>
+		lnefRCwnkhnXf/ZMHGfN2oEFKw4=
+		</data>
+		<key>Resources/engine/x86_64/engine.part00</key>
+		<data>
+		bZ0yH873/B1ig4bHr3f7ikDjF04=
+		</data>
+		<key>Resources/engine/x86_64/engine.part01</key>
+		<data>
+		BvXKELtkcbcXF0GbLeDgLix4mAk=
+		</data>
+		<key>Resources/engine/x86_64/engine.part02</key>
+		<data>
+		Wr2CJ/1NmW+c2sH8ah48qmtOY1Q=
+		</data>
 	</dict>
 	<key>files2</key>
 	<dict>
+		<key>Resources/GAME-PORTAL-DESKTOP.html</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			6jwZWUb4DE2sUyy6mIfqxy1+MHVF//CZ3ihM3CfolEA=
+			</data>
+		</dict>
 		<key>Resources/GAME-PORTAL.html</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			V/d0lwne76oXbtR/iwwrQmRbcHrJ5t6l3KEfSFMfD+Y=
+			YLdqQGh2BjvM+cwi8lds7reQWJcHTDPpMjer/3bbYC4=
+			</data>
+		</dict>
+		<key>Resources/MAC-DESKTOP-LICENSES.txt</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			Ez8xkiVRdtqeAe1wY9cvzZ4muRYqShPy3ZZPvCPnsYI=
 			</data>
 		</dict>
 		<key>Resources/THIRD-PARTY-LICENSES.txt</key>
@@ -27,6 +81,62 @@
 			<key>hash2</key>
 			<data>
 			PRiWHszVe3FzNmzMlKD8+k8r6Z5MU46rz18I8poENUc=
+			</data>
+		</dict>
+		<key>Resources/build.json</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			a7x5tgsw0/6/S+cEGfQPK05oxTtDNncULPRCyAbb100=
+			</data>
+		</dict>
+		<key>Resources/engine.json</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			DjM2gf+0hAXgxpc8gENZ7CUUXCS3iopEsBeRYw/OXYA=
+			</data>
+		</dict>
+		<key>Resources/engine/arm64/engine.part00</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			VOYwiXOD0LczXzhWR3u/RxsnZd/Z4KE4VB6UumNAVP0=
+			</data>
+		</dict>
+		<key>Resources/engine/arm64/engine.part01</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			xmPIK1uF94pP8uNkJfOwFIj2TG+/V29+0gJxoD3WV3k=
+			</data>
+		</dict>
+		<key>Resources/engine/arm64/engine.part02</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			VNfrp5fZjx+PSXU/cxyx0rp92hpWyxUpbzCcRJB3wkQ=
+			</data>
+		</dict>
+		<key>Resources/engine/x86_64/engine.part00</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			/qs944coBi9chrorfB4EWteRdYH7GV6fgsCT19Y0YWM=
+			</data>
+		</dict>
+		<key>Resources/engine/x86_64/engine.part01</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			mdc/mtN2/LH5mSOfMXE7QTCKo6HnJ1uQnXPOlcPSRF8=
+			</data>
+		</dict>
+		<key>Resources/engine/x86_64/engine.part02</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			B+JPCf06nbERMqd4uPWlfvzxuTftvHCEmP55kOtrY38=
 			</data>
 		</dict>
 	</dict>
