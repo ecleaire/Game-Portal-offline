@@ -2,7 +2,7 @@
 
 ## ランチャーだけ渡す
 
-GitHubの「Code → Download ZIP」で取得したZIPを展開し、`Game-Portal-offline-html-main` 内の `GAME-PORTAL.html` をPC版Google Chromeで開いてください。展開済みフォルダーを相手のPCへコピーしても使えます。
+GitHubの「Code → Download ZIP」で取得したZIPを展開し、**Windows／Mac／HTML → プレイ用／クリエイター用** の順に開きます。起動するファイルは[READMEの表](../README.md#ダウンロードして使う)で確認してください。HTMLを使う場合は、用途フォルダー内のHTMLをPC版Google Chromeで開きます。展開済みフォルダーを相手のPCへコピーしても使えます。
 HTMLの中に必要な画面・ゲーム実行用ランタイムを同梱しているため、インストール、Node.js、開発ソース、アカウント、APIキー、インターネット接続は不要です。
 この配布ZIPにはゲーム・個人のセーブ・元PCの投稿先設定を含めません。
 初回はホームの「保存先フォルダーを選ぶ」、または「設定」→「保存先を選ぶ」で、そのPCから利用できる保管フォルダーを選び、Chromeのアクセスを許可します。

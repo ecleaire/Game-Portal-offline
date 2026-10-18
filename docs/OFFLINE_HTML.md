@@ -4,7 +4,7 @@
 
 PC版Google Chrome（Windows / macOS）推奨です。配布ZIPを展開し、`GAME-PORTAL.html` をChromeで開きます。画面・Pyxel・Pyodide・Python標準ライブラリーをHTMLに同梱しています。使用中のCDN・Supabase・Google Drive接続、アカウント登録は不要です。
 
-[ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)するか、GitHubの「Code → Download ZIP」を使います。展開した `Game-Portal-offline-html-main` の直下にある `GAME-PORTAL.html` を開けば使えます。インストール・ビルド・Actionsの操作は不要です。WindowsのEXE用起動補助とライセンスも同じ場所に含めます。
+[ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)するか、GitHubの「Code → Download ZIP」を使います。展開後、**HTML → プレイ用／クリエイター用** を開き、用途に合うHTMLを起動してください。インストール・ビルド・Actionsの操作は不要です。補助ツールは「起動補助」、ライセンスは「_内部ファイル」にまとめています。Windows・Macアプリを使う場合は[READMEの表](../README.md#ダウンロードして使う)を確認してください。
 
 保管先のフォルダー名を決められた名前へ変更する必要はありません。日本語・空白・記号など、OSとChromeで選択できる名前をそのまま使えます。名前は案内表示にだけ使い、ライブラリIDで保存先を識別します。ブラウザーがアクセスを許可しない場所や、読み取り・保存の権限がない場所は、名前を変えても利用できません。
 
@@ -292,7 +292,7 @@ Chromeの閲覧データ削除・プロファイル変更・HTMLの配置先変�
 
 ## 開発・配布ビルド
 
-ソースの変更・ビルド・検証・公開前の確認は[開発手順](DEVELOPMENT.md)を参照してください。使うだけの場合はビルド不要です。
+ソースの変更・ビルド・検証・公開前の確認は[GitHubの開発手順](https://github.com/ecleaire/Game-Portal-offline-html/blob/main/docs/DEVELOPMENT.md)を参照してください。使うだけの場合はビルド不要です。
 
 ## 投稿先の共有・自動確認
 
