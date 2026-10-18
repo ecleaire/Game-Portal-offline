@@ -62,7 +62,10 @@ func desktopSelfTest(_ directory: URL) throws {
     try check(!fm.fileExists(atPath: blank.appendingPathComponent(".gameportal/library-id.json").path), "cancelled initial setup must not leave a corrupt ID")
     let spaced = directory.appendingPathComponent("末尾の空白 ")
     try fm.createDirectory(at: spaced, withIntermediateDirectories: true)
-    try check(try files.register(spaced.path).url.path == spaced.path, "folder names retain trailing spaces")
+    let spacedRoot = try files.register(spaced.path)
+    try check(spacedRoot.url.lastPathComponent == spaced.lastPathComponent, "folder names retain trailing spaces: " + spacedRoot.url.lastPathComponent)
+    try Data("space-folder".utf8).write(to: spaced.appendingPathComponent("marker.txt"))
+    try check(try files.regularRead(files.bound(spacedRoot.url, "marker.txt"), limit: 100) == Data("space-folder".utf8), "selected folder resolves to the correct contents")
     let stalled = DispatchSemaphore(value: 0), entered = DispatchSemaphore(value: 0), progressed = DispatchSemaphore(value: 0)
     root.work.async { entered.signal(); stalled.wait() }; defer { stalled.signal() }
     try check(entered.wait(timeout: .now() + 2) == .success, "first folder queue started")
