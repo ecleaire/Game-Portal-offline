@@ -81,6 +81,8 @@ class PortalApp : public CefApp, public CefBrowserProcessHandler, public CefRend
       command->AppendSwitch("disable-component-update");
       command->AppendSwitch("disable-sync");
       command->AppendSwitch("no-first-run");
+      // Automation must not wait for a Keychain consent dialog for fixture data.
+      if (command->HasSwitch("test-mode")) command->AppendSwitch("use-mock-keychain");
       // Hosted ARM Macs expose no Metal device. Tests can explicitly select
       // ANGLE's OpenGL backend without changing users' graphics defaults.
       const char* test_gl = getenv("PORTAL_CEF_TEST_GL");
