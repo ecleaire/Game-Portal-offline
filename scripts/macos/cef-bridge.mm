@@ -81,7 +81,6 @@ class PortalApp : public CefApp, public CefBrowserProcessHandler, public CefRend
       command->AppendSwitch("disable-component-update");
       command->AppendSwitch("disable-sync");
       command->AppendSwitch("no-first-run");
-      if (command->HasSwitch("test-mode")) { command->AppendSwitchWithValue("use-gl", "angle"); command->AppendSwitchWithValue("use-angle", "swiftshader"); }
     }
   }
   void OnContextInitialized() override {
