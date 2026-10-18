@@ -1,5 +1,5 @@
-import {mkdtemp,mkdir,writeFile,readFile,cp,rm} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
+import {mkdtemp,mkdir,writeFile,readFile,cp,rm,readdir,stat} from 'node:fs/promises';
+import {tmpdir,homedir} from 'node:os';
 import {resolve,join} from 'node:path';
 import {spawn,execFileSync} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
@@ -44,7 +44,8 @@ stopPlayer();return {edition:launcherEdition,cycle:${cycle},library,version:docu
    // Tests execute the actual bundled Chromium application on macOS CI.
    // This does not claim physical macOS 10.14.6 testing.
    await writeFile(script,body);let logs='';processHandle=spawn(executable,['--test-mode','--profile',join(root,'profile-'+edition),'--test-script',script,'--result-file',result],{detached:true,stdio:['ignore','pipe','pipe']});processHandle.stdout.on('data',data=>logs+=data);processHandle.stderr.on('data',data=>logs+=data);
-   let value;for(let count=0;count<900;count++){value=await readFile(result,'utf8').then(JSON.parse).catch(()=>null);if(value)break;if(processHandle.exitCode!==null)break;await delay(100);}
+   let value;for(let count=0;count<900;count++){value=await readFile(result,'utf8').then(JSON.parse).catch(()=>null);if(value)break;if(processHandle.exitCode!==null||processHandle.signalCode!==null)break;await delay(100);}
+   if(!value){console.error('Native application exit:',processHandle.exitCode,processHandle.signalCode);const reports=join(homedir(),'Library/Logs/DiagnosticReports');for(const name of (await readdir(reports).catch(()=>[])).filter(name=>/^GAME-PORTAL.*\.(ips|crash)$/.test(name))){const file=join(reports,name),info=await stat(file);if(Date.now()-info.mtimeMs<600000&&info.size<2*1024*1024)console.error('Native crash report:',name,(await readFile(file,'utf8')).slice(0,16000));}}
    assert(value,'Mac app test did not finish: '+logs);assert.equal(value.ok,true,JSON.stringify(value)+'\n'+logs);
    assert(await waitForExit(processHandle,10000),'Mac window did not close after test: '+logs);assert.equal(processHandle.exitCode,0,logs);processHandle.stdout.destroy();processHandle.stderr.destroy();processHandle=null;
   }

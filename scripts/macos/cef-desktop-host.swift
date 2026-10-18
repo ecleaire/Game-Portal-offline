@@ -26,6 +26,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var closeTimer: DispatchWorkItem?, connections = 0, droppedFolder: (String, Date)?
     var pendingWrites = 0
     var fullscreenFromGame = false
+    var installedProcess: Process?
     init(profile: URL, application: URL, testMode: Bool, library: String?, testScript: URL?, resultFile: URL?, readyFile: URL?) throws {
         self.profile = profile; self.application = application; self.testMode = testMode; self.testScript = testScript; self.resultFile = resultFile; self.readyFile = readyFile
         files = try DesktopFiles(profile: profile, application: application, player: desktopEdition == "player")
@@ -85,10 +86,20 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func runInstalled(_ bundle: URL) throws {
         guard let name = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String else { throw DesktopError("アプリの起動ファイルを確認してください。") }
         let executable = bundle.appendingPathComponent("Contents/MacOS/" + name)
-        let values = [executable.path] + Array(CommandLine.arguments.dropFirst()) + ["--profile", profile.path, "--application-directory", application.path]
-        var pointers = values.map { strdup($0) }; pointers.append(nil); defer { for pointer in pointers { if let pointer = pointer { free(pointer) } } }
-        executable.path.withCString { path in pointers.withUnsafeBufferPointer { buffer in _ = execv(path, buffer.baseAddress!) } }
-        throw DesktopError("アプリを起動できませんでした。" + String(cString: strerror(errno)))
+        // A running Cocoa application has registered Mach/LaunchServices state.
+        // Start the signed runtime in a fresh process instead of exec'ing over
+        // that state; keep the bootstrap alive until the native window closes.
+        let process = Process(); process.executableURL = executable
+        process.arguments = Array(CommandLine.arguments.dropFirst()) + ["--profile", profile.path, "--application-directory", application.path]
+        process.standardOutput = FileHandle.standardOutput; process.standardError = FileHandle.standardError
+        process.terminationHandler = { child in DispatchQueue.main.async {
+            self.installedProcess = nil; self.closing = true
+            let status = child.terminationReason == .uncaughtSignal ? 128 + child.terminationStatus : child.terminationStatus
+            if self.testMode { exit(status) }
+            if status != 0 { self.notice("アプリを終了しました", "画面の処理が停止しました。GAME PORTALをもう一度開いてください。保存済みのゲームや作品情報はそのまま残っています。") }
+            NSApplication.shared.terminate(nil)
+        } }
+        installedProcess = process; try process.run(); window.orderOut(nil); NSApplication.shared.setActivationPolicy(.accessory)
     }
     func installMenu() {
         let main = NSMenu(), appItem = NSMenuItem(), appMenu = NSMenu()
@@ -186,7 +197,10 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 portal_cef_evaluate("(async()=>{let allowed=false;try{if(typeof busy==='undefined')allowed=true;else if(!busy&&!syncPromise&&!hasEditChanges()&&await flushSave()){stopPlayer();allowed=true;}}finally{window.__portalSend(JSON.stringify({id:2147483647,op:'closeReady',allowed}));}})()")
                 let timer = DispatchWorkItem { self.closePending = false; let alert = NSAlert(); alert.messageText = "画面から応答がありません"; alert.informativeText = "終了すると未保存の入力は失われます。終了しますか？"; alert.addButton(withTitle: "戻る"); alert.addButton(withTitle: "終了"); if alert.runModal() == .alertSecondButtonReturn { self.finishClose() } }; self.closeTimer = timer; DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: timer)
     }
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { window?.makeKeyAndOrderFront(nil); return true }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if let process = installedProcess, process.isRunning { NSRunningApplication(processIdentifier: process.processIdentifier)?.activate(options: [.activateIgnoringOtherApps]); return true }
+        window?.makeKeyAndOrderFront(nil); return true
+    }
     func notice(_ title: String, _ message: String) { let alert = NSAlert(); alert.messageText = title; alert.informativeText = message; alert.runModal() }
     func fail(_ error: Error) {
         let message = (error as? DesktopError)?.message ?? error.localizedDescription
