@@ -29,7 +29,7 @@ Windowsだけで使う場合は `\\NAS名\共有名\ゲーム`、Macだけなら
 ## 設定した保存先を開く
 
 - **Windows 10 / 11**：HTMLの横にある「起動補助」→ `Windowsで起動.cmd` を開きます。
-- **Mac（macOS 12以降、Intel・Appleシリコン）**：「起動補助」→ `Macで起動.command` を開きます。それ以前の対応Intel Macは `古いMacで起動.command` を使います。起動中はTerminalのウィンドウを残します。閉じると接続が終了します。
+- **Mac（Intel：macOS 10.14.6以降／Appleシリコン：macOS 11以降）**：「起動補助」→ `Macで起動.command` を開きます。起動中はTerminalのウィンドウを残します。閉じると接続が終了します。
 
 ブラウザーにゲーム一覧が開きます。カードを押すと遊べます。
 設定ファイルがなければフォルダー選択から使えます。後から設定ファイルを置いた場合も「自動接続を再試行」で接続できます。
@@ -47,6 +47,6 @@ Windowsだけで使う場合は `\\NAS名\共有名\ゲーム`、Macだけなら
 
 Macアプリで起動する場合は、[Macでの使い方](MAC.md)を参照してください。アプリに画面用HTMLを内蔵しています。
 
-`Macで起動.command` はmacOS 12以降のIntel・Appleシリコン用です。ゲームごとの動作条件も確認してください。
+`Macで起動.command` はIntel MacではmacOS 10.14.6以降、AppleシリコンではmacOS 11以降に対応します。ゲームごとの動作条件も確認してください。
 
 配布ZIPは `Windows`・`Mac`・`HTML` の下に `プレイ用`・`クリエイター用` を分けています。配布フォルダーを丸ごと使う場合、`GAME-PORTAL-CONNECTION.json` と `GAME-PORTAL-FOLDER.txt` はREADMEと同じ場所が共通の設定先です。版のフォルダーだけを別の場所へコピーした場合は、その場所で保存先を指定してください。

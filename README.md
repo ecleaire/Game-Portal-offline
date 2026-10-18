@@ -19,8 +19,7 @@ GitHubの **Code → Download ZIP** からもダウンロードできます。Ac
 | --- | --- | --- |
 | Windows 10 / 11（64bit） | `GAME-PORTAL-PLAY.exe` | `GAME-PORTAL.exe` |
 | Google Chrome（Windows・Mac） | `GAME-PORTAL-PLAY.html` | `GAME-PORTAL.html` |
-| Mac（macOS 12以降） | `GAME-PORTAL-PLAY-MAC.app` | `GAME-PORTAL-MAC.app` |
-| Intel Mac（macOS 10.14.6以降） | `GAME-PORTAL-PLAY-MOJAVE.app` | `GAME-PORTAL-MOJAVE.app` |
+| Mac（Intel：10.14.6以降／Appleシリコン：11以降） | `GAME-PORTAL-PLAY-MAC.app` | `GAME-PORTAL-MAC.app` |
 
 Windows・Macアプリはベータ版です。MacアプリはGoogle Chromeでゲーム画面を開きます。
 

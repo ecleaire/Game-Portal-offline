@@ -1,4 +1,5 @@
 import {materializeDistribution,publishDistribution} from './distribution.mjs';
+import {MAC_MINIMUM,MAC_TARGETS,verifyMacMinimum} from './mac-system.mjs';
 await materializeDistribution();
 import {readFile,writeFile,mkdir,copyFile} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
@@ -8,10 +9,11 @@ const root=resolve(import.meta.dirname,'..'),output=join(root,'offline-release',
 await mkdir(output,{recursive:true});
 const {version}=JSON.parse(await readFile(join(root,'package.json'),'utf8'));
 const source=join(output,'native-launcher.swift');await writeFile(source,(await readFile(join(root,'scripts/macos/native-launcher.swift'),'utf8')).replace('__VERSION__',version));
-for(const arch of ['x86_64','arm64'])execFileSync('xcrun',['swiftc','-swift-version','5','-D','MOJAVE','-O','-target',arch+'-apple-macosx12.0',source,'-o',join(output,arch)],{stdio:'inherit'});
+for(const [arch,minimum] of Object.entries(MAC_TARGETS))execFileSync('xcrun',['swiftc','-swift-version','5','-D','MOJAVE','-O','-target',arch+'-apple-macosx'+minimum,source,'-o',join(output,arch)],{stdio:'inherit'});
 execFileSync('xcrun',['lipo','-create',join(output,'x86_64'),join(output,'arm64'),'-output',join(root,'GAME-PORTAL-MAC')],{stdio:'inherit'});
 execFileSync('codesign',['--force','--sign','-','--timestamp=none',join(root,'GAME-PORTAL-MAC')],{stdio:'inherit'});
-console.log('Mac helper built: v'+version+', universal Intel / Apple silicon, macOS 12+.');
+verifyMacMinimum(await readFile(join(root,'GAME-PORTAL-MAC')));
+console.log('Mac helper built: v'+version+', Intel macOS '+MAC_MINIMUM+' / Apple silicon macOS 11+.');
 
 for(const edition of ['creator','player']){
  const name=edition==='player'?'GAME-PORTAL-PLAY-MAC':'GAME-PORTAL-MAC',contents=join(root,name+'.app/Contents');
@@ -19,7 +21,7 @@ for(const edition of ['creator','player']){
  await copyFile(join(root,'GAME-PORTAL-MAC'),join(contents,'MacOS/GAME-PORTAL-MAC'));
  await copyFile(join(root,edition==='player'?'GAME-PORTAL-PLAY.html':'GAME-PORTAL.html'),join(contents,'Resources/GAME-PORTAL.html'));
  await copyFile(join(root,'THIRD-PARTY-LICENSES.txt'),join(contents,'Resources/THIRD-PARTY-LICENSES.txt'));
- await writeFile(join(contents,'Info.plist'),'<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>GAME-PORTAL-MAC</string><key>CFBundleIdentifier</key><string>jp.ecleaire.gameportal.mac.'+edition+'</string><key>GamePortalEdition</key><string>'+edition+'</string><key>CFBundleName</key><string>GAME PORTAL '+edition+'</string><key>LSUIElement</key><true/><key>CFBundlePackageType</key><string>APPL</string><key>LSMinimumSystemVersion</key><string>12.0</string><key>CFBundleShortVersionString</key><string>'+version+'</string></dict></plist>\n');
+ await writeFile(join(contents,'Info.plist'),'<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>GAME-PORTAL-MAC</string><key>CFBundleIdentifier</key><string>jp.ecleaire.gameportal.mac.'+edition+'</string><key>GamePortalEdition</key><string>'+edition+'</string><key>CFBundleName</key><string>GAME PORTAL '+edition+'</string><key>LSUIElement</key><true/><key>CFBundlePackageType</key><string>APPL</string><key>LSMinimumSystemVersion</key><string>'+MAC_MINIMUM+'</string><key>CFBundleShortVersionString</key><string>'+version+'</string></dict></plist>\n');
  execFileSync('codesign',['--force','--deep','--sign','-','--timestamp=none',join(root,name+'.app')],{stdio:'inherit'});
  execFileSync('codesign',['--verify','--deep','--strict',join(root,name+'.app')],{stdio:'inherit'});
 }

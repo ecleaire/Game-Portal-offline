@@ -6,8 +6,10 @@
 
 | 使うMac | プレイ専用版 | クリエイター版 |
 | --- | --- | --- |
-| macOS 12以降 | `GAME-PORTAL-PLAY-MAC.app` | `GAME-PORTAL-MAC.app` |
-| Intel Mac・macOS 10.14.6以降 | `GAME-PORTAL-PLAY-MOJAVE.app` | `GAME-PORTAL-MOJAVE.app` |
+| Intel：macOS 10.14.6以降／Appleシリコン：macOS 11以降 | `GAME-PORTAL-PLAY-MAC.app` | `GAME-PORTAL-MAC.app` |
+| Intel向けの互換版 | `GAME-PORTAL-PLAY-MOJAVE.app` | `GAME-PORTAL-MOJAVE.app` |
+
+macOS 10.14.6でも、通常の名前に「MAC」が付いたアプリを使えます。
 
 遊ぶときはプレイ専用版、ゲームを追加・管理するときはクリエイター版を選びます。クリエイター版でもゲームを探して遊べます。
 

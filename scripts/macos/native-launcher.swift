@@ -18,7 +18,7 @@ func reportMojaveError(_ message:String){
 }
 #endif
 
-// macOS 12+, universal Intel / Apple silicon. No external runtime installation.
+// Deployment targets are set by the build scripts for Intel and Apple silicon.
 let version = "__VERSION__"
 let fm = FileManager.default
 struct PortalError: Error { let message: String; let name: String
