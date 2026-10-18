@@ -13,6 +13,10 @@ import Darwin
 let desktopVersion = "__VERSION__"
 let desktopEdition = Bundle.main.object(forInfoDictionaryKey: "GamePortalEdition") as? String ?? "creator"
 var desktopInstance: PortalDesktop?
+func desktopMainRunLoop(_ operation: @escaping () -> Void) {
+    CFRunLoopPerformBlock(CFRunLoopGetMain(), kCFRunLoopCommonModes, operation)
+    CFRunLoopWakeUp(CFRunLoopGetMain())
+}
 @_cdecl("portal_swift_callback") func portalSwiftCallback(_ pointer: UnsafePointer<CChar>?) {
     guard let pointer = pointer, let bytes = String(cString: pointer).data(using: .utf8), bytes.count <= 400000, let value = try? desktopObject(bytes) else { return }
     if Thread.isMainThread { desktopInstance?.message(value) } else { DispatchQueue.main.async { desktopInstance?.message(value) } }
@@ -49,7 +53,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 switch state {
                 case .ready:
                     guard let port = self.listener.port?.rawValue else { return }; self.appURL = URL(string: "http://127.0.0.1:\(port)/index.html")!
-                    do { if savedPort == nil { try self.files.atomic(desktopJSON(["port": Int(port)]), portFile) }; DispatchQueue.main.async { self.show() } } catch { DispatchQueue.main.async { self.fail(error) } }
+                    do { if savedPort == nil { try self.files.atomic(desktopJSON(["port": Int(port)]), portFile) }; desktopMainRunLoop { self.show() } } catch { DispatchQueue.main.async { self.fail(error) } }
                 case .failed(let error): DispatchQueue.main.async { self.fail(DesktopError("アプリの接続を開始できません。別のGAME PORTALを閉じてから開き直してください。\n" + error.localizedDescription)) }
                 default: break
                 }
@@ -191,6 +195,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         closing = true; if engineReady { portal_cef_close() } else { NSApplication.shared.terminate(nil) }
     }
     func requestClose() {
+        if let process = installedProcess, process.isRunning { NSRunningApplication(processIdentifier: process.processIdentifier)?.terminate(); return }
         if !engineReady { closing = true; NSApplication.shared.terminate(nil); return }
         guard !closePending else { return }; closePending = true
         if pendingWrites > 0 || files.hasWriters { closePending = false; notice("保存中です", "保存が完了してから閉じてください。"); return }

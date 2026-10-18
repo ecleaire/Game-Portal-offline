@@ -84,7 +84,10 @@ class PortalApp : public CefApp, public CefBrowserProcessHandler, public CefRend
       if (command->HasSwitch("test-mode")) command->AppendSwitchWithValue("use-angle", "swiftshader");
     }
   }
-  void OnContextInitialized() override { dispatch_async(dispatch_get_main_queue(), ^{ PortalNotice("initialized"); }); }
+  void OnContextInitialized() override {
+    CFRunLoopPerformBlock(CFRunLoopGetMain(), kCFRunLoopCommonModes, ^{ PortalNotice("initialized"); });
+    CFRunLoopWakeUp(CFRunLoopGetMain());
+  }
   void OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra) override {
     if (extra && extra->HasKey("portal-url")) allowed_[browser->GetIdentifier()] = extra->GetString("portal-url");
   }
