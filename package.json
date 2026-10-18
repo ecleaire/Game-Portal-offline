@@ -23,6 +23,7 @@
     "test:desktop": "node tests/desktop-files.mjs && node tests/desktop-browser.mjs && node tests/desktop-player.mjs && node tests/desktop-information.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.63.0"
+    "@playwright/test": "1.63.0",
+    "esbuild-wasm": "0.25.12"
   }
 }

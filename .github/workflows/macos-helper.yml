@@ -7,6 +7,11 @@ on:
       - 'tests/native-distribution.mjs'
       - 'scripts/macos/**'
       - 'scripts/build-macos.mjs'
+      - 'scripts/build-mac-apps.mjs'
+      - 'desktop/bootstrap.js'
+      - 'desktop/page.mjs'
+      - 'tests/mac-desktop.mjs'
+      - 'package-lock.json'
       - 'scripts/mac-system.mjs'
       - 'scripts/verify-mac-system.mjs'
       - 'scripts/verify-editions.mjs'
@@ -41,6 +46,7 @@ jobs:
       - run: npm ci
       - run: node scripts/build-macos.mjs
       - run: node scripts/verify-mac-system.mjs
+      - run: node tests/mac-desktop.mjs
       - run: npx playwright install chromium
       - run: node tests/native-distribution.mjs
       - run: node tests/native-folder-browser.mjs

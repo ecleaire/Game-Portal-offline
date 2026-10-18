@@ -15,15 +15,6 @@ execFileSync('codesign',['--force','--sign','-','--timestamp=none',join(root,'GA
 verifyMacMinimum(await readFile(join(root,'GAME-PORTAL-MAC')));
 console.log('Mac helper built: v'+version+', Intel macOS '+MAC_MINIMUM+' / Apple silicon macOS 11+.');
 
-for(const edition of ['creator','player']){
- const name=edition==='player'?'GAME-PORTAL-PLAY-MAC':'GAME-PORTAL-MAC',contents=join(root,name+'.app/Contents');
- await mkdir(join(contents,'MacOS'),{recursive:true});await mkdir(join(contents,'Resources'),{recursive:true});
- await copyFile(join(root,'GAME-PORTAL-MAC'),join(contents,'MacOS/GAME-PORTAL-MAC'));
- await copyFile(join(root,edition==='player'?'GAME-PORTAL-PLAY.html':'GAME-PORTAL.html'),join(contents,'Resources/GAME-PORTAL.html'));
- await copyFile(join(root,'THIRD-PARTY-LICENSES.txt'),join(contents,'Resources/THIRD-PARTY-LICENSES.txt'));
- await writeFile(join(contents,'Info.plist'),'<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>GAME-PORTAL-MAC</string><key>CFBundleIdentifier</key><string>jp.ecleaire.gameportal.mac.'+edition+'</string><key>GamePortalEdition</key><string>'+edition+'</string><key>CFBundleName</key><string>GAME PORTAL '+edition+'</string><key>LSUIElement</key><true/><key>CFBundlePackageType</key><string>APPL</string><key>LSMinimumSystemVersion</key><string>'+MAC_MINIMUM+'</string><key>CFBundleShortVersionString</key><string>'+version+'</string></dict></plist>\n');
- execFileSync('codesign',['--force','--deep','--sign','-','--timestamp=none',join(root,name+'.app')],{stdio:'inherit'});
- execFileSync('codesign',['--verify','--deep','--strict',join(root,name+'.app')],{stdio:'inherit'});
-}
+await import('./build-mac-apps.mjs').then(module=>module.buildMacApps('MAC'));
 
 await publishDistribution('mac');
