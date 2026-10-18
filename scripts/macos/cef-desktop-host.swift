@@ -42,6 +42,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let library = library { let root = try files.register(library); try files.remember(root) }
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if testMode { fputs("GAME PORTAL lifecycle: didFinishLaunching edition=\(desktopEdition) runtime=\(hasBundledFramework)\n", stderr) }
         // The unpacking bootstrap has no browser and needs no HTTP listener.
         // Only the installed runtime binds the persistent origin, once.
         if !hasBundledFramework { show(); return }
@@ -56,6 +57,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
             listener = try NWListener(using: parameters); listener.newConnectionHandler = { [weak self] in self?.receive($0) }
             listener.stateUpdateHandler = { [weak self] state in
                 guard let self = self else { return }
+                if self.testMode { fputs("GAME PORTAL lifecycle: listener \(state)\n", stderr) }
                 switch state {
                 case .ready:
                     guard let port = self.listener.port?.rawValue else { return }; self.appURL = URL(string: "http://127.0.0.1:\(port)/index.html")!
@@ -67,6 +69,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         } catch { fail(error) }
     }
     func show() {
+        if testMode { fputs("GAME PORTAL lifecycle: show engine=\(engineReady) context=\(contextReady)\n", stderr) }
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
         view = NSView(frame: NSRect(x: 0, y: 0, width: min(1200, max(600, screen.width - 40)), height: min(820, max(400, screen.height - 64))))
         window = NSWindow(contentRect: view.bounds, styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -98,6 +101,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         engineReady = true; openBrowserWhenReady()
     }
     func openBrowserWhenReady() {
+        if testMode { fputs("GAME PORTAL lifecycle: open engine=\(engineReady) context=\(contextReady) view=\(view != nil) url=\(appURL != nil)\n", stderr) }
         guard engineReady, contextReady, view != nil, appURL != nil, !browserOpening else { return }
         browserOpening = true
         if !portal_cef_open(Unmanaged.passUnretained(view).toOpaque(), appURL.absoluteString) { fail(DesktopError("ゲーム画面を開けませんでした。")) }
@@ -292,7 +296,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let value = try desktopObject(origin); if desktopSchema(value["schema"]), let path = value["application"] as? String, path.hasPrefix("/"), path.utf8.count <= 4000 { directory = URL(fileURLWithPath: path) }
             }
             let delegate = try PortalDesktop(profile: profile ?? base.appendingPathComponent("GAME-PORTAL/" + desktopEdition), application: directory.resolvingSymlinksInPath(), testMode: test, library: library, testScript: script, resultFile: result, readyFile: ready)
-            portal_cef_application(); let app = NSApplication.shared; app.delegate = delegate; try delegate.initializeBundledEngine(); app.run(); withExtendedLifetime(delegate) {}
+            portal_cef_application(); let app = NSApplication.shared; app.delegate = delegate; try delegate.initializeBundledEngine(); if test { fputs("GAME PORTAL lifecycle: entering AppKit run\n", stderr) }; app.run(); withExtendedLifetime(delegate) {}
         } catch {
             let message = (error as? DesktopError)?.message ?? error.localizedDescription
             fputs("GAME PORTAL: \(message)\n", stderr)
