@@ -32,6 +32,7 @@ jobs:
         timeout-minutes: 6
         env:
           PORTAL_MAC_SUFFIX: MOJAVE
+          PORTAL_CEF_DEBUGGER: '1'
       - run: node tests/native-distribution.mjs
         env:
           PORTAL_NATIVE_EXE: GAME-PORTAL-MOJAVE

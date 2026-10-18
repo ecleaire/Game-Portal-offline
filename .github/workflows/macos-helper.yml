@@ -59,6 +59,8 @@ jobs:
       - run: node scripts/verify-mac-system.mjs
       - run: node tests/mac-desktop.mjs
         timeout-minutes: 6
+        env:
+          PORTAL_CEF_DEBUGGER: '1'
       - run: npx playwright install chromium
       - run: node tests/native-distribution.mjs
       - run: node tests/native-folder-browser.mjs
