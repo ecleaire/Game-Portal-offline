@@ -87,6 +87,7 @@ class PortalApp : public CefApp, public CefBrowserProcessHandler, public CefRend
       if (command->HasSwitch("test-mode") && test_gl && std::string(test_gl) == "gl") {
         command->AppendSwitchWithValue("use-gl", "angle");
         command->AppendSwitchWithValue("use-angle", "gl");
+        command->AppendSwitch("ignore-gpu-blocklist");
       }
     }
   }
