@@ -121,7 +121,10 @@ class PortalClient : public CefClient, public CefLifeSpanHandler, public CefRequ
     auto request = value->GetDictionary(); if (request->HasKey("kind") || request->GetType("id") != VTYPE_INT || request->GetInt("id") <= 0 || request->GetType("op") != VTYPE_STRING) return true;
     if (portal_callback) portal_callback(text.c_str()); return true;
   }
-  void OnAfterCreated(CefRefPtr<CefBrowser> browser) override { portal_browser = browser; }
+  void OnAfterCreated(CefRefPtr<CefBrowser> browser) override { portal_browser = browser; PortalNotice("browserCreated"); }
+  void OnLoadingStateChange(CefRefPtr<CefBrowser>, bool loading, bool, bool) override { PortalNotice("loading", loading ? "true" : "false"); }
+  void OnLoadStart(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, TransitionType) override { if (frame->IsMain()) PortalNotice("loadStart", frame->GetURL()); }
+  void OnRenderProcessTerminated(CefRefPtr<CefBrowser>, TerminationStatus status) override { PortalNotice("loadError", "The display process stopped (" + std::to_string(status) + ")."); }
   bool DoClose(CefRefPtr<CefBrowser>) override { if (!portal_closing) { PortalNotice("closeRequested"); return true; } return false; }
   void OnBeforeClose(CefRefPtr<CefBrowser>) override { portal_browser = nullptr; PortalNotice("closed"); }
   bool OnBeforeBrowse(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, bool, bool) override {

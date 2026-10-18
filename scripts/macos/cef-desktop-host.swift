@@ -64,7 +64,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApplication.shared.setActivationPolicy(.regular)
         let preparing = NSTextField(labelWithString: "起動の準備をしています…（初回のみ少し時間がかかります）")
         preparing.frame = NSRect(x: 40, y: view.bounds.height / 2 - 20, width: view.bounds.width - 80, height: 40); preparing.autoresizingMask = [.width, .minYMargin, .maxYMargin]; preparing.font = NSFont.systemFont(ofSize: 16); view.addSubview(preparing)
-        if !testMode { window.makeKeyAndOrderFront(nil); NSApplication.shared.activate(ignoringOtherApps: true) }
+        window.makeKeyAndOrderFront(nil); NSApplication.shared.activate(ignoringOtherApps: true)
         let bundledFramework = Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework")
         if FileManager.default.fileExists(atPath: bundledFramework.appendingPathComponent("Chromium Embedded Framework").path) {
             guard portal_cef_initialize(bundledFramework.path, Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/GAME PORTAL Helper.app/Contents/MacOS/GAME PORTAL Helper").path, profile.appendingPathComponent("Chromium").path, Bundle.main.bundleURL.path, portalSwiftCallback) else { fail(DesktopError("内蔵の表示エンジンを開始できませんでした。")); return }
@@ -189,6 +189,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     // Only the trusted document is served. There is no file-system HTTP API.
     func receive(_ connection: NWConnection) {
+        if testMode { fputs("GAME PORTAL HTTP: connection\n", stderr) }
         guard connections < 8 else { connection.cancel(); return }; connections += 1
         let deadline = DispatchWorkItem { connection.cancel() }
         connection.stateUpdateHandler = { state in if case .cancelled = state { deadline.cancel(); self.connections -= 1 } }
@@ -201,6 +202,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 if buffer.range(of: Data("\r\n\r\n".utf8)) != nil {
                     let text = String(data: buffer, encoding: .utf8) ?? "", lines = text.components(separatedBy: "\r\n")
                     let host = lines.filter { $0.lowercased().hasPrefix("host:") }
+                    if self.testMode { fputs("GAME PORTAL HTTP: \(lines.first ?? "")\n", stderr) }
                     guard lines.first == "GET /index.html HTTP/1.1", host.count == 1, host[0].dropFirst(5).trimmingCharacters(in: .whitespaces) == "127.0.0.1:\(self.listener.port!.rawValue)" else { connection.cancel(); return }
                     deadline.cancel()
                     let header = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(self.page.count)\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nContent-Security-Policy: frame-ancestors 'none'\r\nConnection: close\r\n\r\n"
