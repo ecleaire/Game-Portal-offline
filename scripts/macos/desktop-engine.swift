@@ -93,6 +93,17 @@ func prepareDesktopEngine(bundle: URL, profile: URL, application: URL) throws ->
     try fm.createDirectory(at: frameworks, withIntermediateDirectories: true)
     try desktopJSON(["schema": 1, "application": application.path]).write(to: stagedBundle.appendingPathComponent("Contents/Resources/origin.json"), options: .atomic)
     for item in try fm.contentsOfDirectory(at: unpacked, includingPropertiesForKeys: nil) {
+        if item.pathExtension == "app" {
+            // Chromium's sandbox permits rendezvous with its owning app's
+            // bundle identifier. Shared engine payloads are bound to the
+            // Creator or Player identifier before signing the installed app.
+            let names = ["GAME PORTAL Helper.app": "", "GAME PORTAL Helper (Alerts).app": ".alerts", "GAME PORTAL Helper (GPU).app": ".gpu", "GAME PORTAL Helper (Plugin).app": ".plugin", "GAME PORTAL Helper (Renderer).app": ".renderer"]
+            guard let suffix = names[item.lastPathComponent], let owner = Bundle.main.bundleIdentifier else { throw DesktopError("内蔵エンジンのアプリ情報を確認してください。") }
+            let info = item.appendingPathComponent("Contents/Info.plist")
+            guard var value = try PropertyListSerialization.propertyList(from: Data(contentsOf: info), format: nil) as? [String: Any] else { throw DesktopError("内蔵エンジンのアプリ情報を確認してください。") }
+            value["CFBundleIdentifier"] = owner + ".helper" + suffix
+            try PropertyListSerialization.data(fromPropertyList: value, format: .xml, options: 0).write(to: info, options: .atomic)
+        }
         let parent = item.lastPathComponent == "CEF-LICENSE.txt" ? stagedBundle.appendingPathComponent("Contents/Resources") : frameworks
         try fm.moveItem(at: item, to: parent.appendingPathComponent(item.lastPathComponent))
     }
