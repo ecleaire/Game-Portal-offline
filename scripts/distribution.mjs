@@ -17,7 +17,7 @@ export const distributionFiles=[
 export function helperEntrypoints(role){
  const html=role==='プレイ用'?'GAME-PORTAL-PLAY.html':'GAME-PORTAL.html';
  return [
-  ['Windowsで起動.cmd','@echo off\r\nstart "" "%~dp0_runtime\\GAME-PORTAL-WINDOWS.exe" --html "%~dp0..\\'+html+'"\r\n'],
+  ['Windowsで起動.cmd','@echo off\r\nsetlocal EnableExtensions DisableDelayedExpansion\r\nstart "" "%~dp0_runtime\\GAME-PORTAL-WINDOWS.exe" --html "%~dp0..\\'+html+'"\r\n'],
   ...['MAC','MOJAVE'].map(suffix=>[suffix==='MAC'?'Macで起動.command':'古いMacで起動.command','#!/bin/'+(suffix==='MAC'?'zsh':'bash')+'\ncd -- "$(dirname -- "$0")" || exit 1\n./_runtime/GAME-PORTAL-'+suffix+' --html "../'+html+'"\nresult=$?\nif [ "$result" -ne 0 ]; then\n  printf "\\n起動できませんでした。上の案内を確認してください。Enterで閉じます。\\n"\n  read -r\nfi\nexit "$result"\n'])
  ];
 }
