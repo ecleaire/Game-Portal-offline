@@ -121,7 +121,7 @@ class PortalClient : public CefClient, public CefLifeSpanHandler, public CefRequ
     auto request = value->GetDictionary(); if (request->HasKey("kind") || request->GetType("id") != VTYPE_INT || request->GetInt("id") <= 0 || request->GetType("op") != VTYPE_STRING) return true;
     if (portal_callback) portal_callback(text.c_str()); return true;
   }
-  void OnAfterCreated(CefRefPtr<CefBrowser> browser) override { portal_browser = browser; PortalNotice("browserCreated"); }
+  void OnAfterCreated(CefRefPtr<CefBrowser> browser) override { portal_browser = browser; PortalNotice("browserCreated"); if (portal_closing) browser->GetHost()->CloseBrowser(true); }
   void OnLoadingStateChange(CefRefPtr<CefBrowser>, bool loading, bool, bool) override { PortalNotice("loading", loading ? "true" : "false"); }
   void OnLoadStart(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, TransitionType) override { if (frame->IsMain()) PortalNotice("loadStart", frame->GetURL()); }
   void OnRenderProcessTerminated(CefRefPtr<CefBrowser>, TerminationStatus status) override { PortalNotice("loadError", "The display process stopped (" + std::to_string(status) + ")."); }
@@ -179,7 +179,9 @@ extern "C" bool portal_cef_open(void* parent, const char* address) {
   NSView* view = (__bridge NSView*)parent;
   NSRect bounds = [view bounds]; window.SetAsChild(view, CefRect(0, 0, bounds.size.width, bounds.size.height));
   CefBrowserSettings settings; auto extra = CefDictionaryValue::Create(); extra->SetString("portal-url", portal_url);
-  portal_browser = CefBrowserHost::CreateBrowserSync(window, new PortalClient(), portal_url, settings, extra, nullptr); return portal_browser != nullptr;
+  // Native window creation must run through CEF's UI task queue. Synchronous
+  // creation inside an AppKit dispatch callback can stall subprocess startup.
+  return CefBrowserHost::CreateBrowser(window, new PortalClient(), portal_url, settings, extra, nullptr);
 }
 extern "C" void portal_cef_evaluate(const char* text) { if (portal_browser && PortalTrusted(portal_browser->GetMainFrame())) portal_browser->GetMainFrame()->ExecuteJavaScript(text, portal_url, 0); }
 extern "C" void portal_cef_resize() { if (portal_browser) { NSView* view = (__bridge NSView*)portal_browser->GetHost()->GetWindowHandle(); [view setFrame:[[view superview] bounds]]; } }

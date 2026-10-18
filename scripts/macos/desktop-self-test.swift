@@ -26,9 +26,13 @@ func desktopSelfTest(_ directory: URL) throws {
     func chunk(_ writer: String, _ path: String, _ text: String) throws { _ = try request("writeChunk", path, ["writer": writer, "data": Data(text.utf8).base64EncodedString()]) }
     let first = try begin("game.html"); try chunk(first, "game.html", "first"); _ = try request("commitWrite", "game.html", ["writer": first])
     let cancelled = try begin("game.html"); try chunk(cancelled, "game.html", "cancelled")
+    let peer = try DesktopFiles(profile: directory.appendingPathComponent("peer"), application: directory, player: false), peerRoot = try peer.register(disk.path)
+    try denied { _ = try peer.operate(["op": "beginWrite", "root": peerRoot.token, "path": "game.html"]) }
     try denied { _ = try begin("game.html") }; _ = try request("abortWrite", "", ["writer": cancelled])
     try check(try files.regularRead(disk.appendingPathComponent("game.html"), limit: 100) == Data("first".utf8), "cancel must retain old content")
+    try fm.setAttributes([.posixPermissions: 0o640], ofItemAtPath: disk.appendingPathComponent("game.html").path)
     let second = try begin("game.html"); try chunk(second, "game.html", "second"); _ = try request("commitWrite", "game.html", ["writer": second])
+    try check((try fm.attributesOfItem(atPath: disk.appendingPathComponent("game.html").path)[.posixPermissions] as? NSNumber)?.intValue == 0o640, "atomic replacement preserves permissions")
     let beginRead = try request("beginRead", "game.html") as! [String: Any]
     let reader = beginRead["reader"] as! String
     let read = try request("readChunk", "", ["offset": 0, "reader": reader]) as? [String: Any]
@@ -56,6 +60,14 @@ func desktopSelfTest(_ directory: URL) throws {
     _ = try files.operate(["op": "endRead", "root": initial.token, "reader": empty["reader"]!])
     _ = try files.operate(["op": "abortWrite", "root": initial.token, "writer": pending["token"]!])
     try check(!fm.fileExists(atPath: blank.appendingPathComponent(".gameportal/library-id.json").path), "cancelled initial setup must not leave a corrupt ID")
+    let spaced = directory.appendingPathComponent("末尾の空白 ")
+    try fm.createDirectory(at: spaced, withIntermediateDirectories: true)
+    try check(try files.register(spaced.path).url.path == spaced.path, "folder names retain trailing spaces")
+    let stalled = DispatchSemaphore(value: 0), entered = DispatchSemaphore(value: 0), progressed = DispatchSemaphore(value: 0)
+    root.work.async { entered.signal(); stalled.wait() }; defer { stalled.signal() }
+    try check(entered.wait(timeout: .now() + 2) == .success, "first folder queue started")
+    initial.work.async { progressed.signal() }
+    try check(progressed.wait(timeout: .now() + 2) == .success, "a stalled folder must not block a different folder")
     try desktopJSON(["ok": true, "checks": ["identity", "remember/restore", "traversal", "symlink", "atomic replacement", "write lock", "abort retains bytes", "chunk read", "ID preservation", "player restrictions", "corrupt schema", "changed identity"]]).write(to: directory.appendingPathComponent("result.json"))
     print("Mac native filesystem self tests passed.")
 }
