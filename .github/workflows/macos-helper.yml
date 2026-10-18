@@ -8,6 +8,7 @@ on:
       - 'scripts/macos/**'
       - 'scripts/build-macos.mjs'
       - 'scripts/mac-system.mjs'
+      - 'scripts/verify-mac-system.mjs'
       - 'scripts/verify-editions.mjs'
       - 'tests/native-folder-browser.mjs'
       - 'tests/offline-html/folder-comfort-browser.mjs'
@@ -39,7 +40,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/build-macos.mjs
-      - run: node scripts/verify-editions.mjs
+      - run: node scripts/verify-mac-system.mjs
       - run: npx playwright install chromium
       - run: node tests/native-distribution.mjs
       - run: node tests/native-folder-browser.mjs
