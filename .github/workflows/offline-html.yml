@@ -28,6 +28,7 @@ jobs:
       - run: node scripts/verify-distribution.mjs
       - run: git archive --format=zip --output=.tools/distribution-check.zip HEAD
       - run: node scripts/verify-code-zip.mjs .tools/distribution-check.zip
+      - run: node tests/helper-entrypoints.mjs
       - run: npm test
       - run: npx playwright install chromium
       - run: npm run test:browser

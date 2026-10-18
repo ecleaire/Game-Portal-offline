@@ -75,4 +75,4 @@ HTMLビルドは `GAME-PORTAL.html`（クリエイター版）と `GAME-PORTAL-P
 
 追加検証：`node tests/offline-html/editions-browser.mjs`、Windows上では `node tests/desktop-player.mjs`。どちらも3回のプレイ・保存・再起動を確認します。Windowsのテストでは、アプリへの直接の変更要求も拒否されることを確認します。Mac実機の操作・実NAS・別PCの実権限は自動テストでは代替できません。
 
-配布ファイルは `Windows`・`Mac`・`HTML` の各用途フォルダーに追跡します。ビルドと既存の検証コマンドが使う最上位の生成ファイルは作業用で、Gitには含めません。`scripts/distribution.mjs` が展開・配置・一致検証を行います。配布フォルダーの目印である `GAME-PORTAL-DISTRIBUTION.json` は削除しないでください。
+配布ファイルは `Windows`・`Mac`・`HTML` の各用途フォルダーに追跡します。ビルドと既存の検証コマンドが使う最上位の生成ファイルは作業用で、Gitには含めません。`scripts/distribution.mjs` が展開・配置・一致検証を行います。配布フォルダーの目印は `_内部ファイル/GAME-PORTAL-DISTRIBUTION.json` です。旧配置の目印も読み取れます。`.gitattributes` の `export-ignore` により、Code ZIPには実行用・利用案内だけが残ります。`git archive --format=zip --output=.tools/distribution-check.zip HEAD` と `node scripts/verify-code-zip.mjs .tools/distribution-check.zip` で起動用ファイル・内部ファイルの配置とMac実行権限を確認してください。
