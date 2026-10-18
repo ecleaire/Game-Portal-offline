@@ -245,6 +245,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             }
             guard test || script == nil && result == nil else { throw DesktopError("検証オプションを確認してください。") }
+            if test { setenv("PORTAL_CEF_TEST", "1", 1) }
             let bundle = Bundle.main.bundleURL, fm = FileManager.default
             let base = try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             var directory = bundle.deletingLastPathComponent()

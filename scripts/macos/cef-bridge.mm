@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <unistd.h>
 #include <mach-o/dyld.h>
 #include <crt_externs.h>
 #include "include/cef_app.h"
@@ -158,6 +159,8 @@ class PortalClient : public CefClient, public CefLifeSpanHandler, public CefRequ
 
 extern "C" void portal_cef_application() { [PortalApplication sharedApplication]; }
 extern "C" bool portal_cef_initialize(const char* framework, const char* helper, const char* profile, const char* bundle, PortalCallback callback) {
+  const bool diagnostic = getenv("PORTAL_CEF_TEST") != nullptr;
+  if (diagnostic) fprintf(stderr, "CEF main before initialize: pid=%d parent=%d\n", getpid(), getppid());
   portal_callback = callback;
   portal_library = std::make_unique<CefScopedLibraryLoader>();
   if (!portal_library->LoadInMain()) return false;
@@ -169,6 +172,7 @@ extern "C" bool portal_cef_initialize(const char* framework, const char* helper,
   CefMainArgs args(*_NSGetArgc(), *_NSGetArgv());
   portal_running.store(true);
   if (!CefInitialize(args, settings, new PortalApp(), nullptr)) { portal_running.store(false); return false; }
+  if (diagnostic) fprintf(stderr, "CEF main initialized: pid=%d\n", getpid());
   // AppKit owns the main loop. A common-mode timer pumps CEF even while native
   // event tracking is active; dispatch-only callbacks can starve subprocess IPC.
   portal_timer = [NSTimer timerWithTimeInterval:0.033 repeats:YES block:^(NSTimer*) { PortalPump(); }];
@@ -191,6 +195,7 @@ extern "C" void portal_cef_shutdown() { portal_running.store(false); [portal_tim
 
 #ifdef PORTAL_CEF_HELPER
 int main(int argc, char* argv[]) {
+  if (getenv("PORTAL_CEF_TEST")) { fprintf(stderr, "CEF helper: pid=%d parent=%d", getpid(), getppid()); for (int i = 1; i < argc; ++i) if (std::string(argv[i]).rfind("--type=", 0) == 0) fprintf(stderr, " %s", argv[i]); fprintf(stderr, "\n"); }
   CefScopedSandboxContext sandbox;
   if (!sandbox.Initialize(argc, argv)) return 1;
   CefScopedLibraryLoader library;
