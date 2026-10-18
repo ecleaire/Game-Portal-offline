@@ -23,13 +23,14 @@ async function close(){
 try{
  await mkdir(join(temp,'standalone'));await copyFile(resolve(process.env.PORTAL_DESKTOP_EXE||'GAME-PORTAL.exe'),exe);assert.deepEqual(await readdir(join(temp,'standalone')),['GAME-PORTAL.exe']);
  await mkdir(join(disk,'.gameportal'),{recursive:true});await writeFile(join(disk,'.gameportal','library-id.json'),JSON.stringify({schema:1,id}));await writeFile(join(disk,'game.html'),'<!doctype html><h1>Desktop play</h1><script>localStorage.setItem("desktop-save","retained");localStorage.propertySave=42;</script>');
+ const metadataTemporary=join(disk,'game.html.gameportal.json~RFb5be5.TMP');await writeFile(metadataTemporary,'NAS replacement leftover');
  await start(false);const errors=[];page.on('pageerror',e=>errors.push(e.message));await expect(page.locator('.card')).toHaveCount(0);
  // CDP delivers actual on-disk directory files to WebView2, including native AdditionalObjects paths.
  const box=await page.locator('#emptyState').boundingBox(),cdp=await browser.contexts()[0].newCDPSession(page),point={x:box.x+box.width/2,y:box.y+box.height/2},data={items:[],files:[disk],dragOperationsMask:2};
  for(const type of ['dragEnter','dragOver','drop'])await cdp.send('Input.dispatchDragEvent',{type,...point,data});
  await expect(page.locator('.card')).toHaveCount(1);assert.equal(await page.evaluate(()=>root.nativeDesktop),true);assert.equal(await page.evaluate(()=>localLibrary),id);
  // Invalid capabilities must fail before touching a disconnected/corrupt library.
- const identityFile=join(disk,'.gameportal','library-id.json'),identityText=await readFile(identityFile,'utf8');
+ const identityFile=join(disk,'.gameportal','library-id.json'),identityText=await readFile(identityFile,'utf8');assert.equal(await readFile(metadataTemporary,'utf8'),'NAS replacement leftover','listing must preserve inaccessible metadata leftovers');
  await writeFile(identityFile,'broken library record');
  try{const denied=await page.evaluate(async()=>{const r=await fetch('/io/read?root='+root.desktopToken+'&path=game.html',{headers:{'X-Game-Portal-Desktop':'invalid'}});return r.json();});assert.equal(denied.name,'NotAllowedError','unauthorized IO must not inspect library state');}
  finally{await writeFile(identityFile,identityText);}

@@ -246,7 +246,9 @@ final class DesktopFiles {
             return ["kind": values.isDirectory == true ? "directory" : "file", "size": values.isDirectory == true ? 0 : values.fileSize ?? 0] as [String: Any]
         case "list":
             let children = try fm.contentsOfDirectory(at: url, includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]); guard children.count <= 10000 else { throw DesktopError("項目が多すぎます。") }
-            return ["entries": try children.compactMap { child -> [String: String]? in let v = try child.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]); if v.isSymbolicLink == true || !(v.isDirectory == true || v.isRegularFile == true) { return nil }; return ["name": child.lastPathComponent, "kind": v.isDirectory == true ? "directory" : "file"] }]
+            return ["entries": try children.compactMap { child -> [String: String]? in
+                if child.lastPathComponent.range(of: "\\.gameportal\\.json(?:~RF[0-9a-f]{1,32}\\.tmp|\\.desktop-[0-9a-f]{64}\\.tmp|\\.crswap)$", options: [.regularExpression, .caseInsensitive]) != nil { return nil }
+                let v = try child.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey]); if v.isSymbolicLink == true || !(v.isDirectory == true || v.isRegularFile == true) { return nil }; return ["name": child.lastPathComponent, "kind": v.isDirectory == true ? "directory" : "file"] }]
         case "file", "directory":
             let create = data["create"] as? Bool == true, directory = op == "directory"
             var isDirectory: ObjCBool = false

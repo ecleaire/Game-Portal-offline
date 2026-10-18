@@ -758,6 +758,11 @@ const {resolveGameContent}=updateTools;
 const {nativeLayout,validateExe}=nativeTools;
 const {readWithSignal}=readTasks;
 const MAX_FILES = 500, MAX_BYTES = 200 * 1024 * 1024;
+// These belong to launcher metadata, not the game's resource tree. A failed
+// Windows/SMB replacement can leave an RF file that another PC cannot read.
+function isGamePortalSidecar(name) {
+  return /\.gameportal\.json(?:$|~RF[0-9a-f]{1,32}\.tmp$|\.desktop-[0-9a-f]{64}\.tmp$|\.crswap$)/i.test(name);
+}
 function safePath(value) {
   if (typeof value !== 'string' || !value || value.length > 1000 || value.split('/').some(p => !p || p === '.' || p === '..' || /[\\:\x00-\x1f<>"|?*]/.test(p) || /[. ]$/.test(p) || /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i.test(p))) throw new Error('安全に扱えないファイル名です。');
   return value.split('/');
@@ -770,7 +775,7 @@ function uploadPaths(input) {
   const paths=files.map(file=>relative?file.webkitRelativePath.split('/').slice(1).join('/'):file.name),nodes=new Map();
   for(const path of paths){
     const parts=safePath(path);
-    if(parts.some(part=>/^\.gameportal(?:$|[-.])/i.test(part)||/\.gameportal\.json$/i.test(part)))throw new Error('管理用ファイルが含まれています。ゲームの書き出しフォルダーだけを選んでください。');
+    if(parts.some(part=>/^\.gameportal(?:$|[-.])/i.test(part)||isGamePortalSidecar(part)))throw new Error('管理用ファイルが含まれています。ゲームの書き出しフォルダーだけを選んでください。');
     for(let i=1;i<=parts.length;i++){
       const name=parts.slice(0,i).join('/'),key=name.toLowerCase(),kind=i===parts.length?'file':'directory',previous=nodes.get(key);
       if(previous&&(previous.name!==name||previous.kind!==kind||kind==='file'))throw new Error('同じ名前または保存先が重なるファイル・フォルダーがあります。大文字・小文字も確認してください。');
@@ -1015,7 +1020,7 @@ async function readTree(folder, preloaded = new Map(), {fileBacked = false,signa
       const path = prefix + entry.name; safePath(path);
       if (entry.kind === 'directory') await walk(entry, path + '/', depth + 1);
       else {
-        if (/\.(zip|pyxapp|exe)$/i.test(path) || /\.gameportal\.json$/i.test(path) || /^GAME-PORTAL\.html$/i.test(entry.name)) continue;
+        if (/\.(zip|pyxapp|exe)$/i.test(path) || isGamePortalSidecar(entry.name) || /^GAME-PORTAL\.html$/i.test(entry.name)) continue;
         if (entries.length >= MAX_FILES) throw new Error('ゲームは500ファイル・展開後200MB以内にしてください。');
         entries.push({path, entry});
       }

@@ -568,6 +568,18 @@ test('game loading overlaps at most four reads, preserves paths and reuses only 
   m.files.set('index.html','updated');assert.equal(new TextDecoder().decode((await readTree(m.root)).get('index.html')),'updated');
 });
 
+test('NAS metadata replacement leftovers never enter game resources or uploads, while real resource errors remain visible',async()=>{
+  const leftovers=['index.html.gameportal.json~RFb5be5.TMP','INDEX.HTML.GAMEPORTAL.JSON~RF123abc.tmp','index.html.gameportal.json.desktop-'+ 'a'.repeat(64)+'.tmp','index.html.gameportal.json.crswap'];
+  let touched=0;
+  const blocked=name=>({name,kind:'file',getFileInfo:async()=>{touched++;throw new DOMException('Access denied','NotAllowedError');},getFile:async()=>{touched++;throw new DOMException('Access denied','NotAllowedError');}});
+  const good=name=>({name,kind:'file',getFile:async()=>new File(['game bytes'],name)});
+  const folder={async *values(){yield good('index.html');for(const name of leftovers)yield blocked(name);yield good('level.tmp');yield good('save.json~RFb5be5.TMP');}};
+  for(const fileBacked of [false,true]){const files=await readTree(folder,new Map(),{fileBacked});assert.deepEqual([...files.keys()],['index.html','level.tmp','save.json~RFb5be5.TMP']);}
+  assert.equal(touched,0,'ignored files must not be statted or opened');
+  for(const name of leftovers)assert.throws(()=>library.uploadPaths([{name}]),/管理用/);
+  await assert.rejects(readTree({async *values(){yield blocked('game.wasm');}}),/Access denied/);
+});
+
 test('parallel game loading drains in-flight reads on failure and returns no partial game',async()=>{
   let active=0;
   const m=memoryFolder({read:async name=>{active++;await new Promise(setImmediate);active--;if(name==='1.bin')throw new Error('Disconnected');}});
