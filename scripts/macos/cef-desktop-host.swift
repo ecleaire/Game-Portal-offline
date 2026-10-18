@@ -90,6 +90,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard FileManager.default.fileExists(atPath: bundledFramework.appendingPathComponent("Chromium Embedded Framework").path) else { return }
         // Chromium installs CFRunLoop entry/exit observers during initialization.
         // Register them before AppKit enters its loop so the initial entry is seen.
+        try FileManager.default.createDirectory(at: profile.appendingPathComponent("Chromium"), withIntermediateDirectories: true)
         guard portal_cef_initialize(bundledFramework.path, Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/GAME PORTAL Helper.app/Contents/MacOS/GAME PORTAL Helper").path, profile.appendingPathComponent("Chromium").path, Bundle.main.bundleURL.path, portalSwiftCallback) else { throw DesktopError("内蔵の表示エンジンを開始できませんでした。") }
         engineReady = true
     }

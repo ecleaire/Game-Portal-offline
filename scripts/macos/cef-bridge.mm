@@ -200,9 +200,13 @@ extern "C" void portal_cef_shutdown() { portal_running.store(false); [portal_tim
 int main(int argc, char* argv[]) {
   if (getenv("PORTAL_CEF_TEST")) { fprintf(stderr, "CEF helper: pid=%d parent=%d", getpid(), getppid()); for (int i = 1; i < argc; ++i) if (std::string(argv[i]).rfind("--type=", 0) == 0) fprintf(stderr, " %s", argv[i]); fprintf(stderr, "\n"); }
   CefScopedSandboxContext sandbox;
-  if (!sandbox.Initialize(argc, argv)) return 1;
+  if (!sandbox.Initialize(argc, argv)) { fprintf(stderr, "CEF helper sandbox initialization failed: pid=%d\n", getpid()); return 1; }
+  if (getenv("PORTAL_CEF_TEST")) fprintf(stderr, "CEF helper sandbox ready: pid=%d\n", getpid());
   CefScopedLibraryLoader library;
-  if (!library.LoadInHelper()) return 1;
-  CefMainArgs args(argc, argv); return CefExecuteProcess(args, new PortalApp(), nullptr);
+  if (!library.LoadInHelper()) { fprintf(stderr, "CEF helper framework loading failed: pid=%d\n", getpid()); return 1; }
+  if (getenv("PORTAL_CEF_TEST")) fprintf(stderr, "CEF helper framework ready: pid=%d\n", getpid());
+  CefMainArgs args(argc, argv); const int status = CefExecuteProcess(args, new PortalApp(), nullptr);
+  if (getenv("PORTAL_CEF_TEST")) fprintf(stderr, "CEF helper exit: pid=%d status=%d\n", getpid(), status);
+  return status;
 }
 #endif
