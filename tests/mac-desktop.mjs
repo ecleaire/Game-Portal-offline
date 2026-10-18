@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 if(process.platform!=='darwin')process.exit(0);
 const temporary=await mkdtemp(join(tmpdir(),'portal-mac-desktop-')),root=await import('node:fs/promises').then(async fs=>fs.realpath(temporary));
 const suffix=process.env.PORTAL_MAC_SUFFIX||'MAC',disk=join(root,'ゲーム # +');let processHandle;
-function diagnostic(label,text){console.error(label,text);if(process.env.GITHUB_ACTIONS){const message=(label+'\n'+String(text)).replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A');console.log('::error title=Mac native diagnostic::'+message);}}
+function diagnostic(label,text){console.error(label,text);if(process.env.GITHUB_ACTIONS){const value=String(text);for(let offset=0;offset<value.length;offset+=2400){const message=(label+' ['+(offset/2400+1)+']\n'+value.slice(offset,offset+2400)).replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A');console.log('::error title=Mac native diagnostic::'+message);}}}
 async function waitForExit(child,timeout){return Promise.race([new Promise(resolve=>child.exitCode!==null||child.signalCode!==null?resolve(true):child.once('exit',()=>resolve(true))),delay(timeout).then(()=>false)]);}
 async function terminate(child){try{process.kill(-child.pid,'SIGTERM');}catch{}if(!await waitForExit(child,2000)){try{process.kill(-child.pid,'SIGKILL');}catch{}assert(await waitForExit(child,3000),'Native app did not terminate');}child.stdout?.destroy();child.stderr?.destroy();}
 try{
