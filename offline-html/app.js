@@ -318,6 +318,7 @@ function writeControls() {
   $('#saveBackupsButton').disabled=!openedGame||!localLibrary;
   if(syncPaused){for(const id of ['restoreContent','confirmContentUpdate','verifyContentUpdate','verifySettingsSaves','postButton','confirmPost','saveGameSettings','restoreHistory','captureButton','editPlaying'])$('#'+id).disabled=true;document.querySelectorAll('[data-play]').forEach(b=>b.disabled=true);$('#postReason').textContent=compatibilityProblem||'共有フォルダーへの接続を確認し、再読み込みまたは再接続してください。';}
   $('#updatePlaying').disabled=syncPaused||!root||!openedGame||!updateTools.canUpdateGame(openedGame)||!!openedGame.settingsError&&!(openedGame.contentError&&openedGame.contentPending)||pendingSettings(openedGame.path);
+  informationControls();
   if(starting)document.querySelectorAll('button').forEach(button=>{button.disabled=!button.matches('#helpButton,#settingsButton,[data-close]');});
 }
 async function action(fn, reconnecting = false, prioritizePlay = false) {
