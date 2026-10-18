@@ -26,6 +26,7 @@ static std::atomic<bool> portal_running(false);
 static bool portal_pumping = false, portal_deferred_pump = false;
 static bool portal_closing = false;
 static std::unique_ptr<CefScopedLibraryLoader> portal_library;
+static NSTimer* portal_timer = nil;
 static void PortalPump() {
   if (!portal_running.load()) return;
   if (portal_pumping) { portal_deferred_pump = true; return; }
@@ -83,10 +84,6 @@ class PortalApp : public CefApp, public CefBrowserProcessHandler, public CefRend
     }
   }
   void OnContextInitialized() override { dispatch_async(dispatch_get_main_queue(), ^{ PortalNotice("initialized"); }); }
-  void OnScheduleMessagePumpWork(int64_t delay) override {
-    const auto milliseconds = std::min<int64_t>(std::max<int64_t>(0, delay), 10000);
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, milliseconds * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ PortalPump(); });
-  }
   void OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra) override {
     if (extra && extra->HasKey("portal-url")) allowed_[browser->GetIdentifier()] = extra->GetString("portal-url");
   }
@@ -164,7 +161,7 @@ extern "C" bool portal_cef_initialize(const char* framework, const char* helper,
   portal_callback = callback;
   portal_library = std::make_unique<CefScopedLibraryLoader>();
   if (!portal_library->LoadInMain()) return false;
-  CefSettings settings; settings.external_message_pump = true;
+  CefSettings settings;
   CefString(&settings.browser_subprocess_path) = helper;
   CefString(&settings.cache_path) = profile;
   CefString(&settings.root_cache_path) = profile;
@@ -172,6 +169,10 @@ extern "C" bool portal_cef_initialize(const char* framework, const char* helper,
   CefMainArgs args(*_NSGetArgc(), *_NSGetArgv());
   portal_running.store(true);
   if (!CefInitialize(args, settings, new PortalApp(), nullptr)) { portal_running.store(false); return false; }
+  // AppKit owns the main loop. A common-mode timer pumps CEF even while native
+  // event tracking is active; dispatch-only callbacks can starve subprocess IPC.
+  portal_timer = [NSTimer timerWithTimeInterval:0.033 repeats:YES block:^(NSTimer*) { PortalPump(); }];
+  [[NSRunLoop mainRunLoop] addTimer:portal_timer forMode:NSRunLoopCommonModes];
   return true;
 }
 extern "C" bool portal_cef_open(void* parent, const char* address) {
@@ -186,7 +187,7 @@ extern "C" bool portal_cef_open(void* parent, const char* address) {
 extern "C" void portal_cef_evaluate(const char* text) { if (portal_browser && PortalTrusted(portal_browser->GetMainFrame())) portal_browser->GetMainFrame()->ExecuteJavaScript(text, portal_url, 0); }
 extern "C" void portal_cef_resize() { if (portal_browser) { NSView* view = (__bridge NSView*)portal_browser->GetHost()->GetWindowHandle(); [view setFrame:[[view superview] bounds]]; } }
 extern "C" void portal_cef_close() { portal_closing = true; if (portal_browser) portal_browser->GetHost()->CloseBrowser(true); else PortalNotice("closed"); }
-extern "C" void portal_cef_shutdown() { portal_running.store(false); portal_browser = nullptr; CefShutdown(); portal_library.reset(); }
+extern "C" void portal_cef_shutdown() { portal_running.store(false); [portal_timer invalidate]; portal_timer = nil; portal_browser = nullptr; CefShutdown(); portal_library.reset(); }
 
 #ifdef PORTAL_CEF_HELPER
 int main(int argc, char* argv[]) {
