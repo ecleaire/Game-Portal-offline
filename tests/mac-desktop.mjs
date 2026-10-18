@@ -46,6 +46,15 @@ stopPlayer();return {edition:launcherEdition,cycle:${cycle},library,version:docu
    await writeFile(script,body);let logs='';processHandle=spawn(executable,['--test-mode','--profile',join(root,'profile-'+edition),'--test-script',script,'--result-file',result],{detached:true,stdio:['ignore','pipe','pipe']});processHandle.stdout.on('data',data=>logs+=data);processHandle.stderr.on('data',data=>logs+=data);
    let value;for(let count=0;count<900;count++){value=await readFile(result,'utf8').then(JSON.parse).catch(()=>null);if(value)break;if(processHandle.exitCode!==null||processHandle.signalCode!==null)break;await delay(100);}
    if(!value){console.error('Native application exit:',processHandle.exitCode,processHandle.signalCode);await delay(1500);const reports=join(homedir(),'Library/Logs/DiagnosticReports');for(const name of (await readdir(reports).catch(()=>[])).filter(name=>/^GAME-PORTAL.*\.(ips|crash)$/.test(name))){const file=join(reports,name),info=await stat(file);if(Date.now()-info.mtimeMs<600000&&info.size<2*1024*1024)console.error('Native crash report:',name,(await readFile(file,'utf8')).slice(0,16000));}}
+   if(!value){
+    await terminate(processHandle);
+    const runtime=join(root,'runtime');for(const entry of await readdir(runtime).catch(()=>[])){
+     if(!/^(arm64|x86_64)-[a-f0-9]{64}-[a-f0-9]{64}$/.test(entry))continue;
+     const bundle=join(runtime,entry,'GAME PORTAL Runtime.app');const manifest=await readFile(join(bundle,'Contents/Resources/build.json'),'utf8').then(JSON.parse).catch(()=>null);if(manifest?.edition!==edition)continue;
+     const args=['--batch','-o','run','-o','thread backtrace -c 24','-o','quit','--',join(bundle,'Contents/MacOS/GAME-PORTAL-'+suffix),'--test-mode','--profile',join(root,'profile-'+edition),'--application-directory',join(root,'Mac',edition==='creator'?'クリエイター用':'プレイ用'),'--test-script',script,'--result-file',result];
+     try{console.error('Native debugger:',execFileSync('/usr/bin/lldb',args,{encoding:'utf8',timeout:45000,maxBuffer:2*1024*1024}).slice(-16000));}catch(error){console.error('Native debugger:',String(error.stdout||'').slice(-16000),String(error.stderr||'').slice(-2000));}break;
+    }
+   }
    assert(value,'Mac app test did not finish: '+logs);assert.equal(value.ok,true,JSON.stringify(value)+'\n'+logs);
    assert(await waitForExit(processHandle,10000),'Mac window did not close after test: '+logs);assert.equal(processHandle.exitCode,0,logs);processHandle.stdout.destroy();processHandle.stderr.destroy();processHandle=null;
   }
