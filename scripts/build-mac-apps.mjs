@@ -32,7 +32,7 @@ async function packageEngine(root,build,arch,cef){
  }
  await copyFile(join(cef.sdk,'LICENSE.txt'),join(engine,'CEF-LICENSE.txt'));
  const archive=join(staging,'engine.zip');execFileSync('/usr/bin/ditto',['-c','-k','--norsrc','--keepParent',engine,archive],{stdio:'inherit'});
- const bytes=await readFile(archive),parts=[],destination=join(root,'Mac/_内部ファイル/engine',arch);await mkdir(destination,{recursive:true});
+ const bytes=await readFile(archive),parts=[],destination=join(build,'engine-packs',arch);await mkdir(destination,{recursive:true});
  for(let offset=0,index=0;offset<bytes.length;offset+=40*1024*1024,index++){
   const chunk=bytes.subarray(offset,offset+40*1024*1024),name='engine.part'+String(index).padStart(2,'0');await writeFile(join(destination,name),chunk);parts.push({name,size:chunk.length,sha256:digest(chunk)});
  }
@@ -69,6 +69,7 @@ export async function buildMacApps(suffix){
   await writeFile(join(resources,'GAME-PORTAL.html'),html);
   await writeFile(join(resources,'GAME-PORTAL-DESKTOP.html'),await macDesktopPage(html,bootstrap,licenses));
   await writeFile(join(resources,'engine.json'),JSON.stringify({schema:1,kind:'cef-offline-v1',targets:family==='MOJAVE'?{x86_64:targets.x86_64}:targets})+'\n');
+  for(const arch of family==='MOJAVE'?['x86_64']:Object.keys(targets))await cp(join(build,'engine-packs',arch),join(resources,'engine',arch),{recursive:true});
   await writeFile(join(resources,'MAC-DESKTOP-LICENSES.txt'),'Chromium Embedded Framework 116.0.27 / Chromium 116.0.5845.190\n\n'+cefLicense+'\n\n'+licenses);
   await copyFile(join(root,'THIRD-PARTY-LICENSES.txt'),join(resources,'THIRD-PARTY-LICENSES.txt'));
   await writeFile(join(resources,'build.json'),JSON.stringify(await macDesktopManifest(root,version,edition))+'\n');

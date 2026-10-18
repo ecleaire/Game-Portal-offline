@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const lock=JSON.parse(await readFile(new URL('./macos/cef-lock.json',import.meta.url),'utf8'));
-export async function verifyEngineTarget(target,arch,load){
+export async function verifyEngineTarget(target,arch,load,base='Mac/_内部ファイル/engine/'){
  assert(target&&lock.targets[arch],'Unknown Mac engine architecture');
  assert.equal(target.sdkSHA256,lock.targets[arch].sha256,'Unpinned Mac engine SDK');
  assert(Number.isSafeInteger(target.size)&&target.size>0&&target.size<=300*1024*1024,'Invalid Mac engine size');
@@ -16,7 +16,7 @@ export async function verifyEngineTarget(target,arch,load){
  for(const [index,part]of target.parts.entries()){
   assert.equal(part.name,'engine.part'+String(index).padStart(2,'0'),'Invalid Mac engine part path');
   assert(Number.isSafeInteger(part.size)&&part.size>0&&part.size<=40*1024*1024,'Mac engine part exceeds download bounds');
-  const bytes=await load('Mac/_内部ファイル/engine/'+arch+'/'+part.name,40*1024*1024);
+  const bytes=await load(base+arch+'/'+part.name,40*1024*1024);
   assert.equal(bytes.length,part.size,'Truncated Mac engine part');assert.equal(digest(bytes),part.sha256,'Mac engine part checksum differs');
   total+=bytes.length;hash.update(bytes);
  }
@@ -31,8 +31,8 @@ export async function verifyMacEngineFiles(load,exists){
   assert.equal(manifest.schema,1);assert.equal(manifest.kind,'cef-offline-v1');
   assert.deepEqual(Object.keys(manifest.targets).sort(),suffix==='MAC'?['arm64','x86_64']:['x86_64']);
   for(const [arch,target]of Object.entries(manifest.targets)){
-   const value=JSON.stringify(target);if(seen.has(arch)){assert.equal(value,seen.get(arch),'Mac editions must use the same bundled engine');continue;}
-   await verifyEngineTarget(target,arch,load);seen.set(arch,value);
+   const value=JSON.stringify(target);if(seen.has(arch))assert.equal(value,seen.get(arch),'Mac editions must use the same bundled engine');
+   await verifyEngineTarget(target,arch,load,resources+'engine/');seen.set(arch,value);
   }
  }
  console.log('Mac offline engines verified: pinned SDKs, bounded complete parts, matching four apps, no private origin.');

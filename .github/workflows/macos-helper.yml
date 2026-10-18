@@ -72,5 +72,4 @@ jobs:
             GAME-PORTAL-PLAY-MAC.app/**
             GAME-PORTAL-MOJAVE.app/**
             GAME-PORTAL-PLAY-MOJAVE.app/**
-            Mac/_内部ファイル/engine/**
           if-no-files-found: error

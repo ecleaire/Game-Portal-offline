@@ -12,7 +12,6 @@ async function terminate(child){if(child.exitCode!==null||child.signalCode!==nul
 try{
  await mkdir(disk,{recursive:true});
  await writeFile(join(disk,'game.html'),'<!doctype html><h1>Native Mac play</h1><script>localStorage.setItem("mac-retained","yes");parent.postMessage({macGameReady:true,title:document.querySelector("h1").textContent,webgl2:!!document.createElement("canvas").getContext("webgl2"),wasm:WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0]))},"*");window.addEventListener("message",event=>{if(event.data==="security-test"){let parentBlocked=false;try{void parent.document;}catch{parentBlocked=true;}parent.postMessage({macSecurity:true,denied:typeof window.__portalSend==="undefined"&&parentBlocked},"*");}});</script>');
- await mkdir(join(root,'Mac/_内部ファイル'),{recursive:true});await cp(resolve('Mac/_内部ファイル/engine'),join(root,'Mac/_内部ファイル/engine'),{recursive:true});
  for(const edition of ['creator','player']){
   const name=(edition==='player'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-')+suffix,app=join(root,'Mac',edition==='player'?'プレイ用':'クリエイター用',name+'.app');await cp(resolve(name+'.app'),app,{recursive:true});
   const executable=join(app,'Contents/MacOS/GAME-PORTAL-'+suffix);

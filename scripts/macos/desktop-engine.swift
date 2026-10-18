@@ -53,8 +53,8 @@ func prepareDesktopEngine(bundle: URL, profile: URL, application: URL) throws ->
         try checks.checkAncestors(destination); try fm.removeItem(at: destination)
     }
     // The engine is included in the downloaded Mac folder; never downloaded at runtime.
-    let packRoot = bundle.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("_内部ファイル/engine/" + architecture)
-    guard fm.fileExists(atPath: packRoot.path) else { throw DesktopError("内蔵エンジンが見つかりません。ダウンロードした「Mac」フォルダーを、内部ファイルも含めてまとめて保管してください。") }
+    let packRoot = resources.appendingPathComponent("engine/" + architecture)
+    guard fm.fileExists(atPath: packRoot.path) else { throw DesktopError("内蔵エンジンが見つかりません。ZIPを展開し直し、アプリ全体をコピーしてください。") }
     let stalePattern = "^\\.install-" + architecture + "-[a-f0-9]{64}$"
     for candidate in try fm.contentsOfDirectory(at: profile, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey]) where candidate.lastPathComponent.range(of: stalePattern, options: .regularExpression) != nil {
         let values = try candidate.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]); if values.isDirectory == true && values.isSymbolicLink != true { try checks.checkAncestors(candidate); try fm.removeItem(at: candidate) }
@@ -80,7 +80,17 @@ func prepareDesktopEngine(bundle: URL, profile: URL, application: URL) throws ->
     // The CEF sandbox expects framework and helper apps inside its main bundle.
     // Assemble a signed runtime bundle instead of weakening the subprocess sandbox.
     let stagedBundle = staging.appendingPathComponent("GAME PORTAL Runtime.app"), frameworks = stagedBundle.appendingPathComponent("Contents/Frameworks"), unpacked = staging.appendingPathComponent("engine")
-    try fm.copyItem(at: bundle, to: stagedBundle); try fm.createDirectory(at: frameworks, withIntermediateDirectories: true)
+    try fm.createDirectory(at: stagedBundle.appendingPathComponent("Contents/Resources"), withIntermediateDirectories: true)
+    // Keep the installed cache small: the signed source app retains the offline
+    // payload, while the runtime contains only the expanded native engine.
+    for item in try fm.contentsOfDirectory(at: bundle.appendingPathComponent("Contents"), includingPropertiesForKeys: nil) {
+        if item.lastPathComponent == "Resources" {
+            for resource in try fm.contentsOfDirectory(at: item, includingPropertiesForKeys: nil) where !["engine", "origin.json"].contains(resource.lastPathComponent) {
+                try fm.copyItem(at: resource, to: stagedBundle.appendingPathComponent("Contents/Resources").appendingPathComponent(resource.lastPathComponent))
+            }
+        } else { try fm.copyItem(at: item, to: stagedBundle.appendingPathComponent("Contents").appendingPathComponent(item.lastPathComponent)) }
+    }
+    try fm.createDirectory(at: frameworks, withIntermediateDirectories: true)
     try desktopJSON(["schema": 1, "application": application.path]).write(to: stagedBundle.appendingPathComponent("Contents/Resources/origin.json"), options: .atomic)
     for item in try fm.contentsOfDirectory(at: unpacked, includingPropertiesForKeys: nil) {
         let parent = item.lastPathComponent == "CEF-LICENSE.txt" ? stagedBundle.appendingPathComponent("Contents/Resources") : frameworks
