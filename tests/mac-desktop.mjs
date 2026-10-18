@@ -14,11 +14,19 @@ try{
  await mkdir(disk,{recursive:true});
  await writeFile(join(disk,'game.html'),'<!doctype html><h1>Native Mac play</h1><script>localStorage.setItem("mac-retained","yes");parent.postMessage({macGameReady:true,title:document.querySelector("h1").textContent,webgl2:!!document.createElement("canvas").getContext("webgl2"),wasm:new WebAssembly.Instance(new WebAssembly.Module(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,127,3,2,1,0,7,7,1,3,114,117,110,0,0,10,6,1,4,0,65,7,11]))).exports.run()===7},"*");window.addEventListener("message",event=>{if(event.data==="security-test"){let parentBlocked=false;try{void parent.document;}catch{parentBlocked=true;}parent.postMessage({macSecurity:true,denied:typeof window.__portalSend==="undefined"&&parentBlocked},"*");}});</script>');
  for(const edition of ['creator','player']){
-  const name=(edition==='player'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-')+suffix,app=join(root,'Mac',edition==='player'?'プレイ用':'クリエイター用',name+'.app');await cp(resolve(name+'.app'),app,{recursive:true});
-  const executable=join(app,'Contents/MacOS/GAME-PORTAL-'+suffix);
-  const selftest=join(root,'self-test-'+edition);execFileSync(executable,['--self-test',selftest],{timeout:30000,stdio:'pipe'});assert.equal(JSON.parse(await readFile(join(selftest,'result.json'))).ok,true);
-  for(let cycle=0;cycle<2;cycle++){
-   console.log('Mac native app test starting: '+edition+' / '+cycle);
+  const prefix=edition==='player'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-',role=edition==='player'?'プレイ用':'クリエイター用';
+  const families=suffix==='MAC'&&process.arch==='x64'?['MAC','MOJAVE','MAC']:[suffix,suffix];
+  for(const family of new Set(families)){const name=prefix+family;await cp(resolve(name+'.app'),join(root,'Mac',role,name+'.app'),{recursive:true});}
+  const primary=join(root,'Mac',role,prefix+suffix+'.app/Contents/MacOS/GAME-PORTAL-'+suffix);
+  const selftest=join(root,'self-test-'+edition);execFileSync(primary,['--self-test',selftest],{timeout:30000,stdio:'pipe'});assert.equal(JSON.parse(await readFile(join(selftest,'result.json'))).ok,true);
+  for(let cycle=0;cycle<families.length;cycle++){
+   const family=families[cycle],executable=join(root,'Mac',role,prefix+family+'.app/Contents/MacOS/GAME-PORTAL-'+family);
+   console.log('Mac native app test starting: '+edition+' / '+family+' / '+cycle);
+   let corruptedOrigin;
+   if(cycle===families.length-1){
+    for(const entry of await readdir(join(root,'runtime'))){if(!/^(arm64|x86_64)-[a-f0-9]{64}-[a-f0-9]{64}$/.test(entry))continue;const bundle=join(root,'runtime',entry,'GAME PORTAL Runtime.app'),manifest=await readFile(join(bundle,'Contents/Resources/build.json'),'utf8').then(JSON.parse).catch(()=>null);if(manifest?.edition!==edition||!await stat(join(bundle,'Contents/MacOS/GAME-PORTAL-'+family)).then(value=>value.isFile()).catch(()=>false))continue;corruptedOrigin=join(bundle,'Contents/Resources/origin.json');await writeFile(corruptedOrigin,JSON.stringify({schema:0}));break;}
+    assert(corruptedOrigin,'Earlier runtime cache must exist for the repair check');
+   }
    const result=join(root,edition+'-'+cycle+'.json'),script=join(root,edition+'-'+cycle+'.js');
    const body=`
 const until=async(test,label)=>{for(let count=0;count<400;count++){if(await test())return;await new Promise(resolve=>setTimeout(resolve,50));}throw Error('Timed out: '+label+' / '+document.body.innerText.slice(-500));};
@@ -35,7 +43,7 @@ check(await root.queryPermission({mode:'readwrite'})==='granted','no browser per
 if(launcherEdition==='creator'&&${cycle}===0){const input=document.getElementById('enableEditing');input.checked=true;await input.onchange();check(editingEnabled,'native edit mode');editGame(games[0]);document.getElementById('editTitle').value='Mac edited';document.getElementById('editEnvironment').value='HTML';document.getElementById('editDescription').value='Native metadata';document.getElementById('editForm').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await until(()=>!busy&&!document.getElementById('edit').open,'metadata save');check(games[0].title==='Mac edited','edited title');}
 if(launcherEdition==='player'){check(!editingEnabled,'player mode');let blocked=false;try{await root.getFileHandle('forbidden.html',{create:true});}catch{blocked=true;}check(blocked,'native player write denial');}
 const library=localLibrary;
-if(${cycle}===1)check((await localState.loadLocalSave(library,games[0].id))['mac-retained']==='yes','save survives real app restart before game starts');
+if(${cycle}>0)check((await localState.loadLocalSave(library,games[0].id))['mac-retained']==='yes','save survives real app restart before game starts');
 let gameReady=null,security=null;const listener=event=>{if(event.source!==document.getElementById('frame').contentWindow)return;if(event.data?.macGameReady)gameReady=event.data;if(event.data?.macSecurity)security=event.data;};window.addEventListener('message',listener);
 await playGame(games[0]);await until(()=>!busy&&!document.getElementById('frame').hidden,'game opens');
 await until(()=>gameReady,'game really executed');check(gameReady.title==='Native Mac play'&&gameReady.wasm&&gameReady.webgl2,'WebGL2 and WebAssembly inside bundled Chromium: '+JSON.stringify(gameReady));document.getElementById('frame').contentWindow.postMessage('security-test','*');await until(()=>security,'sandbox test');check(security.denied,'game cannot call the native host or access its parent');window.removeEventListener('message',listener);
@@ -54,14 +62,15 @@ stopPlayer();return {edition:launcherEdition,cycle:${cycle},library,version:docu
     try{const file=await open(join(root,'profile-'+edition,'Chromium/cef.log'),'r');try{const size=(await file.stat()).size,bytes=Buffer.alloc(Math.min(size,16000));await file.read(bytes,0,bytes.length,Math.max(0,size-bytes.length));diagnostic('Native Chromium log:',bytes.toString());}finally{await file.close();}}catch{}
     const runtime=join(root,'runtime');for(const entry of await readdir(runtime).catch(()=>[])){
      if(!/^(arm64|x86_64)-[a-f0-9]{64}-[a-f0-9]{64}$/.test(entry))continue;
-     const bundle=join(runtime,entry,'GAME PORTAL Runtime.app');const manifest=await readFile(join(bundle,'Contents/Resources/build.json'),'utf8').then(JSON.parse).catch(()=>null);if(manifest?.edition!==edition)continue;
-     const args=['--batch','-k','thread backtrace -c 24','-o','run','-o','thread backtrace -c 24','-o','quit','--',join(bundle,'Contents/MacOS/GAME-PORTAL-'+suffix),'--test-mode','--profile',join(root,'profile-'+edition),'--application-directory',join(root,'Mac',edition==='creator'?'クリエイター用':'プレイ用'),'--test-script',script,'--result-file',result];
+     const bundle=join(runtime,entry,'GAME PORTAL Runtime.app');const manifest=await readFile(join(bundle,'Contents/Resources/build.json'),'utf8').then(JSON.parse).catch(()=>null);if(manifest?.edition!==edition||!await stat(join(bundle,'Contents/MacOS/GAME-PORTAL-'+family)).then(value=>value.isFile()).catch(()=>false))continue;
+     const args=['--batch','-k','thread backtrace -c 24','-o','run','-o','thread backtrace -c 24','-o','quit','--',join(bundle,'Contents/MacOS/GAME-PORTAL-'+family),'--test-mode','--profile',join(root,'profile-'+edition),'--application-directory',join(root,'Mac',edition==='creator'?'クリエイター用':'プレイ用'),'--test-script',script,'--result-file',result];
      try{diagnostic('Native debugger:',execFileSync('/usr/bin/lldb',args,{encoding:'utf8',timeout:45000,maxBuffer:2*1024*1024}).slice(-16000));}catch(error){diagnostic('Native debugger:',String(error.stdout||'').slice(-24000)+'\n'+String(error.stderr||'').slice(-2000));}break;
     }
    }
    if(!value)diagnostic('Native startup output:',logs.slice(-30000));
    assert(value,'Mac app test did not finish: '+logs);assert.equal(value.ok,true,JSON.stringify(value)+'\n'+logs);
    assert(await waitForExit(processHandle,10000),'Mac window did not close after test: '+logs);assert.equal(processHandle.exitCode,0,logs);processHandle.stdout.destroy();processHandle.stderr.destroy();processHandle=null;
+   if(corruptedOrigin)assert.equal(JSON.parse(await readFile(corruptedOrigin,'utf8')).schema,1,'Invalid signed runtime resources must be repaired without losing saves');
   }
  }
  assert.equal(JSON.parse(await readFile(join(disk,'game.html.gameportal.json'))).title,'Mac edited');

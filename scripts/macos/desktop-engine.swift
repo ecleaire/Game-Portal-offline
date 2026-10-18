@@ -29,7 +29,11 @@ func prepareDesktopEngine(bundle: URL, profile: URL, application: URL) throws ->
     let fm = FileManager.default, resources = bundle.appendingPathComponent("Contents/Resources")
     let checks = try DesktopFiles(profile: profile, application: bundle.deletingLastPathComponent(), player: false)
     let manifest = try desktopObject(checks.regularRead(resources.appendingPathComponent("engine.json"), limit: 16384))
-    let buildDigest = try engineDigest(resources.appendingPathComponent("build.json"))
+    let sourceBuildDigest = try engineDigest(resources.appendingPathComponent("build.json"))
+    guard let executable = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String, ["GAME-PORTAL-MAC", "GAME-PORTAL-MOJAVE"].contains(executable) else { throw DesktopError("アプリの起動ファイルを確認してください。") }
+    // The two Intel app variants share sources and engine bytes, but carry
+    // different host executable names. Their installed bundles cannot alias.
+    let buildDigest = engineDigestBytes(Data((sourceBuildDigest + "\n" + executable).utf8))
     guard desktopSchema(manifest["schema"]), manifest["kind"] as? String == "cef-offline-v1", let targets = manifest["targets"] as? [String: Any], let target = targets[architecture] as? [String: Any], let digest = target["sha256"] as? String, digest.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil, let size = target["size"] as? Int, size > 0, size < 300 * 1024 * 1024, let parts = target["parts"] as? [[String: Any]], !parts.isEmpty, parts.count <= 8 else { throw DesktopError("内蔵エンジンの設定を確認してください。") }
     let destination = profile.appendingPathComponent(architecture + "-" + digest + "-" + buildDigest)
     try checks.checkAncestors(profile); try fm.createDirectory(at: profile, withIntermediateDirectories: true)
@@ -41,8 +45,9 @@ func prepareDesktopEngine(bundle: URL, profile: URL, application: URL) throws ->
     let runtimeBundle = destination.appendingPathComponent("GAME PORTAL Runtime.app"), body = runtimeBundle.appendingPathComponent("Contents/Frameworks"), framework = body.appendingPathComponent("Chromium Embedded Framework.framework"), helper = body.appendingPathComponent("GAME PORTAL Helper.app/Contents/MacOS/GAME PORTAL Helper")
     func verifyInstalled() throws {
         try checks.checkAncestors(framework); try checks.checkAncestors(helper)
-        _ = try engineRun("/usr/bin/codesign", ["--verify", "--deep", "--strict", framework.path])
-        _ = try engineRun("/usr/bin/codesign", ["--verify", "--deep", "--strict", helper.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().path])
+        // Include the host binary, Info.plist and launch resources in cache
+        // repair checks, as well as every nested framework/helper signature.
+        _ = try engineRun("/usr/bin/codesign", ["--verify", "--deep", "--strict", runtimeBundle.path])
     }
     if fm.fileExists(atPath: destination.appendingPathComponent("ready.json").path) {
         do {
