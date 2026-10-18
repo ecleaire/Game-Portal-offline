@@ -64,4 +64,4 @@ stopPlayer();return {edition:launcherEdition,cycle:${cycle},library,version:docu
  }
  assert.equal(JSON.parse(await readFile(join(disk,'game.html.gameportal.json'))).title,'Mac edited');
  console.log('Actual Mac standalone app passed: native filesystem invariants, Creator/Player, no external browser, native edit/write, help/settings, sandboxed play and persistent saves across restarts.');
-}finally{if(processHandle)await terminate(processHandle);await rm(root,{recursive:true,force:true});}
+}catch(error){diagnostic("Native test failure:",error.stack||String(error));if(error.stdout)diagnostic("Native command output:",String(error.stdout));if(error.stderr)diagnostic("Native command error:",String(error.stderr));throw error;}finally{if(processHandle)await terminate(processHandle);await rm(root,{recursive:true,force:true});}
