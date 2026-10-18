@@ -60,6 +60,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         view = NSView(frame: NSRect(x: 0, y: 0, width: min(1200, max(600, screen.width - 40)), height: min(820, max(400, screen.height - 64))))
         window = NSWindow(contentRect: view.bounds, styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "GAME PORTAL " + (desktopEdition == "player" ? "プレイ専用" : "クリエイター")
+        window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 640, height: 480); window.contentView = view; window.delegate = self; window.center(); installMenu()
         NSApplication.shared.setActivationPolicy(.regular)
         let preparing = NSTextField(labelWithString: "起動の準備をしています…（初回のみ少し時間がかかります）")
@@ -167,6 +168,11 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowDidResize(_ notification: Notification) { if engineReady { portal_cef_resize() } }
     func windowWillExitFullScreen(_ notification: Notification) { fullscreenFromGame = false; if engineReady { portal_cef_evaluate("if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});") } }
     func windowShouldClose(_ sender: NSWindow) -> Bool { if closing { return true }; requestClose(); return false }
+    func windowWillClose(_ notification: Notification) {
+        // CEF owns a child NSView. Tear down the host view hierarchy so that
+        // OnBeforeClose can finish before shutting down the rendering engine.
+        window?.contentView = nil; view = nil; window = nil
+    }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply { if browserClosed || !engineReady && closing { listener?.cancel(); return .terminateNow }; requestClose(); return .terminateCancel }
     func applicationWillTerminate(_ notification: Notification) { if engineReady { portal_cef_shutdown() }; desktopInstance = nil }
     func finishClose() {

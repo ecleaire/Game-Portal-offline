@@ -29,6 +29,7 @@ jobs:
           key: cef-mac-v2-macos-15-intel-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
       - run: node scripts/verify-mojave.mjs
       - run: node tests/mac-desktop.mjs
+        timeout-minutes: 6
         env:
           PORTAL_MAC_SUFFIX: MOJAVE
       - run: node tests/native-distribution.mjs
