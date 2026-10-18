@@ -24,6 +24,8 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var view: NSView!, window: NSWindow!, listener: NWListener!, page: Data
     var appURL: URL!, closing = false, closePending = false, testStarted = false, engineReady = false, browserClosed = false
     var closeTimer: DispatchWorkItem?, connections = 0, droppedFolder: (String, Date)?
+    var pendingWrites = 0
+    var fullscreenFromGame = false
     init(profile: URL, application: URL, testMode: Bool, library: String?, testScript: URL?, resultFile: URL?, readyFile: URL?) throws {
         self.profile = profile; self.application = application; self.testMode = testMode; self.testScript = testScript; self.resultFile = resultFile; self.readyFile = readyFile
         files = try DesktopFiles(profile: profile, application: application, player: desktopEdition == "player")
@@ -54,24 +56,38 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         } catch { fail(error) }
     }
     func show() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 1200, height: 820))
+        let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
+        view = NSView(frame: NSRect(x: 0, y: 0, width: min(1200, max(600, screen.width - 40)), height: min(820, max(400, screen.height - 64))))
         window = NSWindow(contentRect: view.bounds, styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "GAME PORTAL " + (desktopEdition == "player" ? "プレイ専用" : "クリエイター")
         window.minSize = NSSize(width: 640, height: 480); window.contentView = view; window.delegate = self; window.center(); installMenu()
         NSApplication.shared.setActivationPolicy(.regular)
         let preparing = NSTextField(labelWithString: "起動の準備をしています…（初回のみ少し時間がかかります）")
-        preparing.frame = NSRect(x: 40, y: 380, width: 900, height: 40); view.addSubview(preparing)
+        preparing.frame = NSRect(x: 40, y: view.bounds.height / 2 - 20, width: view.bounds.width - 80, height: 40); preparing.autoresizingMask = [.width, .minYMargin, .maxYMargin]; preparing.font = NSFont.systemFont(ofSize: 16); view.addSubview(preparing)
         if !testMode { window.makeKeyAndOrderFront(nil); NSApplication.shared.activate(ignoringOtherApps: true) }
+        let bundledFramework = Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework")
+        if FileManager.default.fileExists(atPath: bundledFramework.appendingPathComponent("Chromium Embedded Framework").path) {
+            guard portal_cef_initialize(bundledFramework.path, Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/GAME PORTAL Helper.app/Contents/MacOS/GAME PORTAL Helper").path, profile.appendingPathComponent("Chromium").path, Bundle.main.bundleURL.path, portalSwiftCallback) else { fail(DesktopError("内蔵の表示エンジンを開始できませんでした。")); return }
+            engineReady = true; preparing.removeFromSuperview(); return
+        }
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                let engine = try prepareDesktopEngine(bundle: Bundle.main.bundleURL, profile: self.profile.deletingLastPathComponent().appendingPathComponent("runtime"))
+                let engine = try prepareDesktopEngine(bundle: Bundle.main.bundleURL, profile: self.profile.deletingLastPathComponent().appendingPathComponent("runtime"), application: self.application)
                 DispatchQueue.main.async {
                     if self.closing { return }
-                    guard portal_cef_initialize(engine.framework.path, engine.helper.path, self.profile.appendingPathComponent("Chromium").path, engine.bundle.path, portalSwiftCallback) else { self.fail(DesktopError("内蔵の表示エンジンを開始できませんでした。配布フォルダーを展開し直してください。")); return }
-                    self.engineReady = true; preparing.removeFromSuperview()
+                    self.listener.cancel()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { do { try self.runInstalled(engine.bundle) } catch { self.fail(error) } }
                 }
             } catch { DispatchQueue.main.async { self.fail(error) } }
         }
+    }
+    func runInstalled(_ bundle: URL) throws {
+        guard let name = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String else { throw DesktopError("アプリの起動ファイルを確認してください。") }
+        let executable = bundle.appendingPathComponent("Contents/MacOS/" + name)
+        let values = [executable.path] + Array(CommandLine.arguments.dropFirst()) + ["--profile", profile.path, "--application-directory", application.path]
+        var pointers = values.map { strdup($0) }; pointers.append(nil); defer { for pointer in pointers { if let pointer = pointer { free(pointer) } } }
+        executable.path.withCString { path in pointers.withUnsafeBufferPointer { buffer in _ = execv(path, buffer.baseAddress!) } }
+        throw DesktopError("アプリを起動できませんでした。" + String(cString: strerror(errno)))
     }
     func installMenu() {
         let main = NSMenu(), appItem = NSMenuItem(), appMenu = NSMenu()
@@ -86,6 +102,17 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let bytes = try? desktopJSON(value), let text = String(data: bytes, encoding: .utf8) else { return }
         DispatchQueue.main.async { portal_cef_evaluate("window.gamePortalReply(\(text))") }
     }
+    func operate(_ request: [String: Any], id: Int) {
+        let op = request["op"] as? String ?? ""
+        let writing = ["remember", "forget", "beginWrite", "writeChunk", "commitWrite", "abortWrite", "remove"].contains(op) || ["file", "directory"].contains(op) && request["create"] as? Bool == true
+        if writing { pendingWrites += 1 }
+        let queue = (request["root"] as? String).flatMap { files.work(for: $0) } ?? (["restore", "selectPath"].contains(op) ? DispatchQueue.global(qos: .userInitiated) : io)
+        queue.async {
+            let result: Any?, failure: Error?
+            do { result = try self.files.operate(request); failure = nil } catch { result = nil; failure = error }
+            DispatchQueue.main.async { if writing { self.pendingWrites -= 1 }; self.respond(id, result, failure) }
+        }
+    }
     func message(_ data: [String: Any]) {
         // The CEF browser process validates sender process, main frame and exact URL.
         if let kind = data["kind"] as? String {
@@ -95,6 +122,10 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
             case "closed": browserClosed = true; closing = true; DispatchQueue.main.async { NSApplication.shared.terminate(nil) }
             case "closeRequested": requestClose()
             case "folderDrag": droppedFolder = ((data["text"] as? String ?? ""), Date())
+            case "fullscreen":
+                let active = window.styleMask.contains(.fullScreen)
+                if data["text"] as? String == "true" { if !active { fullscreenFromGame = true; window.toggleFullScreen(nil) } }
+                else if fullscreenFromGame { fullscreenFromGame = false; if active { window.toggleFullScreen(nil) } }
             case "loadError": notice("画面を読み込めませんでした", data["text"] as? String ?? "アプリを開き直してください。")
             case "consoleError": fputs("GAME PORTAL renderer: \(data["text"] as? String ?? "")\n", stderr)
             default: break
@@ -110,10 +141,10 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if data["allowed"] as? Bool == true { finishClose() } else { notice("保存を完了してください", "処理中または未保存の内容があります。画面に戻って保存を完了してください。") }; return
         }
         if op == "select" {
-            let panel = NSOpenPanel(); panel.title = "ゲームの保存先を選ぶ"; panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.allowsMultipleSelection = false
+            let panel = NSOpenPanel(); panel.title = "ゲームの保存先を選ぶ"; panel.prompt = "選ぶ"; panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.canCreateDirectories = desktopEdition == "creator"; panel.allowsMultipleSelection = false
             panel.beginSheetModal(for: window) { response in
                 guard response == .OK, let url = panel.url else { self.respond(id, NSNull()); return }
-                self.io.async { do { self.respond(id, self.files.record(try self.files.register(url.path))) } catch { self.respond(id, nil, error) } }
+                self.operate(["op": "selectPath", "path": url.path], id: id)
             }; return
         }
         var request = data
@@ -121,7 +152,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
             guard let (path, time) = droppedFolder, Date().timeIntervalSince(time) < 30, !path.isEmpty else { respond(id, nil, DesktopError("保存先フォルダーを1つドラッグしてください。")); return }; droppedFolder = nil
             request["op"] = "selectPath"; request["path"] = path
         }
-        io.async { do { self.respond(id, try self.files.operate(request)) } catch { self.respond(id, nil, error) } }
+        operate(request, id: id)
     }
     func didLoad() {
         if let ready = readyFile { try? desktopJSON(["url": appURL.absoluteString, "version": desktopVersion]).write(to: ready) }
@@ -133,22 +164,20 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
     func windowDidResize(_ notification: Notification) { if engineReady { portal_cef_resize() } }
+    func windowWillExitFullScreen(_ notification: Notification) { fullscreenFromGame = false; if engineReady { portal_cef_evaluate("if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});") } }
     func windowShouldClose(_ sender: NSWindow) -> Bool { if closing { return true }; requestClose(); return false }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply { if browserClosed || !engineReady && closing { listener?.cancel(); return .terminateNow }; requestClose(); return .terminateCancel }
     func applicationWillTerminate(_ notification: Notification) { if engineReady { portal_cef_shutdown() }; desktopInstance = nil }
     func finishClose() {
-        io.async { let writing = !self.files.writers.isEmpty; DispatchQueue.main.async { if writing { self.notice("保存中です", "保存が完了してから閉じてください。"); return }; self.closing = true; if self.engineReady { portal_cef_close() } else { NSApplication.shared.terminate(nil) } } }
+        if pendingWrites > 0 || files.hasWriters { notice("保存中です", "保存が完了してから閉じてください。"); return }
+        closing = true; if engineReady { portal_cef_close() } else { NSApplication.shared.terminate(nil) }
     }
     func requestClose() {
         if !engineReady { closing = true; NSApplication.shared.terminate(nil); return }
         guard !closePending else { return }; closePending = true
-        io.async { let writing = !self.files.writers.isEmpty
-            DispatchQueue.main.async {
-                if writing { self.closePending = false; self.notice("保存中です", "保存が完了してから閉じてください。"); return }
+        if pendingWrites > 0 || files.hasWriters { closePending = false; notice("保存中です", "保存が完了してから閉じてください。"); return }
                 portal_cef_evaluate("(async()=>{let allowed=false;try{if(typeof busy==='undefined')allowed=true;else if(!busy&&!syncPromise&&!hasEditChanges()&&await flushSave()){stopPlayer();allowed=true;}}finally{window.__portalSend(JSON.stringify({id:2147483647,op:'closeReady',allowed}));}})()")
                 let timer = DispatchWorkItem { self.closePending = false; let alert = NSAlert(); alert.messageText = "画面から応答がありません"; alert.informativeText = "終了すると未保存の入力は失われます。終了しますか？"; alert.addButton(withTitle: "戻る"); alert.addButton(withTitle: "終了"); if alert.runModal() == .alertSecondButtonReturn { self.finishClose() } }; self.closeTimer = timer; DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: timer)
-            }
-        }
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { window?.makeKeyAndOrderFront(nil); return true }
     func notice(_ title: String, _ message: String) { let alert = NSAlert(); alert.messageText = title; alert.informativeText = message; alert.runModal() }
@@ -189,10 +218,11 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
 @main struct MacDesktopMain {
     static func main() {
         do {
-            let args = CommandLine.arguments; var profile: URL? = nil, library: String? = nil, script: URL? = nil, result: URL? = nil, ready: URL? = nil, test = false, index = 1
+            let args = CommandLine.arguments; var profile: URL? = nil, library: String? = nil, script: URL? = nil, result: URL? = nil, ready: URL? = nil, application: URL? = nil, test = false, index = 1
             while index < args.count {
                 if args[index] == "--test-mode" { test = true; index += 1; continue }
-                guard ["--profile", "--library", "--test-script", "--result-file", "--ready-file", "--self-test"].contains(args[index]), index + 1 < args.count else { throw DesktopError("起動オプションを確認してください。") }
+                if args[index].range(of: "^-psn_[0-9]+_[0-9]+$", options: .regularExpression) != nil { index += 1; continue }
+                guard ["--profile", "--library", "--test-script", "--result-file", "--ready-file", "--self-test", "--application-directory"].contains(args[index]), index + 1 < args.count else { throw DesktopError("起動オプションを確認してください。") }
                 let option = args[index], value = args[index + 1]; index += 2
                 switch option {
                 case "--profile": profile = URL(fileURLWithPath: value).resolvingSymlinksInPath()
@@ -200,6 +230,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 case "--test-script": script = URL(fileURLWithPath: value)
                 case "--result-file": result = URL(fileURLWithPath: value)
                 case "--ready-file": ready = URL(fileURLWithPath: value)
+                case "--application-directory": application = URL(fileURLWithPath: value)
                 case "--self-test": try desktopSelfTest(URL(fileURLWithPath: value).resolvingSymlinksInPath()); return
                 default: break
                 }
@@ -212,8 +243,20 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let root = directory.deletingLastPathComponent().deletingLastPathComponent()
                 if fm.fileExists(atPath: root.appendingPathComponent("_内部ファイル/GAME-PORTAL-DISTRIBUTION.json").path) { directory = root }
             }
+            if let application = application { directory = application }
+            else if fm.fileExists(atPath: bundle.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework").path), let origin = try? Data(contentsOf: bundle.appendingPathComponent("Contents/Resources/origin.json")), origin.count <= 8192 {
+                let value = try desktopObject(origin); if desktopSchema(value["schema"]), let path = value["application"] as? String, path.hasPrefix("/"), path.utf8.count <= 4000 { directory = URL(fileURLWithPath: path) }
+            }
             let delegate = try PortalDesktop(profile: profile ?? base.appendingPathComponent("GAME-PORTAL/" + desktopEdition), application: directory.resolvingSymlinksInPath(), testMode: test, library: library, testScript: script, resultFile: result, readyFile: ready)
             portal_cef_application(); let app = NSApplication.shared; app.delegate = delegate; app.run(); withExtendedLifetime(delegate) {}
-        } catch { fputs("GAME PORTAL: \((error as? DesktopError)?.message ?? error.localizedDescription)\n", stderr); exit(1) }
+        } catch {
+            let message = (error as? DesktopError)?.message ?? error.localizedDescription
+            fputs("GAME PORTAL: \(message)\n", stderr)
+            if !CommandLine.arguments.contains("--test-mode") && !CommandLine.arguments.contains("--self-test") {
+                portal_cef_application(); NSApplication.shared.setActivationPolicy(.regular); NSApplication.shared.activate(ignoringOtherApps: true)
+                let alert = NSAlert(); alert.messageText = "GAME PORTALを開けませんでした"; alert.informativeText = message; alert.runModal()
+            }
+            exit(1)
+        }
     }
 }

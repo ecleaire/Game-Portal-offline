@@ -1,8 +1,10 @@
 // Native Chromium host. Privileged messages exist only in the launcher frame.
 #import <Cocoa/Cocoa.h>
 #include <atomic>
+#include <algorithm>
 #include <string>
 #include <map>
+#include <memory>
 #include <mach-o/dyld.h>
 #include <crt_externs.h>
 #include "include/cef_app.h"
@@ -23,6 +25,7 @@ static std::string portal_url;
 static std::atomic<bool> portal_running(false);
 static bool portal_pumping = false, portal_deferred_pump = false;
 static bool portal_closing = false;
+static std::unique_ptr<CefScopedLibraryLoader> portal_library;
 static void PortalPump() {
   if (!portal_running.load()) return;
   if (portal_pumping) { portal_deferred_pump = true; return; }
@@ -70,11 +73,19 @@ class PortalApp : public CefApp, public CefBrowserProcessHandler, public CefRend
   CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() override { return this; }
   CefRefPtr<CefRenderProcessHandler> GetRenderProcessHandler() override { return this; }
   void OnBeforeCommandLineProcessing(const CefString& type, CefRefPtr<CefCommandLine> command) override {
-    if (type.empty() && command->HasSwitch("test-mode")) command->AppendSwitchWithValue("use-angle", "swiftshader");
+    if (type.empty()) {
+      command->AppendSwitch("site-per-process");
+      command->AppendSwitch("disable-background-networking");
+      command->AppendSwitch("disable-component-update");
+      command->AppendSwitch("disable-sync");
+      command->AppendSwitch("no-first-run");
+      if (command->HasSwitch("test-mode")) command->AppendSwitchWithValue("use-angle", "swiftshader");
+    }
   }
   void OnContextInitialized() override { dispatch_async(dispatch_get_main_queue(), ^{ PortalNotice("initialized"); }); }
   void OnScheduleMessagePumpWork(int64_t delay) override {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, MAX((int64_t)0, delay) * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ PortalPump(); });
+    const auto milliseconds = std::min<int64_t>(std::max<int64_t>(0, delay), 10000);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, milliseconds * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ PortalPump(); });
   }
   void OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra) override {
     if (extra && extra->HasKey("portal-url")) allowed_[browser->GetIdentifier()] = extra->GetString("portal-url");
@@ -89,7 +100,7 @@ class PortalApp : public CefApp, public CefBrowserProcessHandler, public CefRend
  private: IMPLEMENT_REFCOUNTING(PortalApp);
 };
 class PortalClient : public CefClient, public CefLifeSpanHandler, public CefRequestHandler,
-                     public CefLoadHandler, public CefDragHandler, public CefDownloadHandler, public CefDisplayHandler {
+                     public CefLoadHandler, public CefDragHandler, public CefDownloadHandler, public CefDisplayHandler, public CefContextMenuHandler {
  public:
   CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
   CefRefPtr<CefRequestHandler> GetRequestHandler() override { return this; }
@@ -97,6 +108,11 @@ class PortalClient : public CefClient, public CefLifeSpanHandler, public CefRequ
   CefRefPtr<CefDragHandler> GetDragHandler() override { return this; }
   CefRefPtr<CefDownloadHandler> GetDownloadHandler() override { return this; }
   CefRefPtr<CefDisplayHandler> GetDisplayHandler() override { return this; }
+  CefRefPtr<CefContextMenuHandler> GetContextMenuHandler() override { return this; }
+  void OnBeforeContextMenu(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame>, CefRefPtr<CefContextMenuParams>, CefRefPtr<CefMenuModel> menu) override {
+    for (int command : {MENU_ID_BACK, MENU_ID_FORWARD, MENU_ID_RELOAD, MENU_ID_RELOAD_NOCACHE, MENU_ID_STOPLOAD, MENU_ID_PRINT, MENU_ID_VIEW_SOURCE}) menu->Remove(command);
+  }
+  void OnFullscreenModeChange(CefRefPtr<CefBrowser>, bool fullscreen) override { PortalNotice("fullscreen", fullscreen ? "true" : "false"); }
   bool OnProcessMessageReceived(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, CefProcessId source, CefRefPtr<CefProcessMessage> message) override {
     if (source != PID_RENDERER || message->GetName() != "gameportal.rpc" || !PortalTrusted(frame)) return false;
     auto values = message->GetArgumentList(); if (values->GetSize() != 1 || values->GetType(0) != VTYPE_STRING) return true;
@@ -143,11 +159,12 @@ class PortalClient : public CefClient, public CefLifeSpanHandler, public CefRequ
 extern "C" void portal_cef_application() { [PortalApplication sharedApplication]; }
 extern "C" bool portal_cef_initialize(const char* framework, const char* helper, const char* profile, const char* bundle, PortalCallback callback) {
   portal_callback = callback;
-  const std::string library = std::string(framework) + "/Chromium Embedded Framework";
-  if (!cef_load_library(library.c_str())) return false;
+  portal_library = std::make_unique<CefScopedLibraryLoader>();
+  if (!portal_library->LoadInMain()) return false;
   CefSettings settings; settings.external_message_pump = true;
-  CefString(&settings.framework_dir_path) = framework; CefString(&settings.browser_subprocess_path) = helper;
-  CefString(&settings.main_bundle_path) = bundle; CefString(&settings.cache_path) = profile;
+  CefString(&settings.browser_subprocess_path) = helper;
+  CefString(&settings.cache_path) = profile;
+  CefString(&settings.root_cache_path) = profile;
   CefString(&settings.log_file) = std::string(profile) + "/cef.log";
   CefMainArgs args(*_NSGetArgc(), *_NSGetArgv());
   portal_running.store(true);
@@ -164,16 +181,14 @@ extern "C" bool portal_cef_open(void* parent, const char* address) {
 extern "C" void portal_cef_evaluate(const char* text) { if (portal_browser && PortalTrusted(portal_browser->GetMainFrame())) portal_browser->GetMainFrame()->ExecuteJavaScript(text, portal_url, 0); }
 extern "C" void portal_cef_resize() { if (portal_browser) { NSView* view = (__bridge NSView*)portal_browser->GetHost()->GetWindowHandle(); [view setFrame:[[view superview] bounds]]; } }
 extern "C" void portal_cef_close() { portal_closing = true; if (portal_browser) portal_browser->GetHost()->CloseBrowser(true); else PortalNotice("closed"); }
-extern "C" void portal_cef_shutdown() { portal_running.store(false); portal_browser = nullptr; CefShutdown(); cef_unload_library(); }
+extern "C" void portal_cef_shutdown() { portal_running.store(false); portal_browser = nullptr; CefShutdown(); portal_library.reset(); }
 
 #ifdef PORTAL_CEF_HELPER
 int main(int argc, char* argv[]) {
   CefScopedSandboxContext sandbox;
   if (!sandbox.Initialize(argc, argv)) return 1;
-  std::string framework;
-  const std::string flag = "--framework-dir-path=";
-  for (int n = 1; n < argc; ++n) if (std::string(argv[n]).rfind(flag, 0) == 0) framework = std::string(argv[n]).substr(flag.size());
-  if (framework.empty() || !cef_load_library((framework + "/Chromium Embedded Framework").c_str())) return 1;
+  CefScopedLibraryLoader library;
+  if (!library.LoadInHelper()) return 1;
   CefMainArgs args(argc, argv); return CefExecuteProcess(args, new PortalApp(), nullptr);
 }
 #endif

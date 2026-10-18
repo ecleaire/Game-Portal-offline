@@ -3,6 +3,11 @@ import CommonCrypto
 import Darwin
 
 struct DesktopEngine { let framework: URL, helper: URL, bundle: URL }
+func engineDigestBytes(_ bytes: Data) -> String {
+    var hash = [UInt8](repeating: 0, count: 32)
+    bytes.withUnsafeBytes { _ = CC_SHA256($0.baseAddress, CC_LONG(bytes.count), &hash) }
+    return hash.map { String(format: "%02x", $0) }.joined()
+}
 func engineDigest(_ url: URL) throws -> String {
     let input = try FileHandle(forReadingFrom: url); defer { input.closeFile() }
     var context = CC_SHA256_CTX(); CC_SHA256_Init(&context)
@@ -15,7 +20,7 @@ func engineRun(_ executable: String, _ args: [String]) throws -> String {
     guard process.terminationStatus == 0 else { throw DesktopError("内蔵エンジンの準備に失敗しました。配布フォルダーを展開し直してください。\n" + String((String(data: bytes, encoding: .utf8) ?? "").prefix(500))) }
     return String(data: bytes, encoding: .utf8) ?? ""
 }
-func prepareDesktopEngine(bundle: URL, profile: URL) throws -> DesktopEngine {
+func prepareDesktopEngine(bundle: URL, profile: URL, application: URL) throws -> DesktopEngine {
     #if arch(arm64)
     let architecture = "arm64"
     #else
@@ -40,13 +45,21 @@ func prepareDesktopEngine(bundle: URL, profile: URL) throws -> DesktopEngine {
         _ = try engineRun("/usr/bin/codesign", ["--verify", "--deep", "--strict", helper.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().path])
     }
     if fm.fileExists(atPath: destination.appendingPathComponent("ready.json").path) {
-        let ready = try desktopObject(checks.regularRead(destination.appendingPathComponent("ready.json"), limit: 1024))
-        guard ready["sha256"] as? String == digest, ready["build"] as? String == buildDigest else { throw DesktopError("内蔵エンジンの記録を確認してください。") }; try verifyInstalled(); return DesktopEngine(framework: framework, helper: helper, bundle: runtimeBundle)
+        do {
+            let ready = try desktopObject(checks.regularRead(destination.appendingPathComponent("ready.json"), limit: 1024))
+            guard ready["sha256"] as? String == digest, ready["build"] as? String == buildDigest else { throw DesktopError("内蔵エンジンの記録を確認してください。") }; try verifyInstalled(); return DesktopEngine(framework: framework, helper: helper, bundle: runtimeBundle)
+        } catch { try checks.checkAncestors(destination); try fm.removeItem(at: destination) }
+    } else if fm.fileExists(atPath: destination.path) {
+        try checks.checkAncestors(destination); try fm.removeItem(at: destination)
     }
     // The engine is included in the downloaded Mac folder; never downloaded at runtime.
     let packRoot = bundle.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("_内部ファイル/engine/" + architecture)
     guard fm.fileExists(atPath: packRoot.path) else { throw DesktopError("内蔵エンジンが見つかりません。ダウンロードした「Mac」フォルダーを、内部ファイルも含めてまとめて保管してください。") }
-    let staging = profile.appendingPathComponent(".install-" + desktopSecret()), archive = staging.appendingPathComponent("engine.zip")
+    let stalePattern = "^\\.install-" + architecture + "-[a-f0-9]{64}$"
+    for candidate in try fm.contentsOfDirectory(at: profile, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey]) where candidate.lastPathComponent.range(of: stalePattern, options: .regularExpression) != nil {
+        let values = try candidate.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]); if values.isDirectory == true && values.isSymbolicLink != true { try checks.checkAncestors(candidate); try fm.removeItem(at: candidate) }
+    }
+    let staging = profile.appendingPathComponent(".install-" + architecture + "-" + desktopSecret()), archive = staging.appendingPathComponent("engine.zip")
     try fm.createDirectory(at: staging, withIntermediateDirectories: false); defer { try? fm.removeItem(at: staging) }
     guard fm.createFile(atPath: archive.path, contents: nil) else { throw DesktopError("内蔵エンジンを準備する保存場所を確認してください。") }
     let output = try FileHandle(forWritingTo: archive); var total = 0
@@ -54,7 +67,7 @@ func prepareDesktopEngine(bundle: URL, profile: URL) throws -> DesktopEngine {
         for (index, part) in parts.enumerated() {
             guard let name = part["name"] as? String, name == String(format: "engine.part%02d", index), let expected = part["sha256"] as? String, expected.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil, let count = part["size"] as? Int, count > 0, count <= 40 * 1024 * 1024 else { throw DesktopError("内蔵エンジンのファイル一覧を確認してください。") }
             let file = try checks.bound(packRoot, name), bytes = try checks.regularRead(file, limit: 40 * 1024 * 1024)
-            guard bytes.count == count, try engineDigest(file) == expected else { throw DesktopError("内蔵エンジンのファイルが不足しているか壊れています。ZIPを展開し直してください。") }
+            guard bytes.count == count, engineDigestBytes(bytes) == expected else { throw DesktopError("内蔵エンジンのファイルが不足しているか壊れています。ZIPを展開し直してください。") }
             output.write(bytes); total += bytes.count
         }
         output.synchronizeFile(); output.closeFile()
@@ -68,6 +81,7 @@ func prepareDesktopEngine(bundle: URL, profile: URL) throws -> DesktopEngine {
     // Assemble a signed runtime bundle instead of weakening the subprocess sandbox.
     let stagedBundle = staging.appendingPathComponent("GAME PORTAL Runtime.app"), frameworks = stagedBundle.appendingPathComponent("Contents/Frameworks"), unpacked = staging.appendingPathComponent("engine")
     try fm.copyItem(at: bundle, to: stagedBundle); try fm.createDirectory(at: frameworks, withIntermediateDirectories: true)
+    try desktopJSON(["schema": 1, "application": application.path]).write(to: stagedBundle.appendingPathComponent("Contents/Resources/origin.json"), options: .atomic)
     for item in try fm.contentsOfDirectory(at: unpacked, includingPropertiesForKeys: nil) {
         let parent = item.lastPathComponent == "CEF-LICENSE.txt" ? stagedBundle.appendingPathComponent("Contents/Resources") : frameworks
         try fm.moveItem(at: item, to: parent.appendingPathComponent(item.lastPathComponent))
