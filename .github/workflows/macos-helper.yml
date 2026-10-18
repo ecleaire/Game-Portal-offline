@@ -57,15 +57,15 @@ jobs:
           path: .tools/cef
           key: cef-mac-v2-${{ matrix.os }}-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
       - run: node scripts/verify-mac-system.mjs
-      - run: node tests/mac-desktop.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/mac-desktop.mjs
         timeout-minutes: 6
         env:
           PORTAL_CEF_TEST_GL: ${{ runner.arch == 'ARM64' && 'gl' || '' }}
       - run: npx playwright install chromium
-      - run: node tests/native-distribution.mjs
-      - run: node tests/native-folder-browser.mjs
-      - run: node tests/offline-html/folder-comfort-browser.mjs
-      - run: node tests/offline-html/loading-cancel-browser.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/native-distribution.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/native-folder-browser.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/offline-html/folder-comfort-browser.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/offline-html/loading-cancel-browser.mjs
       - name: Publish verified native build tree
         if: matrix.os == 'macos-15-intel'
         run: node scripts/export-mac-build.mjs modern

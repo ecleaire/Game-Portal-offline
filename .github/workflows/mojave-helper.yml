@@ -28,32 +28,32 @@ jobs:
           path: .tools/cef
           key: cef-mac-v2-macos-15-intel-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
       - run: node scripts/verify-mojave.mjs
-      - run: node tests/mac-desktop.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/mac-desktop.mjs
         timeout-minutes: 6
         env:
           PORTAL_MAC_SUFFIX: MOJAVE
-      - run: node tests/native-distribution.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/native-distribution.mjs
         env:
           PORTAL_NATIVE_EXE: GAME-PORTAL-MOJAVE
       - run: node scripts/prepare-mojave-test.mjs
-      - run: node tests/mojave-esr-browser.mjs
-      - run: node tests/mojave-esr-browser.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/mojave-esr-browser.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/mojave-esr-browser.mjs
         env:
           PORTAL_MOJAVE_EDITION: player
       - run: npx playwright install firefox
-      - run: node tests/native-folder-browser.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/native-folder-browser.mjs
         env:
           PORTAL_NATIVE_EXE: GAME-PORTAL-MOJAVE
           PORTAL_BROWSER: firefox
-      - run: node tests/native-folder-browser.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/native-folder-browser.mjs
         env:
           PORTAL_NATIVE_EXE: GAME-PORTAL-MOJAVE
           PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
           PORTAL_EXPECT_BROWSER: '116.'
-      - run: node tests/offline-html/editions-browser.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/offline-html/editions-browser.mjs
         env:
           PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
-      - run: node tests/offline-html/information-browser.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/offline-html/information-browser.mjs
         env:
           PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
       - name: Publish verified native build tree
