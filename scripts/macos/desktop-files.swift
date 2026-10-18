@@ -15,7 +15,7 @@ func desktopSchema(_ value: Any?) -> Bool { guard let number = value as? NSNumbe
 func desktopObject(_ bytes: Data) throws -> [String: Any] {
     guard let object = try JSONSerialization.jsonObject(with: bytes) as? [String: Any] else { throw DesktopError("設定を確認してください。") }; return object
 }
-func desktopID(_ value: String) -> Bool { return value.range(of: "^[a-f0-9]{32}$", options: .regularExpression) != nil }
+func desktopID(_ value: String) -> Bool { return value.utf8.count == 32 && value.range(of: "^[a-f0-9]{32}$", options: .regularExpression) != nil }
 func desktopSecret() -> String {
     var bytes = [UInt8](repeating: 0, count: 32)
     precondition(SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess)
@@ -29,6 +29,12 @@ func desktopHash(_ value: String) -> String {
 
 // All operations run on one I/O queue. Opaque capabilities never enter game frames.
 final class DesktopFiles {
+    final class Reader {
+        let root: Root, descriptor: Int32, before: stat
+        var offset = 0
+        init(_ root: Root, _ descriptor: Int32, _ before: stat) { self.root = root; self.descriptor = descriptor; self.before = before }
+        deinit { Darwin.close(descriptor) }
+    }
     final class Root {
         let url: URL, token = desktopSecret(), secret = desktopSecret()
         var id: String?, initializing = false
@@ -43,7 +49,8 @@ final class DesktopFiles {
         deinit { Darwin.close(descriptor); Darwin.close(lock); try? FileManager.default.removeItem(at: temporary) }
     }
     let fm = FileManager.default, profile: URL, application: URL, player: Bool
-    var roots = [String: Root](), writers = [String: Writer]()
+    var roots = [String: Root](), writers = [String: Writer](), readers = [String: Reader]()
+    var connectionHint = ""
     init(profile: URL, application: URL, player: Bool) throws {
         self.profile = profile; self.application = application; self.player = player
         try fm.createDirectory(at: profile, withIntermediateDirectories: true)
@@ -66,8 +73,13 @@ final class DesktopFiles {
         return DesktopError(String(cString: strerror(errno)))
     }
     func checkAncestors(_ url: URL) throws {
+        // Foundation may standardize /private/var back to the macOS /var alias.
+        // Resolve only Apple's fixed system aliases; user-created links stay denied.
+        let path = url.path
+        let systemAlias = ["/var", "/tmp", "/etc"].contains(where: { path == $0 || path.hasPrefix($0 + "/") })
+        let checked = URL(fileURLWithPath: systemAlias ? "/private" + path : path)
         var current = URL(fileURLWithPath: "/", isDirectory: true)
-        for part in url.standardizedFileURL.pathComponents.dropFirst() {
+        for part in checked.pathComponents.dropFirst() {
             current.appendPathComponent(part)
             var info = stat()
             if lstat(current.path, &info) == 0 {
@@ -114,7 +126,7 @@ final class DesktopFiles {
     }
     func record(_ root: Root?) -> Any {
         guard let root = root else { return NSNull() }
-        return ["token": root.token, "secret": root.secret, "revision": root.token, "name": root.url.lastPathComponent]
+        return ["token": root.token, "secret": root.secret, "revision": root.token, "name": root.url.lastPathComponent, "connectionHint": connectionHint]
     }
     func restore() throws -> Root? {
         let file = profile.appendingPathComponent("folder.json")
@@ -136,10 +148,10 @@ final class DesktopFiles {
         }
         return nil
     }
-    func atomic(_ data: Data, _ destination: URL) throws {
+    func atomic(_ data: Data, _ destination: URL, mode: mode_t = 0o600) throws {
         try checkAncestors(destination)
         let temp = destination.deletingLastPathComponent().appendingPathComponent(".gameportal-" + desktopSecret() + ".tmp")
-        let fd = Darwin.open(temp.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
+        let fd = Darwin.open(temp.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, mode)
         guard fd >= 0 else { throw posixError() }; defer { Darwin.close(fd); try? fm.removeItem(at: temp) }
         try writeBytes(data, fd)
         guard fsync(fd) == 0 else { throw posixError() }; try checkAncestors(destination)
@@ -155,6 +167,35 @@ final class DesktopFiles {
         var value: [String: Any] = ["schema": 1, "path": root.url.path]
         if let id = root.id { value["id"] = id }
         try atomic(desktopJSON(value), profile.appendingPathComponent("folder.json"))
+        try rememberShared(root)
+    }
+    func rememberShared(_ root: Root) throws {
+        connectionHint = ""
+        guard let id = root.id else { return }
+        do {
+            let shared = application.appendingPathComponent("GAME-PORTAL-CONNECTION.json")
+            if fm.fileExists(atPath: shared.path) {
+                try checkAncestors(shared)
+                let value = try desktopObject(regularRead(shared, limit: 8192))
+                guard desktopSchema(value["schema"]), value["kind"] as? String == "relative", let path = value["path"] as? String, !path.isEmpty, !path.hasPrefix("/"), !path.contains("\\"), !path.contains(":"), !path.contains("\0"), !path.contains("\n"), !path.contains("\r"), path.split(separator: "/", omittingEmptySubsequences: false).count <= 32, let expected = value["libraryId"] as? String, desktopID(expected) else { throw DesktopError("共有接続設定を確認してください。") }
+                let registered = try register(application.appendingPathComponent(path).standardizedFileURL.path, expected: expected)
+                if registered.id != root.id || registered.url != root.url { connectionHint = "このMacの保存先を記憶しました。共有の保存先は変更していません。" }; return
+            }
+            let descendant = root.url.path == application.path || root.url.path.hasPrefix(application.path + "/")
+            var first = stat(), second = stat()
+            let local = try application.resourceValues(forKeys: [.volumeIsLocalKey]).volumeIsLocal ?? true
+            guard descendant || !local && lstat(application.path, &first) == 0 && lstat(root.url.path, &second) == 0 && first.st_dev == second.st_dev else { return }
+            let from = application.pathComponents, to = root.url.pathComponents
+            var common = 0; while common < min(from.count, to.count) && from[common] == to[common] { common += 1 }
+            let components = Array(repeating: "..", count: from.count - common) + Array(to.dropFirst(common)), path = components.isEmpty ? "." : components.joined(separator: "/")
+            guard path.utf8.count <= 1000, components.count <= 32, !path.contains(":"), !path.contains("\\"), !path.contains("\n"), !path.contains("\r") else { return }
+            let temporary = application.appendingPathComponent("GAME-PORTAL-CONNECTION.json." + desktopSecret() + ".tmp")
+            defer { try? fm.removeItem(at: temporary) }
+            try atomic(desktopJSON(["schema": 1, "kind": "relative", "path": path, "libraryId": id]), temporary, mode: 0o666)
+            // Hard-link publication is exclusive: never replace another PC's choice.
+            guard Darwin.link(temporary.path, shared.path) == 0 else { if errno == EEXIST { return }; throw posixError() }
+            connectionHint = "保存先を共有しました。同じ場所のアプリを開くPCで使えます。"
+        } catch { connectionHint = "このMacには記憶しました。接続先をほかのPCへ共有できませんでした：" + ((error as? DesktopError)?.message ?? error.localizedDescription) }
     }
     func checkWrite(_ path: String, directory: Bool = false) throws {
         if !player { return }
@@ -166,7 +207,20 @@ final class DesktopFiles {
         if op == "restore" { return record(try restore()) }
         if op == "selectPath" { return record(try register(path)) }
         if op == "forget" { let file = profile.appendingPathComponent("folder.json"); if fm.fileExists(atPath: file.path) { try fm.removeItem(at: file) }; return true }
+        if op == "cancelReads" { readers.removeAll(); return true }
         guard let token = data["root"] as? String else { throw DesktopError("保存先を選んでください。") }
+        if ["readChunk", "endRead", "abortRead"].contains(op) {
+            guard let key = data["reader"] as? String, let reader = readers[key], reader.root.token == token else { throw DesktopError("読み込みが終了したため、もう一度開いてください。") }
+            if op == "abortRead" { readers.removeValue(forKey: key); return true }
+            if op == "endRead" {
+                defer { readers.removeValue(forKey: key) }; _ = try get(token)
+                var after = stat(); guard fstat(reader.descriptor, &after) == 0, after.st_size == reader.before.st_size, after.st_mtimespec.tv_sec == reader.before.st_mtimespec.tv_sec, after.st_mtimespec.tv_nsec == reader.before.st_mtimespec.tv_nsec, reader.offset == Int(after.st_size) else { throw DesktopError("読み込み中にファイルが変わりました。もう一度開いてください。") }; return true
+            }
+            guard let offset = data["offset"] as? Int, offset == reader.offset else { throw DesktopError("読み込み位置を確認してください。") }
+            var bytes = [UInt8](repeating: 0, count: min(1048576, Int(reader.before.st_size) - offset))
+            let count = Darwin.read(reader.descriptor, &bytes, bytes.count); guard count >= 0 else { throw posixError() }; reader.offset += count
+            return ["data": Data(bytes.prefix(count)).base64EncodedString(), "size": reader.before.st_size] as [String: Any]
+        }
         if op == "abortWrite" { if let writer = data["writer"] as? String, writers[writer]?.root.token == token { writers.removeValue(forKey: writer) }; return true }
         let root = try get(token), url = try bound(root.url, path, allowRoot: op == "list" || op == "stat" || op == "remember")
         switch op {
@@ -184,22 +238,26 @@ final class DesktopFiles {
             if fm.fileExists(atPath: url.path, isDirectory: &isDirectory) { guard isDirectory.boolValue == directory else { throw DesktopError("ファイルとフォルダーの種類が違います。", "TypeMismatchError") }; return true }
             guard create else { throw DesktopError("項目が見つかりません。", "NotFoundError") }; try checkWrite(path, directory: directory)
             if directory { try fm.createDirectory(at: url, withIntermediateDirectories: false) }
-            else { let fd = Darwin.open(url.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600); guard fd >= 0 else { throw posixError() }; Darwin.close(fd); if path == ".gameportal/library-id.json" && root.id == nil { root.initializing = true } }; return true
-        case "readChunk":
-            guard let offset = data["offset"] as? Int, offset >= 0, offset <= desktopLimit else { throw DesktopError("読み込み位置を確認してください。") }
-            let fd = Darwin.open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK); guard fd >= 0 else { throw posixError() }; defer { Darwin.close(fd) }
-            var info = stat(); guard fstat(fd, &info) == 0, info.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG), info.st_size <= desktopLimit, offset <= info.st_size else { throw DesktopError("ファイルの大きさを確認してください。") }
-            var bytes = [UInt8](repeating: 0, count: min(262144, Int(info.st_size) - offset)); let count = pread(fd, &bytes, bytes.count, off_t(offset)); guard count >= 0 else { throw posixError() }
-            return ["data": Data(bytes.prefix(count)).base64EncodedString(), "size": info.st_size] as [String: Any]
+            else { let fd = Darwin.open(url.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o666); guard fd >= 0 else { throw posixError() }; Darwin.close(fd); if path == ".gameportal/library-id.json" && root.id == nil { root.initializing = true } }; return true
+        case "beginRead":
+            guard readers.count < 8 else { throw DesktopError("読み込み中のゲームを中止してから、もう一度開いてください。") }
+            let fd = Darwin.open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK); guard fd >= 0 else { throw posixError() }
+            var info = stat(); guard fstat(fd, &info) == 0, info.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG), info.st_size >= 0, info.st_size <= desktopLimit else { Darwin.close(fd); throw DesktopError("ファイルの大きさを確認してください。") }
+            let key = desktopSecret(); readers[key] = Reader(root, fd, info); return ["reader": key, "size": info.st_size] as [String: Any]
         case "beginWrite":
             try checkWrite(path)
             guard !writers.values.contains(where: { $0.root.url == root.url && $0.path == path }) else { throw DesktopError("ほかの画面で保存中です。", "NoModificationAllowedError") }
             let locks = try bound(root.url, ".gameportal/desktop-locks"); try fm.createDirectory(at: locks, withIntermediateDirectories: true)
             let lockPath = locks.appendingPathComponent(desktopHash(path.uppercased()) + ".lock")
-            let lock = Darwin.open(lockPath.path, O_RDWR | O_CREAT | O_NOFOLLOW | O_NONBLOCK, 0o600); guard lock >= 0 else { throw posixError() }
+            let lock = Darwin.open(lockPath.path, O_RDWR | O_CREAT | O_NOFOLLOW | O_NONBLOCK, 0o666); guard lock >= 0 else { throw posixError() }
+            var lockInfo = stat(); guard fstat(lock, &lockInfo) == 0, lockInfo.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else { Darwin.close(lock); throw DesktopError("保存用のロックファイルを確認してください。") }
             guard flock(lock, LOCK_EX | LOCK_NB) == 0 else { Darwin.close(lock); throw DesktopError("ほかの画面で保存中です。", "NoModificationAllowedError") }
-            let temp = url.deletingLastPathComponent().appendingPathComponent(".gameportal-" + desktopSecret() + ".tmp"), fd = Darwin.open(temp.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
-            guard fd >= 0 else { Darwin.close(lock); throw posixError() }; let writer = desktopSecret(); writers[writer] = Writer(root, path, temp, fd, lock); return ["token": writer]
+            var existing = stat(); let exists = lstat(url.path, &existing) == 0
+            guard !exists || existing.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else { Darwin.close(lock); throw DesktopError("通常のファイルではありません。") }
+            let temp = url.deletingLastPathComponent().appendingPathComponent(".gameportal-" + desktopSecret() + ".tmp"), fd = Darwin.open(temp.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o666)
+            guard fd >= 0 else { Darwin.close(lock); throw posixError() }
+            if exists && fchmod(fd, existing.st_mode & mode_t(0o777)) != 0 { Darwin.close(fd); Darwin.close(lock); try? fm.removeItem(at: temp); throw posixError() }
+            let writer = desktopSecret(); writers[writer] = Writer(root, path, temp, fd, lock); return ["token": writer]
         case "writeChunk", "commitWrite":
             guard let key = data["writer"] as? String, let writer = writers[key], writer.root === root, writer.path == path else { throw DesktopError("保存処理が一致しません。") }; try checkWrite(path)
             if op == "writeChunk" {

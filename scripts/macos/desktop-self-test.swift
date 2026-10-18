@@ -29,7 +29,10 @@ func desktopSelfTest(_ directory: URL) throws {
     try denied { _ = try begin("game.html") }; _ = try request("abortWrite", "", ["writer": cancelled])
     try check(try files.regularRead(disk.appendingPathComponent("game.html"), limit: 100) == Data("first".utf8), "cancel must retain old content")
     let second = try begin("game.html"); try chunk(second, "game.html", "second"); _ = try request("commitWrite", "game.html", ["writer": second])
-    let read = try request("readChunk", "game.html", ["offset": 0]) as? [String: Any]
+    let beginRead = try request("beginRead", "game.html") as! [String: Any]
+    let reader = beginRead["reader"] as! String
+    let read = try request("readChunk", "", ["offset": 0, "reader": reader]) as? [String: Any]
+    _ = try request("endRead", "", ["reader": reader])
     try check(read?["data"] as? String == Data("second".utf8).base64EncodedString(), "chunk reading")
     try denied { _ = try request("remove", ".gameportal", ["recursive": true]) }
     let identity = try begin(".gameportal/library-id.json"); try chunk(identity, ".gameportal/library-id.json", "{\"schema\":1,\"id\":\"" + String(repeating: "b", count: 32) + "\"}")

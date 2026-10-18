@@ -90,7 +90,10 @@ class PortalClient : public CefClient, public CefLifeSpanHandler, public CefRequ
   bool OnProcessMessageReceived(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, CefProcessId source, CefRefPtr<CefProcessMessage> message) override {
     if (source != PID_RENDERER || message->GetName() != "gameportal.rpc" || !PortalTrusted(frame)) return false;
     auto values = message->GetArgumentList(); if (values->GetSize() != 1 || values->GetType(0) != VTYPE_STRING) return true;
-    std::string text = values->GetString(0); if (text.size() <= 400000 && portal_callback) portal_callback(text.c_str()); return true;
+    std::string text = values->GetString(0); if (text.size() > 400000) return true;
+    auto value = CefParseJSON(text, JSON_PARSER_RFC); if (!value || value->GetType() != VTYPE_DICTIONARY) return true;
+    auto request = value->GetDictionary(); if (request->HasKey("kind") || request->GetType("id") != VTYPE_INT || request->GetInt("id") <= 0 || request->GetType("op") != VTYPE_STRING) return true;
+    if (portal_callback) portal_callback(text.c_str()); return true;
   }
   void OnAfterCreated(CefRefPtr<CefBrowser> browser) override { portal_browser = browser; }
   bool DoClose(CefRefPtr<CefBrowser>) override { if (!portal_closing) { PortalNotice("closeRequested"); return true; } return false; }
@@ -100,10 +103,10 @@ class PortalClient : public CefClient, public CefLifeSpanHandler, public CefRequ
     if (frame->IsMain()) return url.substr(0, url.find('#')) != portal_url;
     return url.rfind("blob:", 0) != 0 && url.rfind("data:", 0) != 0 && url.rfind("about:", 0) != 0;
   }
-  bool OnBeforePopup(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame>, const CefString& url, const CefString&,
+  bool OnBeforePopup(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, const CefString& url, const CefString&,
       WindowOpenDisposition, bool gesture, const CefPopupFeatures&, CefWindowInfo&, CefRefPtr<CefClient>&,
       CefBrowserSettings&, CefRefPtr<CefDictionaryValue>&, bool*) override {
-    const std::string address = url; if (gesture && address.rfind("https://", 0) == 0) [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:[NSString stringWithUTF8String:address.c_str()]]]; return true;
+    const std::string address = url; if (PortalTrusted(frame) && gesture && address.rfind("https://", 0) == 0) [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:[NSString stringWithUTF8String:address.c_str()]]]; return true;
   }
   void OnLoadEnd(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, int) override { if (PortalTrusted(frame)) PortalNotice("ready"); }
   void OnLoadError(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, ErrorCode code, const CefString& text, const CefString&) override {

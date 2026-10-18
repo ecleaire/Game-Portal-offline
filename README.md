@@ -21,10 +21,10 @@ GitHubの **Code → Download ZIP** からもダウンロードできます。Ac
 | Google Chrome（Windows・Mac） | `GAME-PORTAL-PLAY.html` | `GAME-PORTAL.html` |
 | Mac（Intel：10.14.6以降／Appleシリコン：11以降） | `GAME-PORTAL-PLAY-MAC.app` | `GAME-PORTAL-MAC.app` |
 
-Windows・Macアプリはベータ版です。MacアプリはGoogle Chromeでゲーム画面を開きます。
+Windows・Macアプリはベータ版です。Mac版は表示エンジンを同梱し、アプリ内でゲームを開きます。Google Chromeの別インストールや、ブラウザーのフォルダーアクセス許可は不要です。
 
 ゲームは配布ZIPに含まれていません。共有して遊ぶときは、ゲームを管理する人に保存先を確認してください。
-`_内部ファイル`・`_runtime` は変更せず、配布フォルダーごと保管してください。
+`_内部ファイル`・`_runtime` は変更せず、配布フォルダーごと保管してください。Mac版の表示エンジンは `Mac/_内部ファイル` に同梱しています。`Mac` フォルダー全体をまとめて保管し、初回の起動準備が終わるまでお待ちください。
 
 ## 遊ぶ・ゲームを管理する
 
