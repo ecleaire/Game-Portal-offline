@@ -9,7 +9,7 @@ const temporary=await mkdtemp(join(tmpdir(),'portal-mac-desktop-')),root=await i
 const suffix=process.env.PORTAL_MAC_SUFFIX||'MAC',disk=join(root,'ゲーム # +');let processHandle;
 try{
  await mkdir(disk,{recursive:true});
- await writeFile(join(disk,'game.html'),'<!doctype html><h1>Native Mac play</h1><script>parent.postMessage({macGameReady:true,title:document.querySelector("h1").textContent,webgl2:!!document.createElement("canvas").getContext("webgl2"),wasm:WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0]))},"*");window.addEventListener("message",event=>{if(event.data==="security-test"){let parentBlocked=false;try{void parent.document;}catch{parentBlocked=true;}parent.postMessage({macSecurity:true,denied:typeof window.__portalSend==="undefined"&&parentBlocked},"*");}});</script>');
+ await writeFile(join(disk,'game.html'),'<!doctype html><h1>Native Mac play</h1><script>localStorage.setItem("mac-retained","yes");parent.postMessage({macGameReady:true,title:document.querySelector("h1").textContent,webgl2:!!document.createElement("canvas").getContext("webgl2"),wasm:WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0]))},"*");window.addEventListener("message",event=>{if(event.data==="security-test"){let parentBlocked=false;try{void parent.document;}catch{parentBlocked=true;}parent.postMessage({macSecurity:true,denied:typeof window.__portalSend==="undefined"&&parentBlocked},"*");}});</script>');
  await mkdir(join(root,'Mac/_内部ファイル'),{recursive:true});await cp(resolve('Mac/_内部ファイル/engine'),join(root,'Mac/_内部ファイル/engine'),{recursive:true});
  for(const edition of ['creator','player']){
   const name=(edition==='player'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-')+suffix,app=join(root,'Mac',edition==='player'?'プレイ用':'クリエイター用',name+'.app');await cp(resolve(name+'.app'),app,{recursive:true});
@@ -32,11 +32,12 @@ check(await root.queryPermission({mode:'readwrite'})==='granted','no browser per
 if(launcherEdition==='creator'&&${cycle}===0){const input=document.getElementById('enableEditing');input.checked=true;await input.onchange();check(editingEnabled,'native edit mode');editGame(games[0]);document.getElementById('editTitle').value='Mac edited';document.getElementById('editEnvironment').value='HTML';document.getElementById('editDescription').value='Native metadata';document.getElementById('editForm').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await until(()=>!busy&&!document.getElementById('edit').open,'metadata save');check(games[0].title==='Mac edited','edited title');}
 if(launcherEdition==='player'){check(!editingEnabled,'player mode');let blocked=false;try{await root.getFileHandle('forbidden.html',{create:true});}catch{blocked=true;}check(blocked,'native player write denial');}
 const library=localLibrary;
+if(${cycle}===1)check((await localState.loadLocalSave(library,games[0].id))['mac-retained']==='yes','save survives real app restart before game starts');
 let gameReady=null,security=null;const listener=event=>{if(event.source!==document.getElementById('frame').contentWindow)return;if(event.data?.macGameReady)gameReady=event.data;if(event.data?.macSecurity)security=event.data;};window.addEventListener('message',listener);
-await playGame(games[0]);await until(()=>!busy&&document.getElementById('frame').src,'game opens');
+await playGame(games[0]);await until(()=>!busy&&!document.getElementById('frame').hidden,'game opens');
 await until(()=>gameReady,'game really executed');check(gameReady.title==='Native Mac play'&&gameReady.wasm&&gameReady.webgl2,'WebGL2 and WebAssembly inside bundled Chromium');document.getElementById('frame').contentWindow.postMessage('security-test','*');await until(()=>security,'sandbox test');check(security.denied,'game cannot call the native host or access its parent');window.removeEventListener('message',listener);
 check(document.getElementById('frame').sandbox.contains('allow-scripts')&&!document.getElementById('frame').sandbox.contains('allow-same-origin'),'game sandbox retained');
-if(${cycle}===0)await localState.writeLocalSave(library,games[0].id,{'mac-retained':'yes'});else check((await localState.loadLocalSave(library,games[0].id))['mac-retained']==='yes','save survives real app restart');
+await until(()=>activePlay?.latest?.['mac-retained']==='yes','game save received');check(await flushSave(),'game save persisted');
 stopPlayer();return {edition:launcherEdition,cycle:${cycle},library,version:document.getElementById('appVersion').textContent};`;
    // Tests execute the actual bundled Chromium application on macOS CI.
    // This does not claim physical macOS 10.14.6 testing.

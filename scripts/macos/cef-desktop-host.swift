@@ -116,6 +116,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func message(_ data: [String: Any]) {
         // The CEF browser process validates sender process, main frame and exact URL.
         if let kind = data["kind"] as? String {
+            if testMode { fputs("GAME PORTAL event: \(kind) \(data["text"] as? String ?? "")\n", stderr) }
             switch kind {
             case "initialized": if !portal_cef_open(Unmanaged.passUnretained(view).toOpaque(), appURL.absoluteString) { fail(DesktopError("ゲーム画面を開けませんでした。")) }
             case "ready": didLoad()
@@ -126,7 +127,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let active = window.styleMask.contains(.fullScreen)
                 if data["text"] as? String == "true" { if !active { fullscreenFromGame = true; window.toggleFullScreen(nil) } }
                 else if fullscreenFromGame { fullscreenFromGame = false; if active { window.toggleFullScreen(nil) } }
-            case "loadError": notice("画面を読み込めませんでした", data["text"] as? String ?? "アプリを開き直してください。")
+            case "loadError": if testMode { fail(DesktopError(data["text"] as? String ?? "Load failed")) } else { notice("画面を読み込めませんでした", data["text"] as? String ?? "アプリを開き直してください。") }
             case "consoleError": fputs("GAME PORTAL renderer: \(data["text"] as? String ?? "")\n", stderr)
             default: break
             }; return
@@ -205,7 +206,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     let header = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(self.page.count)\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nContent-Security-Policy: frame-ancestors 'none'\r\nConnection: close\r\n\r\n"
                     connection.send(content: Data(header.utf8), completion: .contentProcessed { error in
                         if error != nil { connection.cancel(); return }
-                        connection.send(content: self.page, completion: .contentProcessed { _ in connection.cancel() })
+                        connection.send(content: self.page, contentContext: .finalMessage, isComplete: true, completion: .contentProcessed { error in if error != nil { connection.cancel() } })
                     }); return
                 }
                 if complete || error != nil { connection.cancel() } else { next() }
