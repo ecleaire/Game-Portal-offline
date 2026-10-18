@@ -1,4 +1,5 @@
 import Foundation
+import CoreFoundation
 import AppKit
 import Network
 import Darwin
@@ -14,7 +15,7 @@ let desktopVersion = "__VERSION__"
 let desktopEdition = Bundle.main.object(forInfoDictionaryKey: "GamePortalEdition") as? String ?? "creator"
 var desktopInstance: PortalDesktop?
 func desktopMainRunLoop(_ operation: @escaping () -> Void) {
-    CFRunLoopPerformBlock(CFRunLoopGetMain(), kCFRunLoopCommonModes, operation)
+    CFRunLoopPerformBlock(CFRunLoopGetMain(), CFRunLoopMode.commonModes.rawValue, operation)
     CFRunLoopWakeUp(CFRunLoopGetMain())
 }
 @_cdecl("portal_swift_callback") func portalSwiftCallback(_ pointer: UnsafePointer<CChar>?) {
