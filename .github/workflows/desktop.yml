@@ -21,6 +21,7 @@ jobs:
       - run: node tests/desktop-files.mjs
       - run: node tests/desktop-browser.mjs
       - run: node tests/desktop-player.mjs
+      - run: node tests/desktop-information.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-desktop-prototype
