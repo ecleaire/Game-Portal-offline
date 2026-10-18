@@ -4,7 +4,7 @@ on:
     paths: ['HTML/**', 'scripts/distribution.mjs', 'tests/native-distribution.mjs', 'scripts/macos/**', 'scripts/build-mac-apps.mjs', 'desktop/bootstrap.js', 'desktop/page.mjs', 'tests/mac-desktop.mjs', 'package-lock.json', 'scripts/build-mojave.mjs', 'scripts/prepare-mojave-test.mjs', 'tests/mojave-esr-browser.mjs', 'tests/native-folder-browser.mjs', 'tests/offline-html/information-browser.mjs', 'GAME-PORTAL.html', '.github/workflows/mojave-helper.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   mojave:
     runs-on: macos-15-intel
@@ -56,6 +56,8 @@ jobs:
       - run: node tests/offline-html/information-browser.mjs
         env:
           PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+      - name: Publish verified native build tree
+        run: node scripts/export-mac-build.mjs legacy
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-MOJAVE-Intel

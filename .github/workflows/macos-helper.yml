@@ -29,7 +29,7 @@ on:
       - '.github/workflows/macos-helper.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     strategy:
@@ -64,6 +64,9 @@ jobs:
       - run: node tests/native-folder-browser.mjs
       - run: node tests/offline-html/folder-comfort-browser.mjs
       - run: node tests/offline-html/loading-cancel-browser.mjs
+      - name: Publish verified native build tree
+        if: matrix.os == 'macos-15-intel'
+        run: node scripts/export-mac-build.mjs modern
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-MAC-universal-${{ matrix.os }}
