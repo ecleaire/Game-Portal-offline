@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "source_commit": "a74b76e7658d9a7a23cb4d6e37c89377f852e475",
+  "version": "0.24.0",
+  "kind": "legacy",
+  "files": [
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/GAME-PORTAL-MOJAVE",
+      "mode": "100755",
+      "blob": "9cdda40971f190dc757c76dd3c8bd86d9264ac7d"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/GAME-PORTAL-MOJAVE",
+      "mode": "100755",
+      "blob": "9cdda40971f190dc757c76dd3c8bd86d9264ac7d"
+    }
+  ]
+}
