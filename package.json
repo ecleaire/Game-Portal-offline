@@ -1,6 +1,6 @@
 {
   "name": "game-portal-offline-html",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -20,7 +20,7 @@
     "build:macos": "node scripts/build-macos.mjs",
     "test:native-folder": "node tests/native-folder-browser.mjs",
     "build:desktop": "node scripts/build-desktop.mjs",
-    "test:desktop": "node tests/desktop-files.mjs && node tests/desktop-browser.mjs && node tests/desktop-player.mjs && node tests/desktop-information.mjs"
+    "test:desktop": "node tests/desktop-files.mjs && node tests/desktop-browser.mjs && node tests/desktop-player.mjs && node tests/desktop-information.mjs && node tests/desktop-forget.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0"

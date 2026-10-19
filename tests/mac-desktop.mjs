@@ -49,7 +49,9 @@ await playGame(games[0]);await until(()=>!busy&&!document.getElementById('frame'
 await until(()=>gameReady,'game really executed');check(gameReady.title==='Native Mac play'&&gameReady.wasm&&gameReady.webgl2,'WebGL2 and WebAssembly inside bundled Chromium: '+JSON.stringify(gameReady));document.getElementById('frame').contentWindow.postMessage('security-test','*');await until(()=>security,'sandbox test');check(security.denied,'game cannot call the native host or access its parent');window.removeEventListener('message',listener);
 check(document.getElementById('frame').sandbox.contains('allow-scripts')&&!document.getElementById('frame').sandbox.contains('allow-same-origin'),'game sandbox retained');
 await until(()=>activePlay?.latest?.['mac-retained']==='yes','game save received');check(await flushSave(),'game save persisted');
-stopPlayer();return {edition:launcherEdition,cycle:${cycle},library,version:document.getElementById('appVersion').textContent};`;
+stopPlayer();
+const selectedRoot=root;await localState.forgetHandle();check(await desktopHost.current()===null,'forgotten folder suppresses shared default');check(root===selectedRoot,'forget preserves current connection');await localState.cacheHandle(selectedRoot);check(!!(await desktopHost.current()),'explicit selection resumes remembering');
+return {edition:launcherEdition,cycle:${cycle},library,version:document.getElementById('appVersion').textContent};`;
    // Tests execute the actual bundled Chromium application on macOS CI.
    // This does not claim physical macOS 10.14.6 testing.
    await writeFile(script,body);let logs='';nativeOutput='';processHandle=spawn(executable,['--test-mode','--profile',join(root,'profile-'+edition),'--test-script',script,'--result-file',result],{detached:true,stdio:['ignore','pipe','pipe']});processHandle.stdout.on('data',data=>{logs+=data;nativeOutput+=data;});processHandle.stderr.on('data',data=>{logs+=data;nativeOutput+=data;});

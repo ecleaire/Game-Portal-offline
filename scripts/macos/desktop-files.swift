@@ -145,7 +145,10 @@ final class DesktopFiles {
         let file = profile.appendingPathComponent("folder.json")
         if fm.fileExists(atPath: file.path) {
             let value = try desktopObject(regularRead(file, limit: 8192))
-            guard desktopSchema(value["schema"]), let path = value["path"] as? String else { throw DesktopError("保存先の記憶を確認してください。") }
+            guard desktopSchema(value["schema"]) else { throw DesktopError("保存先の記憶を確認してください。") }
+            // Forget only on this profile; preserve shared settings for peers.
+            if let forgotten = value["forgotten"] as? NSNumber, CFGetTypeID(forgotten) == CFBooleanGetTypeID(), forgotten.boolValue, value["path"] == nil, value["id"] == nil { return nil }
+            guard let path = value["path"] as? String else { throw DesktopError("保存先の記憶を確認してください。") }
             return try register(path, expected: value["id"] as? String)
         }
         let shared = application.appendingPathComponent("GAME-PORTAL-CONNECTION.json")
@@ -219,7 +222,7 @@ final class DesktopFiles {
         let op = data["op"] as? String ?? "", path = data["path"] as? String ?? ""
         if op == "restore" { return record(try restore()) }
         if op == "selectPath" { return record(try register(path)) }
-        if op == "forget" { let file = profile.appendingPathComponent("folder.json"); if fm.fileExists(atPath: file.path) { try fm.removeItem(at: file) }; return true }
+        if op == "forget" { try atomic(desktopJSON(["schema": 1, "forgotten": true]), profile.appendingPathComponent("folder.json")); return true }
         if op == "cancelReads" { let removed = state { let values = Array(readers.values); readers.removeAll(); return values }; withExtendedLifetime(removed) {}; return true }
         guard let token = data["root"] as? String else { throw DesktopError("保存先を選んでください。") }
         if ["readChunk", "endRead", "abortRead"].contains(op) {
