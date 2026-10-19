@@ -1,11 +1,32 @@
 name: Build and test offline HTML launcher
 on:
   workflow_dispatch:
+    inputs:
+      verify_public_download:
+        description: Verify the actual public main Code ZIP and launch its HTML editions
+        type: boolean
+        default: false
   push:
   pull_request:
 permissions:
   contents: read
 jobs:
+  public-download:
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_public_download
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: mkdir -p .tools
+      - run: curl --fail --location --retry 2 --connect-timeout 30 --max-time 600 --max-filesize 1200000000 --output .tools/public-main.zip https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip
+      - run: node scripts/verify-code-zip.mjs .tools/public-main.zip
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/public-code-zip.mjs .tools/public-main.zip
   browser:
     strategy:
       fail-fast: false
