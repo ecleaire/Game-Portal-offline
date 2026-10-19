@@ -1,0 +1,298 @@
+{
+  "schema": 1,
+  "source_commit": "a74b76e7658d9a7a23cb4d6e37c89377f852e475",
+  "version": "0.24.0",
+  "kind": "modern",
+  "files": [
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Info.plist",
+      "mode": "100644",
+      "blob": "df179a864c7027ba305976e08a97a9d908379a57"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/MacOS/GAME-PORTAL-MAC",
+      "mode": "100755",
+      "blob": "c08b01138f699a07cd6e20844d97712d54bf6c3a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/GAME-PORTAL-DESKTOP.html",
+      "mode": "100644",
+      "blob": "1b28de5e9ced850b709a5dc911f131b962c3d4d1"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/GAME-PORTAL.html",
+      "mode": "100644",
+      "blob": "72284bde50681cc5c1824b96034ec1ec2574ce93"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/MAC-DESKTOP-LICENSES.txt",
+      "mode": "100644",
+      "blob": "7310018a2d2872aa30fe992b2cf0633820617a3f"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/build.json",
+      "mode": "100644",
+      "blob": "40e7cfcfaf850a6788dbb38f864cfae01e1a288b"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/arm64/engine.part00",
+      "mode": "100644",
+      "blob": "38d6bb5a6375adf766cb4244c48823df51699a34"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/arm64/engine.part01",
+      "mode": "100644",
+      "blob": "71659ab42e40c61e2f19d26e4f9c1e3ffed6fd35"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/arm64/engine.part02",
+      "mode": "100644",
+      "blob": "cb4f91265d32a6971abf3b533884168a2459fd74"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/x86_64/engine.part00",
+      "mode": "100644",
+      "blob": "d21b5ff5559e7da61381f0b56526c3da895c0765"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/x86_64/engine.part01",
+      "mode": "100644",
+      "blob": "c2a8388b04c9a3776793c5123e4d02424111d8a1"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/x86_64/engine.part02",
+      "mode": "100644",
+      "blob": "15162370639747dfce4aff57480a3c3d37767578"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine.json",
+      "mode": "100644",
+      "blob": "0e3a4c71c364bc452ad9eb231ef339a8d24be46b"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/_CodeSignature/CodeResources",
+      "mode": "100644",
+      "blob": "3c561d7d5edba1c2ab4f1f1527ee6cc56f7ee6d4"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Info.plist",
+      "mode": "100644",
+      "blob": "6b3b12ee42dbbc5a74584ba4b92aee1c576541a4"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/MacOS/GAME-PORTAL-MOJAVE",
+      "mode": "100755",
+      "blob": "92ff3b1da6799680e38a9955f6aa17a840349f17"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/GAME-PORTAL-DESKTOP.html",
+      "mode": "100644",
+      "blob": "1b28de5e9ced850b709a5dc911f131b962c3d4d1"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/GAME-PORTAL.html",
+      "mode": "100644",
+      "blob": "72284bde50681cc5c1824b96034ec1ec2574ce93"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/MAC-DESKTOP-LICENSES.txt",
+      "mode": "100644",
+      "blob": "7310018a2d2872aa30fe992b2cf0633820617a3f"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/build.json",
+      "mode": "100644",
+      "blob": "40e7cfcfaf850a6788dbb38f864cfae01e1a288b"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part00",
+      "mode": "100644",
+      "blob": "d21b5ff5559e7da61381f0b56526c3da895c0765"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part01",
+      "mode": "100644",
+      "blob": "c2a8388b04c9a3776793c5123e4d02424111d8a1"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part02",
+      "mode": "100644",
+      "blob": "15162370639747dfce4aff57480a3c3d37767578"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/engine.json",
+      "mode": "100644",
+      "blob": "32f9c9cffc701eeda9f7ec8db0c89d7b5209fb41"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/_CodeSignature/CodeResources",
+      "mode": "100644",
+      "blob": "e7f67051d04a1bf9e9b55af2ec646ae5f59568a7"
+    },
+    {
+      "path": "Mac/クリエイター用/_内部ファイル/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Info.plist",
+      "mode": "100644",
+      "blob": "ad9644190a65f17e717369ed573f687e46792166"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/MacOS/GAME-PORTAL-MAC",
+      "mode": "100755",
+      "blob": "09a8fa0d380a21079bf8f15234f5e1fa7e6b2af2"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/GAME-PORTAL-DESKTOP.html",
+      "mode": "100644",
+      "blob": "f8acb5756ae10039a7f353f3a73486899e07157b"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/GAME-PORTAL.html",
+      "mode": "100644",
+      "blob": "47fa4040fedee7f1c70a2cf364abac015b584d8b"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/MAC-DESKTOP-LICENSES.txt",
+      "mode": "100644",
+      "blob": "7310018a2d2872aa30fe992b2cf0633820617a3f"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/build.json",
+      "mode": "100644",
+      "blob": "3294930ba697b0d5b58ac9acde6592682a2746f0"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/arm64/engine.part00",
+      "mode": "100644",
+      "blob": "38d6bb5a6375adf766cb4244c48823df51699a34"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/arm64/engine.part01",
+      "mode": "100644",
+      "blob": "71659ab42e40c61e2f19d26e4f9c1e3ffed6fd35"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/arm64/engine.part02",
+      "mode": "100644",
+      "blob": "cb4f91265d32a6971abf3b533884168a2459fd74"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/x86_64/engine.part00",
+      "mode": "100644",
+      "blob": "d21b5ff5559e7da61381f0b56526c3da895c0765"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/x86_64/engine.part01",
+      "mode": "100644",
+      "blob": "c2a8388b04c9a3776793c5123e4d02424111d8a1"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/x86_64/engine.part02",
+      "mode": "100644",
+      "blob": "15162370639747dfce4aff57480a3c3d37767578"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine.json",
+      "mode": "100644",
+      "blob": "0e3a4c71c364bc452ad9eb231ef339a8d24be46b"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/_CodeSignature/CodeResources",
+      "mode": "100644",
+      "blob": "76c75ecb26184076c45748fdbd44ccc1357485b6"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Info.plist",
+      "mode": "100644",
+      "blob": "c21fddda02de30f5295dde2f9b6b1f764b2c4603"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/MacOS/GAME-PORTAL-MOJAVE",
+      "mode": "100755",
+      "blob": "22d8c0d8f63fe0a08a9e26e2ae1217f1666beabd"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/GAME-PORTAL-DESKTOP.html",
+      "mode": "100644",
+      "blob": "f8acb5756ae10039a7f353f3a73486899e07157b"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/GAME-PORTAL.html",
+      "mode": "100644",
+      "blob": "47fa4040fedee7f1c70a2cf364abac015b584d8b"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/MAC-DESKTOP-LICENSES.txt",
+      "mode": "100644",
+      "blob": "7310018a2d2872aa30fe992b2cf0633820617a3f"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/build.json",
+      "mode": "100644",
+      "blob": "3294930ba697b0d5b58ac9acde6592682a2746f0"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part00",
+      "mode": "100644",
+      "blob": "d21b5ff5559e7da61381f0b56526c3da895c0765"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part01",
+      "mode": "100644",
+      "blob": "c2a8388b04c9a3776793c5123e4d02424111d8a1"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part02",
+      "mode": "100644",
+      "blob": "15162370639747dfce4aff57480a3c3d37767578"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/engine.json",
+      "mode": "100644",
+      "blob": "32f9c9cffc701eeda9f7ec8db0c89d7b5209fb41"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/_CodeSignature/CodeResources",
+      "mode": "100644",
+      "blob": "26d70b329c1ed6e5b271973e983d4a226a580a08"
+    },
+    {
+      "path": "Mac/プレイ用/_内部ファイル/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/GAME-PORTAL-MAC",
+      "mode": "100755",
+      "blob": "831321f9f71ecf731fd666cb61727477f8f7f306"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/GAME-PORTAL-MAC",
+      "mode": "100755",
+      "blob": "831321f9f71ecf731fd666cb61727477f8f7f306"
+    }
+  ]
+}
