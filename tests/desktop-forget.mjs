@@ -6,6 +6,7 @@ import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
 import {setTimeout as delay} from 'node:timers/promises';
 import {chromium,expect} from '@playwright/test';
+if(process.platform!=='win32'){console.log('Native forget test requires Windows.');process.exit(0);}
 const temp=await mkdtemp(join(tmpdir(),'portal-forget-audit-'));
 let child,browser;
 try {
@@ -34,7 +35,7 @@ try {
   await page.locator('#settingsButton').click();await page.locator('#desktopFolderPath').fill(disk);await page.locator('#desktopConnectPath').click();await expect(page.locator('.card')).toHaveCount(1);await page.waitForFunction(()=>!busy);
   assert.equal(await page.evaluate(async()=>!!(await desktopHost.current())),true,'manual selection resumes remembering');
   assert.deepEqual(JSON.parse(await readFile(join(base,'GAME-PORTAL-CONNECTION.json'),'utf8')),before,'manual selection preserves peer default');
-  console.log('Native forget passed ('+role+'): current play retained, shared default preserved, restart stays disconnected, explicit selection resumes remembering.');
+  console.log('Native forget passed ('+role+'): current connection retained, shared default preserved, restart stays disconnected, explicit selection resumes remembering.');
   await page.evaluate(()=>chrome.webview.postMessage({id:2000000,op:'closeWindow'}));await browser.close();browser=null;
   for(let i=0;child.exitCode===null&&i<100;i++)await delay(100);assert.equal(child.exitCode,0);child=null;
  }

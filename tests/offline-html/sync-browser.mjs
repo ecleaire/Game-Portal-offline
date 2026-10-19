@@ -27,9 +27,10 @@ try{
  await page.clock.fastForward(10000);await expect(page.getByRole('heading',{name:'Renamed',exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:'Second info',exact:true})).toBeVisible();
  await expect(page.locator('.card').filter({has:page.getByRole('heading',{name:'Renamed',exact:true})}).locator('.cover img')).toHaveAttribute('src',await peer.evaluate(()=>window.sharedImage));
  assert.equal(await page.evaluate(async()=>await(await(await root.getFileHandle('second.html.gameportal.json')).getFile()).text()),await peer.evaluate(()=>window.secondSettings));
- const unchanged=await page.locator('.card').first().elementHandle();await page.evaluate(()=>syncLibrary());assert.equal(await unchanged.evaluate(el=>el.isConnected),true);
+ const unchanged=await page.locator('.card').first().elementHandle();
+ for(let cycle=0;cycle<3;cycle++){await page.evaluate(()=>syncLibrary());assert.equal(await unchanged.evaluate(el=>el.isConnected),true,'repeated unchanged sync must retain the displayed card');}
  // Routine folder checks must not briefly expose connection-progress controls.
- assert.equal(await page.evaluate(async()=>{const button=document.getElementById('cancelConnection'),descriptor=Object.getOwnPropertyDescriptor(HTMLElement.prototype,'hidden');let shown=0;Object.defineProperty(button,'hidden',{configurable:true,get(){return descriptor.get.call(this);},set(value){if(value===false)shown++;descriptor.set.call(this,value);}});try{await checkSharedFolder();await checkSharedFolder();return shown;}finally{delete button.hidden;}}),0);
+ assert.equal(await page.evaluate(async()=>{const button=document.getElementById('cancelConnection'),descriptor=Object.getOwnPropertyDescriptor(HTMLElement.prototype,'hidden');let shown=0;Object.defineProperty(button,'hidden',{configurable:true,get(){return descriptor.get.call(this);},set(value){if(value===false)shown++;descriptor.set.call(this,value);}});try{for(let cycle=0;cycle<20;cycle++)await checkSharedFolder();return shown;}finally{delete button.hidden;}}),0);
  // Changing one game retains every other card, image and keyboard focus.
  const secondCard=await page.locator('.card').filter({has:page.getByRole('heading',{name:'Second info',exact:true})}).elementHandle();
  await page.locator('.card').filter({has:page.getByRole('heading',{name:'Renamed',exact:true})}).locator('.game-title-link').focus();

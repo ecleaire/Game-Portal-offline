@@ -63,7 +63,7 @@ final class DesktopFiles {
     func removeReader(_ token: String) { let removed = state { readers.removeValue(forKey: token) }; withExtendedLifetime(removed) {} }
     func removeWriter(_ token: String) { let removed = state { writers.removeValue(forKey: token) }; withExtendedLifetime(removed) {} }
     init(profile: URL, application: URL, player: Bool) throws {
-        self.profile = profile; self.application = application; self.player = player
+        self.profile = profile; self.application = application.standardizedFileURL; self.player = player
         try fm.createDirectory(at: profile, withIntermediateDirectories: true)
     }
     func regularRead(_ url: URL, limit: Int) throws -> Data {
