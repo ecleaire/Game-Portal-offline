@@ -14,8 +14,12 @@ import {verifyCodeZip} from '../scripts/verify-code-zip.mjs';
 const bytes=await readFile(process.argv[2]),files=verifyCodeZip(bytes);
 const tracked=execFileSync('git',['ls-files','-z','README.md','Windows','Mac','HTML','docs','_内部ファイル'],{encoding:'utf8'}).split('\0').filter(name=>name&&name!=='docs/DEVELOPMENT.md');
 assert.deepEqual([...files.keys()].sort(),tracked.sort(),'Public ZIP must contain every distribution file');
+// GitHub archives use committed bytes. A Windows checkout can legitimately
+// have CRLF guide/marker files, so compare Git blobs rather than EOL conversion.
+const objectFormat=execFileSync('git',['rev-parse','--show-object-format'],{encoding:'utf8'}).trim();
+const objects=new Map(execFileSync('git',['ls-tree','-r','-z','--full-tree','HEAD'],{encoding:'utf8'}).split('\0').filter(Boolean).map(entry=>{const tab=entry.indexOf('\t');return [entry.slice(tab+1),entry.slice(0,tab).split(' ')[2]];}));
 const temp=await mkdtemp(join(tmpdir(),'portal-public-zip-'));
-const hash=data=>createHash('sha256').update(data).digest('hex');
+const hash=data=>createHash(objectFormat).update('blob '+data.length+'\0').update(data).digest('hex');
 try{
  for(const [name,file]of files){
   assert(file.size<=64*1024*1024,'Unexpected oversized file');
@@ -23,12 +27,12 @@ try{
   const packed=bytes.subarray(start,start+file.packed);
   assert([0,8].includes(file.method));
   const data=file.method===0?packed:inflateRawSync(packed,{maxOutputLength:64*1024*1024});
-  assert.equal(data.length,file.size);assert.equal(hash(data),hash(await readFile(name)),'Public file differs: '+name);
+  assert.equal(data.length,file.size);assert.equal(hash(data),objects.get(name),'Public file differs from verified commit: '+name);
   if(/^HTML\/(プレイ用|クリエイター用)\/GAME-PORTAL(?:-PLAY)?\.html$/.test(name)){
    const destination=join(temp,...name.split('/'));await mkdir(join(destination,'..'),{recursive:true});await writeFile(destination,data);
   }
  }
- console.log('Actual public Code ZIP: every distribution file matches the verified checkout byte for byte.');
+ console.log('Actual public Code ZIP: every distribution file matches the verified Git commit byte for byte.');
  const version='v'+JSON.parse(await readFile('package.json','utf8')).version;
  const server=createServer(async(req,res)=>{
   try{const player=req.url==='/player';res.setHeader('Content-Type','text/html');res.end(await readFile(join(temp,'HTML',player?'プレイ用':'クリエイター用',player?'GAME-PORTAL-PLAY.html':'GAME-PORTAL.html')));}catch{res.writeHead(500);res.end();}
