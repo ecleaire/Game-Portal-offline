@@ -1952,7 +1952,11 @@ function webBootstrap(nonce) {
       document.open(); document.write(html); document.close();
     } catch (e) { port.postMessage({ type: 'error', message: e.message }); }
   }, { once: true });
-  parent.postMessage({ type: 'offline-bootstrap-ready', nonce }, '*');
+  // Replacing the document before its initial srcdoc navigation finishes can
+  // leave Chromium displaying a blank frame with a detached zero-sized layout.
+  const announce = () => parent.postMessage({ type: 'offline-bootstrap-ready', nonce }, '*');
+  if (document.readyState === 'complete') announce();
+  else addEventListener('load', announce, { once: true });
 }
 function pyxelBootstrap(nonce) {
   addEventListener('message', async event => {
@@ -2006,7 +2010,9 @@ function pyxelBootstrap(nonce) {
       await window.launchPyxel({ command: 'play', name: 'game.pyxapp', base64: event.data.app, gamepad: 'enabled' });
     } catch (e) { port.postMessage({ type: 'error', message: 'Pyxelを起動できません：' + e.message }); }
   }, { once: true });
-  parent.postMessage({ type: 'offline-bootstrap-ready', nonce }, '*');
+  const announce = () => parent.postMessage({ type: 'offline-bootstrap-ready', nonce }, '*');
+  if (document.readyState === 'complete') announce();
+  else addEventListener('load', announce, { once: true });
 }
 function startPlayer(frame, options, preview, onMessage) {
   const channel = new MessageChannel();
