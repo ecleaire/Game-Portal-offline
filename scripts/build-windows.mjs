@@ -1,6 +1,6 @@
 import {materializeDistribution,publishDistribution} from './distribution.mjs';
 await materializeDistribution();
-import {readFile,writeFile,mkdir,access} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,access,copyFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {packageWebFiles} from '../assets/zip-upload.js';
@@ -9,6 +9,9 @@ const root=resolve(import.meta.dirname,'..'),output=join(root,'offline-release')
 const {version}=JSON.parse(await readFile(join(root,'package.json'),'utf8'));
 const framework=join(process.env.SystemRoot||'C:/Windows','Microsoft.NET','Framework64','v4.0.30319');
 const compiler=join(framework,'csc.exe');await access(compiler);await mkdir(build,{recursive:true});
+// A desktop-only CI build starts from the committed HTML rather than running
+// the separate HTML bundler. Package the same verified page and notices.
+for(const name of ['GAME-PORTAL.html','THIRD-PARTY-LICENSES.txt'])await copyFile(join(root,name),join(output,name));
 const source=join(build,'native-launcher.cs');await writeFile(source,(await readFile(join(root,'scripts/windows/native-launcher.cs'),'utf8')).replace('__VERSION__',version));
 execFileSync(compiler,['/nologo','/target:winexe','/optimize+','/utf8output','/out:'+join(output,'GAME-PORTAL-WINDOWS.exe'),'/reference:'+join(framework,'System.Windows.Forms.dll'),'/reference:'+join(framework,'System.Drawing.dll'),'/reference:'+join(framework,'System.Web.Extensions.dll'),source],{stdio:'pipe'});
 const guide=(await readFile(join(root,'docs/WINDOWS_EXE.md'),'utf8')).replaceAll('\r\n','\n');await writeFile(join(output,'README-WINDOWS.txt'),guide);
