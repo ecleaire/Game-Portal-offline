@@ -10,10 +10,10 @@ if(process.platform!=='win32'){console.log('Windows native helper test skipped o
 const temp=await mkdtemp(join(tmpdir(),'portal-native-')),source=join(temp,'GameSource'),disk=join(temp,'日本語 🕹️ # % & + [2026]'),ready=join(temp,'ready.json'),html=join(temp,'GAME-PORTAL.html');
 let helper,browser;
 try{
- await mkdir(source);await mkdir(disk);await writeFile(html,await readFile('offline-release/GAME-PORTAL.html'));
+ await mkdir(source);await mkdir(disk);await writeFile(html,await readFile(process.env.PORTAL_NATIVE_HTML||'offline-release/GAME-PORTAL.html'));
  const fixture=join(source,'ゲーム & test.exe'),fixtureSource=join(temp,'fixture.cs');await writeFile(fixtureSource,'using System;using System.IO;using System.Threading;class TestGame{static void Main(){File.WriteAllText("native-started.txt",File.ReadAllText("support.dat"));Thread.Sleep(3000);}}');
  const framework=join(process.env.SystemRoot,'Microsoft.NET','Framework64','v4.0.30319');execFileSync(join(framework,'csc.exe'),['/nologo','/target:winexe','/out:'+fixture,fixtureSource],{stdio:'pipe'});await writeFile(join(source,'support.dat'),'support-data');
- helper=spawn(resolve('offline-release/GAME-PORTAL-WINDOWS.exe'),['--headless','--root',disk,'--html',html,'--ready-file',ready],{windowsHide:true,stdio:'pipe'});
+ helper=spawn(resolve(process.env.PORTAL_NATIVE_EXE||'offline-release/GAME-PORTAL-WINDOWS.exe'),['--headless','--root',disk,'--html',html,'--ready-file',ready],{windowsHide:true,stdio:'pipe'});
  let info;const readyDeadline=Date.now()+30000;while(Date.now()<readyDeadline){try{info=JSON.parse(await readFile(ready,'utf8'));break;}catch{if(helper.exitCode!==null)throw Error('Native helper exited during startup: '+helper.exitCode);await delay(100);}}assert(info,'Native helper should produce its ready file within 30 seconds');
  const {version}=JSON.parse(await readFile('package.json','utf8'));
  const api=async(body,{origin='null',token=info.token,host}={})=>fetch(info.origin+'/native/launch',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','X-Game-Portal-Token':token,...(host?{Host:host}:{})},body:JSON.stringify(body)});

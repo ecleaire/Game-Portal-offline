@@ -3,6 +3,11 @@ on:
   push:
     paths: ['HTML/**', 'scripts/distribution.mjs', 'tests/native-distribution.mjs', 'desktop/**', 'scripts/build-desktop.mjs', 'scripts/verify-desktop.mjs', 'scripts/windows/native-launcher.cs', 'tests/desktop*', 'GAME-PORTAL.html', '.github/workflows/desktop.yml']
   workflow_dispatch:
+    inputs:
+      use_prebuilt:
+        description: Test the committed distribution without rebuilding
+        type: boolean
+        default: false
 permissions:
   contents: write
 jobs:
@@ -16,19 +21,28 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: node scripts/verify-distribution.mjs
+        if: inputs.use_prebuilt
       - run: node scripts/build-desktop.mjs --prepare
+        if: ${{ !inputs.use_prebuilt }}
       - run: node scripts/verify-desktop.mjs
       - run: node --import ./scripts/ci-failure-diagnostics.mjs scripts/build-windows.mjs
+        if: ${{ !inputs.use_prebuilt }}
       - run: npx playwright install chromium
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/windows-native.mjs
+        env:
+          PORTAL_NATIVE_HTML: ${{ inputs.use_prebuilt && 'GAME-PORTAL.html' || '' }}
+          PORTAL_NATIVE_EXE: ${{ inputs.use_prebuilt && 'GAME-PORTAL-WINDOWS.exe' || '' }}
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/desktop-files.mjs
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/desktop-browser.mjs
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/desktop-player.mjs
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/desktop-information.mjs
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/desktop-forget.mjs
       - name: Publish verified native build tree
+        if: ${{ !inputs.use_prebuilt }}
         run: node scripts/export-native-build.mjs windows
       - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.use_prebuilt }}
         with:
           name: GAME-PORTAL-desktop-prototype
           path: |

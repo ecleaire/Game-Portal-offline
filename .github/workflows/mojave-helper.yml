@@ -3,6 +3,11 @@ on:
   push:
     paths: ['HTML/**', 'scripts/distribution.mjs', 'tests/native-distribution.mjs', 'scripts/macos/**', 'scripts/build-mac-apps.mjs', 'desktop/bootstrap.js', 'desktop/page.mjs', 'tests/mac-desktop.mjs', 'package-lock.json', 'scripts/build-mojave.mjs', 'scripts/prepare-mojave-test.mjs', 'tests/mojave-esr-browser.mjs', 'tests/native-folder-browser.mjs', 'tests/offline-html/information-browser.mjs', 'GAME-PORTAL.html', '.github/workflows/mojave-helper.yml']
   workflow_dispatch:
+    inputs:
+      use_prebuilt:
+        description: Test the committed distribution without rebuilding
+        type: boolean
+        default: false
 permissions:
   contents: write
 jobs:
@@ -16,15 +21,19 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: node scripts/verify-distribution.mjs
+        if: inputs.use_prebuilt
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/mac-files.mjs
       - uses: actions/cache@v4
+        if: ${{ !inputs.use_prebuilt }}
         id: cef-cache
         with:
           path: .tools/cef
           key: cef-mac-v2-macos-15-intel-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
       - run: node scripts/build-mojave.mjs
+        if: ${{ !inputs.use_prebuilt }}
       - uses: actions/cache/save@v4
-        if: always() && !cancelled() && steps.cef-cache.outputs.cache-hit != 'true'
+        if: always() && !cancelled() && !inputs.use_prebuilt && steps.cef-cache.outputs.cache-hit != 'true'
         with:
           path: .tools/cef
           key: cef-mac-v2-macos-15-intel-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
@@ -58,8 +67,10 @@ jobs:
         env:
           PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
       - name: Publish verified native build tree
+        if: ${{ !inputs.use_prebuilt }}
         run: node scripts/export-native-build.mjs legacy
       - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.use_prebuilt }}
         with:
           name: GAME-PORTAL-MOJAVE-Intel
           path: |

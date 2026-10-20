@@ -28,6 +28,11 @@ on:
       - 'package.json'
       - '.github/workflows/macos-helper.yml'
   workflow_dispatch:
+    inputs:
+      use_prebuilt:
+        description: Test the committed distribution without rebuilding
+        type: boolean
+        default: false
 permissions:
   contents: write
 jobs:
@@ -45,15 +50,19 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: node scripts/verify-distribution.mjs
+        if: inputs.use_prebuilt
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/mac-files.mjs
       - uses: actions/cache@v4
+        if: ${{ !inputs.use_prebuilt }}
         id: cef-cache
         with:
           path: .tools/cef
           key: cef-mac-v2-${{ matrix.os }}-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
       - run: node scripts/build-macos.mjs
+        if: ${{ !inputs.use_prebuilt }}
       - uses: actions/cache/save@v4
-        if: always() && !cancelled() && steps.cef-cache.outputs.cache-hit != 'true'
+        if: always() && !cancelled() && !inputs.use_prebuilt && steps.cef-cache.outputs.cache-hit != 'true'
         with:
           path: .tools/cef
           key: cef-mac-v2-${{ matrix.os }}-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
@@ -68,9 +77,10 @@ jobs:
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/offline-html/folder-comfort-browser.mjs
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/offline-html/loading-cancel-browser.mjs
       - name: Publish verified native build tree
-        if: matrix.os == 'macos-15-intel'
+        if: matrix.os == 'macos-15-intel' && !inputs.use_prebuilt
         run: node scripts/export-native-build.mjs modern
       - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.use_prebuilt }}
         with:
           name: GAME-PORTAL-MAC-universal-${{ matrix.os }}
           path: |

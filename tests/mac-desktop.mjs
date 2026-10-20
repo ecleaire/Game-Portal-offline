@@ -17,7 +17,7 @@ try{
  for(const edition of ['creator','player']){
   const prefix=edition==='player'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-',role=edition==='player'?'プレイ用':'クリエイター用';
   const families=suffix==='MAC'&&process.arch==='x64'?['MAC','MOJAVE','MAC']:[suffix,suffix];
-  for(const family of new Set(families)){const name=prefix+family;await cp(resolve(name+'.app'),join(root,'Mac',role,name+'.app'),{recursive:true});}
+  for(const family of new Set(families)){const name=prefix+family,app=join(root,'Mac',role,name+'.app');await cp(resolve(name+'.app'),app,{recursive:true});execFileSync('codesign',['--verify','--deep','--strict',app],{stdio:'pipe'});}
   const primary=join(root,'Mac',role,prefix+suffix+'.app/Contents/MacOS/GAME-PORTAL-'+suffix);
   const selftest=join(root,'self-test-'+edition);execFileSync(primary,['--self-test',selftest],{timeout:30000,stdio:'pipe'});assert.equal(JSON.parse(await readFile(join(selftest,'result.json'))).ok,true);
   for(let cycle=0;cycle<families.length;cycle++){
