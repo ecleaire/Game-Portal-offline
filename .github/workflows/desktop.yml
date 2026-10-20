@@ -24,6 +24,7 @@ jobs:
       - run: node tests/desktop-browser.mjs
       - run: node tests/desktop-player.mjs
       - run: node tests/desktop-information.mjs
+      - run: node tests/desktop-forget.mjs
       - name: Publish verified native build tree
         run: node scripts/export-native-build.mjs windows
       - uses: actions/upload-artifact@v4

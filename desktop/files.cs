@@ -60,10 +60,16 @@ internal sealed class DesktopFiles {
     internal Root Restore(){
         if(!File.Exists(config))return shared==null?null:shared.Restore();
         if(new FileInfo(config).Length>8192)throw new IOException("このPCの保存先の記憶を確認してください。");
-        var saved=Parse(File.ReadAllText(config,Encoding.UTF8));object schema;string path=Text(saved,"path"),id=Text(saved,"id");if(!saved.TryGetValue("schema",out schema)||!(schema is int)||(int)schema!=1||path.Length==0||id.Length>0&&!ValidId(id))throw new IOException("このPCの保存先の記憶を確認してください。");if(applicationDirectory!=null&&Text(saved,"application").Length>0&&!String.Equals(Text(saved,"application"),applicationDirectory,StringComparison.OrdinalIgnoreCase))return shared.Restore();return Register(path,id.Length==0?null:id);
+        var saved=Parse(File.ReadAllText(config,Encoding.UTF8));object schema;string path=Text(saved,"path"),id=Text(saved,"id");
+        if(!saved.TryGetValue("schema",out schema)||!(schema is int)||(int)schema!=1)throw new IOException("このPCの保存先の記憶を確認してください。");
+        if(applicationDirectory!=null&&Text(saved,"application").Length>0&&!String.Equals(Text(saved,"application"),applicationDirectory,StringComparison.OrdinalIgnoreCase))return shared.Restore();
+        // An explicit local choice must also suppress the shared default. Keep
+        // the shared file intact so other PCs can continue to use it.
+        if(Flag(saved,"forgotten")&&path.Length==0&&id.Length==0)return null;
+        if(path.Length==0||id.Length>0&&!ValidId(id))throw new IOException("このPCの保存先の記憶を確認してください。");return Register(path,id.Length==0?null:id);
     }
     internal void Remember(Root root){root=Get(root.Token);string text=Serialize(new {schema=1,path=root.Path,id=root.Id??"",application=applicationDirectory??""});Atomic(config,new MemoryStream(Encoding.UTF8.GetBytes(text)),8192);if(shared!=null)shared.Remember(root);}
-    internal void Forget(){if(File.Exists(config))File.Delete(config);}
+    internal void Forget(){Atomic(config,new MemoryStream(Encoding.UTF8.GetBytes(Serialize(new {schema=1,forgotten=true,application=applicationDirectory??""}))),8192);}
     internal object SharedInfo(Root root){if(shared==null)throw new IOException("ランチャーの共有設定を確認してください。");return shared.Info(Get(root.Token));}
     internal object Share(Root root,string revision){if(shared==null)throw new IOException("ランチャーの共有設定を確認してください。");shared.Publish(Get(root.Token),revision);return Record(root);}
     internal bool HasWriters {get{lock(gate)return leases.Count>0;}}
