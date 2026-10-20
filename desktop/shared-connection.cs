@@ -63,10 +63,9 @@ internal sealed class DesktopSharedConnection {
         if(path==null)return;
         try{
             if(File.Exists(file)){var shared=Restore();if(shared.Id!=root.Id||!String.Equals(shared.Path,root.Path,StringComparison.OrdinalIgnoreCase))Message="このPCの保存先を記憶しました。共有の保存先は変更していません。";return;}
-            byte[] bytes=Encoding.UTF8.GetBytes(files.Serialize(new {schema=1,kind="relative",path=path,libraryId=root.Id}));
-            // Publish only a complete new record. Never replace another PC's chosen default.
-            string temporary=file+"."+DesktopFiles.Secret()+".tmp";try{using(var output=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){output.Write(bytes,0,bytes.Length);output.Flush(true);}File.Move(temporary,file);}finally{if(File.Exists(temporary))File.Delete(temporary);}
-            Message="保存先を共有しました。同じ場所のアプリを開くPCは、初回から接続できます。";
+            // Automatic setup uses the same cross-platform writer lock, but
+            // never replaces another PC's chosen default.
+            Publish(root,"missing");
         }catch(Exception error){Message="このPCには記憶しました。接続先をほかのPCへ共有できませんでした："+error.Message;}
     }
 }
