@@ -28,6 +28,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node tests/public-code-zip.mjs .tools/public-main.zip
   browser:
+    if: github.event_name != 'workflow_dispatch' || !inputs.verify_public_download
     strategy:
       fail-fast: false
       matrix:
