@@ -44,7 +44,7 @@ internal static class DesktopSelfTest {
         var shareInfo=publisher.Parse(publisher.Serialize(publisher.SharedInfo(publisher.Register(second))));string revision=DesktopFiles.Text(shareInfo,"revision");
         publisher.Share(publisher.Register(second),revision);
         var freshPC=new DesktopFiles(Path.Combine(directory,"fresh-after-shared-update"),player);Assert(freshPC.Restore().Path==second,"fresh player PC follows updated shared default");results.Add("explicit shared default update reaches fresh PC");
-        Assert(otherPC.Restore().Path==second,"unconfigured PC follows shared update");results.Add("shared default refresh for unconfigured PC");
+        Assert(otherPC.Restore().Path==sharedGames,"configured PC retains personal selection after shared update");results.Add("shared update preserves configured PC selection");
         Assert(creatorFiles.Restore().Path==second,"creator without personal setup follows shared update");results.Add("creator uses new shared default");
         Fails(()=>publisher.Share(publisher.Register(sharedGames),revision),"stale shared update rejected",results);
         shareInfo=publisher.Parse(publisher.Serialize(publisher.SharedInfo(publisher.Register(sharedGames))));revision=DesktopFiles.Text(shareInfo,"revision");
