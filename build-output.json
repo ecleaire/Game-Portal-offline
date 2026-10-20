@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "source_commit": "c7cee031098b35508df08af36d9920e625c210d3",
+  "version": "0.24.2",
+  "kind": "windows",
+  "files": [
+    {
+      "path": "Windows/クリエイター用/GAME-PORTAL.exe",
+      "mode": "100644",
+      "blob": "4b7a003eb14a320d2db78ca0ea3a1ffe8fc4a667"
+    },
+    {
+      "path": "Windows/クリエイター用/_内部ファイル/DESKTOP-LICENSES.txt",
+      "mode": "100644",
+      "blob": "5d86ea424418dc879c6df831b70a4e267283f48e"
+    },
+    {
+      "path": "Windows/クリエイター用/_内部ファイル/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Windows/プレイ用/GAME-PORTAL-PLAY.exe",
+      "mode": "100644",
+      "blob": "a59db600a55c82684b13bd5b3818db9b93d68d1e"
+    },
+    {
+      "path": "Windows/プレイ用/_内部ファイル/DESKTOP-LICENSES.txt",
+      "mode": "100644",
+      "blob": "5d86ea424418dc879c6df831b70a4e267283f48e"
+    },
+    {
+      "path": "Windows/プレイ用/_内部ファイル/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/GAME-PORTAL-WINDOWS.exe",
+      "mode": "100644",
+      "blob": "3ef685709997fa4b6e3eeff4a074c905ed21e214"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/README-WINDOWS.txt",
+      "mode": "100644",
+      "blob": "85860bebfab603e10aaec3c56aa05409dd724bc8"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/GAME-PORTAL-WINDOWS.exe",
+      "mode": "100644",
+      "blob": "3ef685709997fa4b6e3eeff4a074c905ed21e214"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/README-WINDOWS.txt",
+      "mode": "100644",
+      "blob": "85860bebfab603e10aaec3c56aa05409dd724bc8"
+    }
+  ]
+}
