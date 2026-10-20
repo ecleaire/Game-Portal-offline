@@ -30,7 +30,7 @@ on:
   workflow_dispatch:
     inputs:
       use_prebuilt:
-        description: Test the committed distribution without rebuilding
+        description: Test committed EXE and APP files without rebuilding them
         type: boolean
         default: false
 permissions:
@@ -50,7 +50,16 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: node scripts/verify-distribution.mjs
+      - uses: actions/cache@v4
+        if: inputs.use_prebuilt
+        with:
+          path: .tools/offline-runtime
+          key: pyxel-runtime-${{ hashFiles('offline-html/runtime-lock.json') }}
+      - run: npm run prepare:runtime
+        if: inputs.use_prebuilt
+      - run: git diff --exit-code -- ':(glob)HTML/**/*.html' THIRD-PARTY-LICENSES.txt
+        if: inputs.use_prebuilt
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs scripts/verify-distribution.mjs
         if: inputs.use_prebuilt
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/mac-files.mjs
       - uses: actions/cache@v4
