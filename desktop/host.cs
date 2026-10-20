@@ -61,7 +61,7 @@ internal sealed class DesktopForm : Form {
             core.PermissionRequested+=(sender,e)=>{e.State=CoreWebView2PermissionState.Deny;};
             core.ProcessFailed+=async(sender,e)=>{if(e.ProcessFailedKind==CoreWebView2ProcessFailedKind.RenderProcessExited||e.ProcessFailedKind==CoreWebView2ProcessFailedKind.BrowserProcessExited)await Task.Run(()=>files.ReleaseUncommitted());};
             core.DownloadStarting+=(sender,e)=>{if(!e.DownloadOperation.Uri.StartsWith("blob:")){e.Cancel=true;return;}using(var dialog=new SaveFileDialog()){dialog.FileName=Path.GetFileName(e.ResultFilePath);if(dialog.ShowDialog(this)!=DialogResult.OK)e.Cancel=true;else e.ResultFilePath=dialog.FileName;}};
-            if(initialLibrary!=null){var root=await Task.Run(()=>files.Register(initialLibrary));await Task.Run(()=>files.Remember(root));}
+            if(initialLibrary!=null){var root=await Task.Run(()=>files.Register(initialLibrary));await Task.Run(()=>files.Remember(root,!DesktopProgram.PlayerOnly));}
             core.Navigate(DesktopProgram.AppUrl);if(ready!=null)File.WriteAllText(ready,files.Serialize(new {ready=true,port=port}),new UTF8Encoding(false));
         }catch(Exception error){MessageBox.Show(this,"起動できませんでした。Microsoft Edge WebView2 Runtimeを確認してください。\n"+error.Message,"GAME PORTAL",MessageBoxButtons.OK,MessageBoxIcon.Error);Close();}
     }
@@ -118,7 +118,7 @@ internal sealed class DesktopForm : Form {
         if(op=="abortWrite"){var known=files.Known(DesktopFiles.Text(data,"root"));files.AbortWrite(known,DesktopFiles.Text(data,"writer"));return true;}
         var root=files.Get(DesktopFiles.Text(data,"root"));string path=DesktopFiles.Text(data,"path");
         switch(op){
-            case "remember":files.Remember(root);return true;
+            case "remember":files.Remember(root,!DesktopProgram.PlayerOnly);return true;
             case "sharedConnection":return files.SharedInfo(root);
             case "shareConnection":if(DesktopProgram.PlayerOnly)throw new UnauthorizedAccessException("共有先の変更はクリエイター版で行ってください。");return files.Share(root,DesktopFiles.Text(data,"revision"));
             case "stat":return files.Stat(root,path);

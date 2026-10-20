@@ -46,6 +46,12 @@ func desktopSelfTest(_ directory: URL) throws {
     try denied { try files.publishShared(root, expected: newRevision) }; try fm.removeItem(at: gate)
     let freshRoot = try fresh.register(disk.path)
     try denied { _ = try fresh.operate(["op": "shareConnection", "root": freshRoot.token, "revision": newRevision]) }
+    let privateApp = directory.appendingPathComponent("player-app"), privateDisk = privateApp.appendingPathComponent("games")
+    try fm.createDirectory(at: privateDisk.appendingPathComponent(".gameportal"), withIntermediateDirectories: true)
+    try desktopJSON(["schema": 1, "id": id]).write(to: privateDisk.appendingPathComponent(".gameportal/library-id.json"))
+    let privatePlayer = try DesktopFiles(profile: directory.appendingPathComponent("private-player-profile"), application: privateApp, player: true)
+    try privatePlayer.remember(privatePlayer.register(privateDisk.path))
+    try check(!fm.fileExists(atPath: privateApp.appendingPathComponent("GAME-PORTAL-CONNECTION.json").path), "player remembering a folder cannot create a shared default")
     try files.publishShared(root, expected: newRevision); try files.remember(root)
     let sharedFile = directory.appendingPathComponent("GAME-PORTAL-CONNECTION.json")
     try check(fm.fileExists(atPath: sharedFile.path), "shared default was published: " + files.connectionHint)

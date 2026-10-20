@@ -222,6 +222,7 @@ final class DesktopFiles {
     }
     func rememberShared(_ root: Root) throws {
         connectionHint = ""
+        guard !player else { return }
         guard let id = root.id else { return }
         do {
             let shared = application.appendingPathComponent("GAME-PORTAL-CONNECTION.json")

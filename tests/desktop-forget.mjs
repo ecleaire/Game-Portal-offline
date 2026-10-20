@@ -14,6 +14,7 @@ try {
   const base=join(temp,name),disk=join(base,'Library'),profile=join(base,'profile'),exe=join(base,name+'.exe');
   await mkdir(join(disk,'.gameportal'),{recursive:true});await copyFile(resolve('Windows',role,name+'.exe'),exe);
   await writeFile(join(disk,'.gameportal/library-id.json'),JSON.stringify({schema:1,id:'a'.repeat(32)}));await writeFile(join(disk,'game.html'),'<h1>test</h1>');
+  await writeFile(join(base,'GAME-PORTAL-CONNECTION.json'),JSON.stringify({schema:1,kind:'relative',path:'Library',libraryId:'a'.repeat(32)}));
   const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));const port=server.address().port;await new Promise(r=>server.close(r));const ready=join(base,'ready.json');
   child=spawn(exe,['--profile',profile,'--debug-port',String(port),'--ready-file',ready,'--test-mode','--library',disk],{windowsHide:true,stdio:'pipe'});
   for(let i=0;;i++){try{await readFile(ready);break;}catch{if(child.exitCode!==null||i>250)throw Error('startup');await delay(100);}}
