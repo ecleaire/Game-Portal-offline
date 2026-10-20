@@ -14,13 +14,20 @@ func desktopSelfTest(_ directory: URL) throws {
         var record: [String: Any] = ["op": op, "root": root.token, "path": path]; for (key, value) in extra { record[key] = value }; return try files.operate(record)
     }
     func denied(_ block: () throws -> Void) throws { do { try block() } catch { return }; throw DesktopError("Self test expected rejection") }
+    func sameFolder(_ root: DesktopFiles.Root?, _ expected: URL) -> Bool {
+        guard let root = root else { return false }
+        // /var and /private/var are aliases on macOS. Compare the actual folder,
+        // rather than URL spelling, directory flags or Unicode normalization.
+        var actual = stat(), target = stat()
+        return lstat(root.url.path, &actual) == 0 && lstat(expected.path, &target) == 0 && actual.st_dev == target.st_dev && actual.st_ino == target.st_ino
+    }
     try check(root.id == id, "library identity")
     _ = try request("remember")
     let restored = try DesktopFiles(profile: profile, application: directory, player: false)
     try check(try restored.restore()?.id == id, "folder restoration")
     let fresh = try DesktopFiles(profile: directory.appendingPathComponent("fresh-pc"), application: directory, player: true)
     let sharedSelection = try fresh.restore()
-    try check(sharedSelection?.url.path == disk.path, "unconfigured player PC uses shared default; selected=" + (sharedSelection?.url.path ?? "none") + "; expected=" + disk.path + "; notice=" + files.connectionHint)
+    try check(sameFolder(sharedSelection, disk), "unconfigured player PC uses shared default; selected=" + (sharedSelection?.url.path ?? "none") + "; expected=" + disk.path + "; notice=" + files.connectionHint)
     let pinned = try DesktopFiles(profile: directory.appendingPathComponent("pinned-pc"), application: directory, player: false)
     try pinned.remember(pinned.register(disk.path))
     let other = directory.appendingPathComponent("別の保存先")
@@ -28,11 +35,11 @@ func desktopSelfTest(_ directory: URL) throws {
     try desktopJSON(["schema": 1, "id": String(repeating: "b", count: 32)]).write(to: other.appendingPathComponent(".gameportal/library-id.json"))
     let otherRoot = try files.register(other.path), oldRevision = try files.sharedRevision()
     try files.remember(otherRoot)
-    try check(try fresh.restore()?.url.path == disk.path, "personal selection never silently replaces shared default")
+    try check(try sameFolder(fresh.restore(), disk), "personal selection never silently replaces shared default")
     try files.publishShared(otherRoot, expected: oldRevision)
-    try check(try fresh.restore()?.url.path == other.path, "explicit shared change reaches fresh PC without folder selection")
-    try check(try pinned.restore()?.url.path == disk.path, "individually configured PC retains its folder")
-    try check(try restored.restore()?.url.path == other.path, "personal folder selection retained")
+    try check(try sameFolder(fresh.restore(), other), "explicit shared change reaches fresh PC without folder selection")
+    try check(try sameFolder(pinned.restore(), disk), "individually configured PC retains its folder")
+    try check(try sameFolder(restored.restore(), other), "personal folder selection retained")
     try denied { try files.publishShared(root, expected: oldRevision) }
     let newRevision = try files.sharedRevision(), gate = directory.appendingPathComponent(".gameportal-connection.lock")
     try fm.createDirectory(at: gate, withIntermediateDirectories: false)
