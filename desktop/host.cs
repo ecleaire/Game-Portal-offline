@@ -119,6 +119,8 @@ internal sealed class DesktopForm : Form {
         var root=files.Get(DesktopFiles.Text(data,"root"));string path=DesktopFiles.Text(data,"path");
         switch(op){
             case "remember":files.Remember(root);return true;
+            case "sharedConnection":return files.SharedInfo(root);
+            case "shareConnection":if(DesktopProgram.PlayerOnly)throw new UnauthorizedAccessException("共有先の変更はクリエイター版で行ってください。");return files.Share(root,DesktopFiles.Text(data,"revision"));
             case "stat":return files.Stat(root,path);
             case "list":return files.List(root,path);
             case "directory":if(DesktopFiles.Flag(data,"create"))DesktopProgram.CheckPlayerWrite(path,true);files.Entry(root,path,true,DesktopFiles.Flag(data,"create"));return true;

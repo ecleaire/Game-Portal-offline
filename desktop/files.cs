@@ -64,6 +64,8 @@ internal sealed class DesktopFiles {
     }
     internal void Remember(Root root){root=Get(root.Token);string text=Serialize(new {schema=1,path=root.Path,id=root.Id??"",application=applicationDirectory??""});Atomic(config,new MemoryStream(Encoding.UTF8.GetBytes(text)),8192);if(shared!=null)shared.Remember(root);}
     internal void Forget(){if(File.Exists(config))File.Delete(config);}
+    internal object SharedInfo(Root root){if(shared==null)throw new IOException("ランチャーの共有設定を確認してください。");return shared.Info(Get(root.Token));}
+    internal object Share(Root root,string revision){if(shared==null)throw new IOException("ランチャーの共有設定を確認してください。");shared.Publish(Get(root.Token),revision);return Record(root);}
     internal bool HasWriters {get{lock(gate)return leases.Count>0;}}
     internal object BeginWrite(Root root,string path){
         Full(root,path);string lockDirectory=Full(root,".gameportal/desktop-locks");Directory.CreateDirectory(lockDirectory);

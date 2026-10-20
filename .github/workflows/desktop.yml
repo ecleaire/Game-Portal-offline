@@ -4,7 +4,7 @@ on:
     paths: ['HTML/**', 'scripts/distribution.mjs', 'tests/native-distribution.mjs', 'desktop/**', 'scripts/build-desktop.mjs', 'scripts/verify-desktop.mjs', 'scripts/windows/native-launcher.cs', 'tests/desktop*', 'GAME-PORTAL.html', '.github/workflows/desktop.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   desktop:
     runs-on: windows-latest
@@ -18,10 +18,14 @@ jobs:
       - run: npm ci
       - run: node scripts/build-desktop.mjs --prepare
       - run: node scripts/verify-desktop.mjs
+      - run: node scripts/build-windows.mjs
+      - run: node tests/windows-native.mjs
       - run: node tests/desktop-files.mjs
       - run: node tests/desktop-browser.mjs
       - run: node tests/desktop-player.mjs
       - run: node tests/desktop-information.mjs
+      - name: Publish verified native build tree
+        run: node scripts/export-native-build.mjs windows
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-desktop-prototype

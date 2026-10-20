@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 internal sealed class DesktopSharedConnection {
     internal const string FileName="GAME-PORTAL-CONNECTION.json";
@@ -23,6 +24,33 @@ internal sealed class DesktopSharedConnection {
         var start=new Uri(application.TrimEnd('\\')+"\\");var target=new Uri(library.TrimEnd('\\')+"\\");string relative=Uri.UnescapeDataString(start.MakeRelativeUri(target).ToString()).TrimEnd('/');return relative.Length==0?".":relative;
     }
     internal static bool Relative(string path){return !String.IsNullOrEmpty(path)&&path.Length<=1000&&!Path.IsPathRooted(path)&&!path.Contains("\\")&&!path.Contains(":")&&!path.Contains("\0")&&!path.Contains("\n")&&!path.Contains("\r")&&path.Split('/').Length<=32;}
+    [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)]static extern bool CreateDirectory(string path,IntPtr security);
+    string Revision(){
+        if(!File.Exists(file))return "missing";
+        if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0||new FileInfo(file).Length>8192)throw new IOException("共有接続設定を確認してください。");
+        using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(File.ReadAllBytes(file))).Replace("-","").ToLowerInvariant();
+    }
+    internal object Info(DesktopFiles.Root root){
+        string path=PortablePath(directory,root.Path),revision=Revision();
+        return new {revision=revision,canShare=path!=null&&Relative(path)&&DesktopFiles.ValidId(root.Id),exists=revision!="missing"};
+    }
+    internal void Publish(DesktopFiles.Root root,string expected){
+        root=files.Get(root.Token);string path=PortablePath(directory,root.Path);
+        if(path==null||!Relative(path)||!DesktopFiles.ValidId(root.Id))throw new IOException("ランチャー一式とゲームの保存先を、同じNASの共有フォルダー内に置いてください。");
+        string gate=Path.Combine(directory,".gameportal-connection.lock");
+        if(!CreateDirectory(gate,IntPtr.Zero))throw new IOException("共有設定を保存できません。ほかのPCの保存処理と、ランチャーの場所への書き込み権限を確認してください。");
+        try{
+            if(Revision()!=expected)throw new IOException("ほかのPCで共有設定が変更されました。内容を確認してから、もう一度共有してください。");
+            files.Get(root.Token);
+            byte[] bytes=Encoding.UTF8.GetBytes(files.Serialize(new {schema=1,kind="relative",path=path,libraryId=root.Id}));
+            string temporary=file+"."+DesktopFiles.Secret()+".tmp";
+            try{
+                using(var output=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){output.Write(bytes,0,bytes.Length);output.Flush(true);}
+                if(expected=="missing")File.Move(temporary,file);else File.Replace(temporary,file,null);
+            }finally{if(File.Exists(temporary))File.Delete(temporary);}
+            Message="保存先を共有しました。同じNASのランチャーを開く未設定のPCは、自動で接続します。";
+        }finally{Directory.Delete(gate);}
+    }
     internal DesktopFiles.Root Restore(){
         if(!File.Exists(file))return null;
         if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0||new FileInfo(file).Length>8192)throw new IOException("アプリと同じ場所にある共有接続設定を確認してください。");

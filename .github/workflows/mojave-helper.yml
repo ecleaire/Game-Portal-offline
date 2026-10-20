@@ -57,7 +57,7 @@ jobs:
         env:
           PLAYWRIGHT_EXECUTABLE_PATH: .tools/mojave-test/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
       - name: Publish verified native build tree
-        run: node scripts/export-mac-build.mjs legacy
+        run: node scripts/export-native-build.mjs legacy
       - uses: actions/upload-artifact@v4
         with:
           name: GAME-PORTAL-MOJAVE-Intel

@@ -22,7 +22,7 @@ export async function macDesktopPage(html,bootstrap,licenses){
           close:async()=>{if(finished)throw Error('保存処理は終了しています。');finished=true;await rpc('commitWrite',{root:root.token,path,writer:lease.token});},
           abort:async()=>{finished=true;await rpc('abortWrite',{root:root.token,writer:lease.token});}};
       }`+bootstrap.slice(end);
-  replace("['restore','stat','list','selectPath','dropFolder']", "['restore','stat','list','selectPath','dropFolder','beginRead','readChunk','endRead']");
+  replace("['restore','stat','list','selectPath','dropFolder','sharedConnection']", "['restore','stat','list','selectPath','dropFolder','sharedConnection','beginRead','readChunk','endRead']");
   replace("if(job.controller)job.controller.abort(reason);else{", "job.cancelled=true;job.cancelWait?.();if(job.controller)job.controller.abort(reason);else{");
   replace("reads.delete(job);}notify();};","reads.delete(job);}void rpc('cancelReads').catch(()=>{});notify();};");
   let page=desktopPage(html,bootstrap,licenses);

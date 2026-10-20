@@ -22,7 +22,10 @@ func desktopSecret() -> String {
     return bytes.map { String(format: "%02x", $0) }.joined()
 }
 func desktopHash(_ value: String) -> String {
-    let bytes = Data(value.utf8); var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+    return desktopDataHash(Data(value.utf8))
+}
+func desktopDataHash(_ bytes: Data) -> String {
+    var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
     bytes.withUnsafeBytes { _ = CC_SHA256($0.baseAddress, CC_LONG(bytes.count), &hash) }
     return hash.map { String(format: "%02x", $0) }.joined()
 }
@@ -182,6 +185,38 @@ final class DesktopFiles {
         try atomic(desktopJSON(value), profile.appendingPathComponent("folder.json"))
         try rememberShared(root)
     }
+    func sharedPath(_ root: Root) throws -> String? {
+        let descendant = root.url.path == application.path || root.url.path.hasPrefix(application.path + "/")
+        var first = stat(), second = stat()
+        let local = try application.resourceValues(forKeys: [.volumeIsLocalKey]).volumeIsLocal ?? true
+        guard descendant || !local && lstat(application.path, &first) == 0 && lstat(root.url.path, &second) == 0 && first.st_dev == second.st_dev else { return nil }
+        let from = application.pathComponents, to = root.url.pathComponents
+        var common = 0; while common < min(from.count, to.count) && from[common] == to[common] { common += 1 }
+        let components = Array(repeating: "..", count: from.count - common) + Array(to.dropFirst(common)), path = components.isEmpty ? "." : components.joined(separator: "/")
+        guard path.utf8.count <= 1000, components.count <= 32, !path.contains(":"), !path.contains("\\"), !path.contains("\n"), !path.contains("\r"), !path.contains("\0") else { return nil }
+        return path
+    }
+    func sharedRevision() throws -> String {
+        let shared = application.appendingPathComponent("GAME-PORTAL-CONNECTION.json")
+        try checkAncestors(shared)
+        return fm.fileExists(atPath: shared.path) ? desktopDataHash(try regularRead(shared, limit: 8192)) : "missing"
+    }
+    func sharedInfo(_ root: Root) throws -> [String: Any] {
+        let path = try sharedPath(root), revision = try sharedRevision()
+        return ["revision": revision, "canShare": path != nil && root.id != nil, "exists": revision != "missing"]
+    }
+    func publishShared(_ root: Root, expected: String) throws {
+        _ = try get(root.token)
+        guard let id = root.id, let path = try sharedPath(root) else { throw DesktopError("ランチャー一式とゲームの保存先を、同じNASの共有フォルダー内に置いてください。") }
+        let gate = application.appendingPathComponent(".gameportal-connection.lock")
+        try checkAncestors(gate)
+        guard Darwin.mkdir(gate.path, 0o777) == 0 else { throw DesktopError("共有設定を保存できません。ほかのPCの保存処理と、ランチャーの場所への書き込み権限を確認してください。") }
+        defer { _ = Darwin.rmdir(gate.path) }
+        guard try sharedRevision() == expected else { throw DesktopError("ほかのPCで共有設定が変更されました。内容を確認してから、もう一度共有してください。") }
+        _ = try get(root.token)
+        try atomic(desktopJSON(["schema": 1, "kind": "relative", "path": path, "libraryId": id]), application.appendingPathComponent("GAME-PORTAL-CONNECTION.json"), mode: 0o666)
+        connectionHint = "保存先を共有しました。同じNASのランチャーを開く未設定のPCは、自動で接続します。"
+    }
     func rememberShared(_ root: Root) throws {
         connectionHint = ""
         guard let id = root.id else { return }
@@ -194,20 +229,9 @@ final class DesktopFiles {
                 let registered = try register(application.appendingPathComponent(path).standardizedFileURL.path, expected: expected)
                 if registered.id != root.id || registered.url != root.url { connectionHint = "このMacの保存先を記憶しました。共有の保存先は変更していません。" }; return
             }
-            let descendant = root.url.path == application.path || root.url.path.hasPrefix(application.path + "/")
-            var first = stat(), second = stat()
-            let local = try application.resourceValues(forKeys: [.volumeIsLocalKey]).volumeIsLocal ?? true
-            guard descendant || !local && lstat(application.path, &first) == 0 && lstat(root.url.path, &second) == 0 && first.st_dev == second.st_dev else { return }
-            let from = application.pathComponents, to = root.url.pathComponents
-            var common = 0; while common < min(from.count, to.count) && from[common] == to[common] { common += 1 }
-            let components = Array(repeating: "..", count: from.count - common) + Array(to.dropFirst(common)), path = components.isEmpty ? "." : components.joined(separator: "/")
-            guard path.utf8.count <= 1000, components.count <= 32, !path.contains(":"), !path.contains("\\"), !path.contains("\n"), !path.contains("\r") else { return }
-            let temporary = application.appendingPathComponent("GAME-PORTAL-CONNECTION.json." + desktopSecret() + ".tmp")
-            defer { try? fm.removeItem(at: temporary) }
-            try atomic(desktopJSON(["schema": 1, "kind": "relative", "path": path, "libraryId": id]), temporary, mode: 0o666)
-            // Hard-link publication is exclusive: never replace another PC's choice.
-            guard Darwin.link(temporary.path, shared.path) == 0 else { if errno == EEXIST { return }; throw posixError() }
-            connectionHint = "保存先を共有しました。同じ場所のアプリを開くPCで使えます。"
+            guard try sharedPath(root) != nil else { return }
+            // Directory locks and rename work on NAS volumes without hard links.
+            try publishShared(root, expected: "missing")
         } catch { connectionHint = "このMacには記憶しました。接続先をほかのPCへ共有できませんでした：" + ((error as? DesktopError)?.message ?? error.localizedDescription) }
     }
     func checkWrite(_ path: String, directory: Bool = false) throws {
@@ -237,9 +261,13 @@ final class DesktopFiles {
             return ["data": Data(bytes.prefix(count)).base64EncodedString(), "size": reader.before.st_size] as [String: Any]
         }
         if op == "abortWrite" { if let writer = data["writer"] as? String, state({ writers[writer]?.root.token }) == token { removeWriter(writer) }; return true }
-        let root = try get(token), url = try bound(root.url, path, allowRoot: op == "list" || op == "stat" || op == "remember")
+        let root = try get(token), url = try bound(root.url, path, allowRoot: ["list", "stat", "remember", "sharedConnection", "shareConnection"].contains(op))
         switch op {
         case "remember": try remember(root); return true
+        case "sharedConnection": return try sharedInfo(root)
+        case "shareConnection":
+            guard !player else { throw DesktopError("共有先の変更はクリエイター版で行ってください。", "NotAllowedError") }
+            try publishShared(root, expected: data["revision"] as? String ?? ""); return record(root)
         case "stat":
             let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .fileSizeKey])
             guard values.isDirectory == true || values.isRegularFile == true else { throw DesktopError("通常のファイルではありません。") }

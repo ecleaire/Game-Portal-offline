@@ -12,6 +12,7 @@ async function waitForExit(child,timeout){return Promise.race([new Promise(resol
 async function terminate(child){try{process.kill(-child.pid,'SIGTERM');}catch{}if(!await waitForExit(child,2000)){try{process.kill(-child.pid,'SIGKILL');}catch{}assert(await waitForExit(child,3000),'Native app did not terminate');}child.stdout?.destroy();child.stderr?.destroy();}
 try{
  await mkdir(disk,{recursive:true});
+ await mkdir(join(root,'_内部ファイル'),{recursive:true});await writeFile(join(root,'_内部ファイル/GAME-PORTAL-DISTRIBUTION.json'),JSON.stringify({schema:1,project:'GAME-PORTAL',layout:'platform-role'}));
  await writeFile(join(disk,'game.html'),'<!doctype html><h1>Native Mac play</h1><script>localStorage.setItem("mac-retained","yes");parent.postMessage({macGameReady:true,title:document.querySelector("h1").textContent,webgl2:!!document.createElement("canvas").getContext("webgl2"),wasm:new WebAssembly.Instance(new WebAssembly.Module(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,127,3,2,1,0,7,7,1,3,114,117,110,0,0,10,6,1,4,0,65,7,11]))).exports.run()===7},"*");window.addEventListener("message",event=>{if(event.data==="security-test"){let parentBlocked=false;try{void parent.document;}catch{parentBlocked=true;}parent.postMessage({macSecurity:true,denied:typeof window.__portalSend==="undefined"&&parentBlocked},"*");}});</script>');
  for(const edition of ['creator','player']){
   const prefix=edition==='player'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-',role=edition==='player'?'プレイ用':'クリエイター用';
@@ -32,7 +33,7 @@ try{
 const until=async(test,label)=>{for(let count=0;count<400;count++){if(await test())return;await new Promise(resolve=>setTimeout(resolve,50));}throw Error('Timed out: '+label+' / '+document.body.innerText.slice(-500));};
 const check=(condition,label)=>{if(!condition)throw Error(label);};
 await until(()=>document.documentElement.dataset.ready==='true','startup');
-if(${cycle}===0){check(!root,'first start has no selected folder');document.getElementById('settingsButton').click();check(document.getElementById('settings').open,'settings before connection');document.getElementById('desktopFolderPath').value=${JSON.stringify(disk)};await document.getElementById('desktopConnectPath').onclick();document.getElementById('settings').close();}
+if(${cycle}===0&&launcherEdition==='creator'){check(!root,'first creator start has no selected folder');document.getElementById('settingsButton').click();check(document.getElementById('settings').open,'settings before connection');document.getElementById('desktopFolderPath').value=${JSON.stringify(disk)};await document.getElementById('desktopConnectPath').onclick();document.getElementById('settings').close();}
 await until(()=>root,'native folder restore');
 await until(()=>games.length===1,'game listing');
 check(root.nativeDesktop&&!root.nativeReadOnly,'writable native adapter');
@@ -40,6 +41,8 @@ check(window.chrome?.webview===undefined,'no WebView2/browser dependency');
 document.getElementById('helpButton').click();check(document.getElementById('help').open,'help opens');document.getElementById('help').close();
 document.getElementById('settingsButton').click();check(document.getElementById('settings').open,'settings opens');document.getElementById('settings').close();
 check(await root.queryPermission({mode:'readwrite'})==='granted','no browser permission needed');
+if(launcherEdition==='creator'&&${cycle}===0){document.getElementById('settingsButton').click();const share=document.getElementById('desktopShareConnection');check(share&&!share.hidden,'native creator share control');const original=window.confirm;window.confirm=()=>true;try{share.click();await until(()=>!busy,'sharing completed');check(document.getElementById('desktopSharedConnection').textContent.includes('未設定のPC'),'shared default publication notice');}finally{window.confirm=original;}document.getElementById('settings').close();}
+if(launcherEdition==='player'){check(!document.getElementById('desktopShareConnection'),'player cannot change shared default');let denied=false;try{const info=await desktopHost.sharedInfo(root);await desktopHost.share(root,info.revision);}catch{denied=true;}check(denied,'backend denies player shared default change');}
 if(launcherEdition==='creator'&&${cycle}===0){const input=document.getElementById('enableEditing');input.checked=true;await input.onchange();check(editingEnabled,'native edit mode');editGame(games[0]);document.getElementById('editTitle').value='Mac edited';document.getElementById('editEnvironment').value='HTML';document.getElementById('editDescription').value='Native metadata';document.getElementById('editForm').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await until(()=>!busy&&!document.getElementById('edit').open,'metadata save');check(games[0].title==='Mac edited','edited title');}
 if(launcherEdition==='player'){check(!editingEnabled,'player mode');let blocked=false;try{await root.getFileHandle('forbidden.html',{create:true});}catch{blocked=true;}check(blocked,'native player write denial');}
 const library=localLibrary;

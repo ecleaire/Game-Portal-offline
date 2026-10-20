@@ -18,6 +18,27 @@ func desktopSelfTest(_ directory: URL) throws {
     _ = try request("remember")
     let restored = try DesktopFiles(profile: profile, application: directory, player: false)
     try check(try restored.restore()?.id == id, "folder restoration")
+    let fresh = try DesktopFiles(profile: directory.appendingPathComponent("fresh-pc"), application: directory, player: true)
+    try check(try fresh.restore()?.url == disk, "unconfigured player PC uses shared default")
+    let pinned = try DesktopFiles(profile: directory.appendingPathComponent("pinned-pc"), application: directory, player: false)
+    try pinned.remember(pinned.register(disk.path))
+    let other = directory.appendingPathComponent("別の保存先")
+    try fm.createDirectory(at: other.appendingPathComponent(".gameportal"), withIntermediateDirectories: true)
+    try desktopJSON(["schema": 1, "id": String(repeating: "b", count: 32)]).write(to: other.appendingPathComponent(".gameportal/library-id.json"))
+    let otherRoot = try files.register(other.path), oldRevision = try files.sharedRevision()
+    try files.remember(otherRoot)
+    try check(try fresh.restore()?.url == disk, "personal selection never silently replaces shared default")
+    try files.publishShared(otherRoot, expected: oldRevision)
+    try check(try fresh.restore()?.url == other, "explicit shared change reaches fresh PC without folder selection")
+    try check(try pinned.restore()?.url == disk, "individually configured PC retains its folder")
+    try check(try restored.restore()?.url == other, "personal folder selection retained")
+    try denied { try files.publishShared(root, expected: oldRevision) }
+    let newRevision = try files.sharedRevision(), gate = directory.appendingPathComponent(".gameportal-connection.lock")
+    try fm.createDirectory(at: gate, withIntermediateDirectories: false)
+    try denied { try files.publishShared(root, expected: newRevision) }; try fm.removeItem(at: gate)
+    let freshRoot = try fresh.register(disk.path)
+    try denied { _ = try fresh.operate(["op": "shareConnection", "root": freshRoot.token, "revision": newRevision]) }
+    try files.publishShared(root, expected: newRevision); try files.remember(root)
     try denied { _ = try request("file", "../escape", ["create": true]) }
     try fm.createSymbolicLink(atPath: disk.appendingPathComponent("outside").path, withDestinationPath: directory.path)
     try denied { _ = try request("file", "outside/escape", ["create": true]) }

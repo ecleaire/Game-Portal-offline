@@ -38,6 +38,15 @@ internal static class DesktopSelfTest {
         string creator=Path.Combine(app,"Windows","クリエイター用"),player=Path.Combine(app,"Windows","プレイ用");Directory.CreateDirectory(creator);Directory.CreateDirectory(player);
         var creatorFiles=new DesktopFiles(Path.Combine(directory,"creator-grouped"),creator);Assert(creatorFiles.Restore().Path==sharedGames,"grouped creator uses bundle connection");results.Add("platform creator connection");
         var playerFiles=new DesktopFiles(Path.Combine(directory,"player-grouped"),player);Assert(playerFiles.Restore().Path==sharedGames,"grouped player uses bundle connection");results.Add("platform player connection");
+        var shareInfo=publisher.Parse(publisher.Serialize(publisher.SharedInfo(publisher.Register(second))));string revision=DesktopFiles.Text(shareInfo,"revision");
+        publisher.Share(publisher.Register(second),revision);
+        var freshPC=new DesktopFiles(Path.Combine(directory,"fresh-after-shared-update"),player);Assert(freshPC.Restore().Path==second,"fresh player PC follows updated shared default");results.Add("explicit shared default update reaches fresh PC");
+        Assert(otherPC.Restore().Path==second,"unconfigured PC follows shared update");results.Add("shared default refresh for unconfigured PC");
+        Assert(creatorFiles.Restore().Path==second,"creator without personal setup follows shared update");results.Add("creator uses new shared default");
+        Fails(()=>publisher.Share(publisher.Register(sharedGames),revision),"stale shared update rejected",results);
+        shareInfo=publisher.Parse(publisher.Serialize(publisher.SharedInfo(publisher.Register(sharedGames))));revision=DesktopFiles.Text(shareInfo,"revision");
+        Directory.CreateDirectory(Path.Combine(app,".gameportal-connection.lock"));Fails(()=>publisher.Share(publisher.Register(sharedGames),revision),"concurrent shared writer rejected",results);Directory.Delete(Path.Combine(app,".gameportal-connection.lock"));
+        publisher.Share(publisher.Register(sharedGames),revision);
         string movedProfile=Path.Combine(directory,"publisher");var relocatedOld=new DesktopFiles(movedProfile,creator);Assert(relocatedOld.Restore().Path==second,"root profile survives platform move");results.Add("legacy profile preserved after platform move");
         Assert(PortalNative.ConfigurationDirectory(Path.Combine(app,"other"))==Path.Combine(app,"other"),"no arbitrary parent search");results.Add("configuration discovery bounded");
         Directory.CreateDirectory(Path.Combine(app,"_内部ファイル"));File.Move(Path.Combine(app,"GAME-PORTAL-DISTRIBUTION.json"),Path.Combine(app,"_内部ファイル","GAME-PORTAL-DISTRIBUTION.json"));Assert(PortalNative.ConfigurationDirectory(player)==app,"internal marker retains shared connection");results.Add("internal distribution marker");
