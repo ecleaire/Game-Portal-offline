@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,readFile,rm,readdir} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,rm,readdir,copyFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {spawn} from 'node:child_process';
@@ -7,13 +7,14 @@ import {createServer} from 'node:net';
 import {setTimeout as delay} from 'node:timers/promises';
 import {chromium,expect} from '@playwright/test';
 if(process.platform!=='win32'){console.log('Windows player EXE test requires Windows.');process.exit(0);}
-const temp=await mkdtemp(join(tmpdir(),'portal-player-')),disk=join(temp,'Library'),profile=join(temp,'profile'),html='<html><body>PLAYER <button onclick="localStorage.score=42">SAVE</button></body></html>';
+const temp=await mkdtemp(join(tmpdir(),'portal-player-')),app=join(temp,'launcher'),disk=join(app,'Library'),profile=join(temp,'profile'),exe=join(app,'GAME-PORTAL-PLAY.exe'),html='<html><body>PLAYER <button onclick="localStorage.score=42">SAVE</button></body></html>';
 let child,browser;
 try{
  await mkdir(join(disk,'.gameportal'),{recursive:true});await writeFile(join(disk,'.gameportal/library-id.json'),JSON.stringify({schema:1,id:'a'.repeat(32)}));await writeFile(join(disk,'Game.html'),html);
+ await copyFile(resolve(process.env.PORTAL_DESKTOP_PLAYER_EXE||'GAME-PORTAL-PLAY.exe'),exe);await writeFile(join(app,'GAME-PORTAL-CONNECTION.json'),JSON.stringify({schema:1,kind:'relative',path:'Library',libraryId:'a'.repeat(32)}));
  for(let cycle=0;cycle<3;cycle++){
   const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));const ready=join(temp,'ready-'+cycle+'.json');
-  child=spawn(resolve(process.env.PORTAL_DESKTOP_PLAYER_EXE||'GAME-PORTAL-PLAY.exe'),['--profile',profile,'--debug-port',String(port),'--ready-file',ready,'--test-mode',...(cycle===0?['--library',disk]:[])],{windowsHide:true,stdio:'pipe'});
+  child=spawn(exe,['--profile',profile,'--debug-port',String(port),'--ready-file',ready,'--test-mode'],{windowsHide:true,stdio:'pipe'});
   for(let n=0;;n++){try{await readFile(ready);break;}catch{if(child.exitCode!==null||n>250)throw Error('Player failed to start');await delay(100);}}
   browser=await chromium.connectOverCDP('http://127.0.0.1:'+port);let page;for(let n=0;n<150;n++){page=browser.contexts()[0]?.pages().find(p=>p.url().includes('gameportal.desktop.invalid'));if(page)break;await delay(100);}assert(page);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('.card')).toHaveCount(1);

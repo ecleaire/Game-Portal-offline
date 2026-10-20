@@ -19,12 +19,12 @@ jobs:
       - run: node scripts/build-desktop.mjs --prepare
       - run: node scripts/verify-desktop.mjs
       - run: node scripts/build-windows.mjs
-      - run: node tests/windows-native.mjs
-      - run: node tests/desktop-files.mjs
-      - run: node tests/desktop-browser.mjs
-      - run: node tests/desktop-player.mjs
-      - run: node tests/desktop-information.mjs
-      - run: node tests/desktop-forget.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/windows-native.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/desktop-files.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/desktop-browser.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/desktop-player.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/desktop-information.mjs
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/desktop-forget.mjs
       - name: Publish verified native build tree
         run: node scripts/export-native-build.mjs windows
       - uses: actions/upload-artifact@v4
