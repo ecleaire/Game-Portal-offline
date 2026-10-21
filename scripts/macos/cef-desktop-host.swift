@@ -139,7 +139,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     func operate(_ request: [String: Any], id: Int) {
         let op = request["op"] as? String ?? ""
-        let writing = ["remember", "forget", "shareConnection", "beginWrite", "writeChunk", "commitWrite", "abortWrite", "remove"].contains(op) || ["file", "directory"].contains(op) && request["create"] as? Bool == true
+        let writing = ["remember", "forget", "shareConnection", "recoverSharedConnection", "beginWrite", "writeChunk", "commitWrite", "abortWrite", "remove"].contains(op) || ["file", "directory"].contains(op) && request["create"] as? Bool == true
         if writing { pendingWrites += 1 }
         let queue = (request["root"] as? String).flatMap { files.work(for: $0) } ?? (["restore", "selectPath"].contains(op) ? DispatchQueue.global(qos: .userInitiated) : io)
         queue.async {

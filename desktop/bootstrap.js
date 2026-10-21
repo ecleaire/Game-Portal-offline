@@ -44,7 +44,7 @@ const desktopHost=(()=>{
   nativeTools.nativeFolder=async()=> (await current())?.handle||null;
   nativeTools.launchNative=async(connection,libraryId,game)=>rpc('launch',{root:root?.desktopToken,libraryId,gameId:game.id,path:game.path});
   const cancel=()=>{for(const job of [...reads]){const reason=error({name:'NativeReadCancelled',message:'接続待ちを中止しました。もう一度試せます。'});if(job.controller)job.controller.abort(reason);else{clearTimeout(job.timer);requests.delete(job.id);job.reject(reason);}reads.delete(job);}notify();};
-  return {current,cancel,sharedInfo:folder=>rpc('sharedConnection',{root:folder.desktopToken}),share:async(folder,revision)=>record(await rpc('shareConnection',{root:folder.desktopToken,revision})),fromPath:async path=>desktopHost.attach(record(await rpc('selectPath',{path})).handle),fromDrop:async files=>desktopHost.attach(record(await rpc('dropFolder',{},files)).handle),get pending(){return reads.size;},attach(h){if(!h)return h;h.cancelReads=cancel;Object.defineProperty(h,'pendingReads',{get:()=>reads.size,configurable:true});return h;}};
+  return {current,cancel,sharedInfo:folder=>rpc('sharedConnection',{root:folder.desktopToken}),recoverShared:(folder,revision)=>rpc('recoverSharedConnection',{root:folder.desktopToken,revision}),share:async(folder,revision)=>record(await rpc('shareConnection',{root:folder.desktopToken,revision})),fromPath:async path=>desktopHost.attach(record(await rpc('selectPath',{path})).handle),fromDrop:async files=>desktopHost.attach(record(await rpc('dropFolder',{},files)).handle),get pending(){return reads.size;},attach(h){if(!h)return h;h.cancelReads=cancel;Object.defineProperty(h,'pendingReads',{get:()=>reads.size,configurable:true});return h;}};
 })();
 const desktopOriginalNativeFolder=nativeTools.nativeFolder;
 nativeTools.cancelFolderReads=()=>desktopHost.cancel();
@@ -67,7 +67,12 @@ document.getElementById('desktopShareConnection')?.addEventListener('click',()=>
   if(busy)return;
   void action(async()=>{
     const folder=root;if(!folder?.nativeDesktop)throw Error('先にゲームの保存先フォルダーを選んでください。');
-    const info=await desktopHost.sharedInfo(folder);
+    let info=await desktopHost.sharedInfo(folder);
+    if(info.legacyLock){
+      if(!confirm('旧版の共有設定ロックが残っています。保存中の処理を壊さないため、すべてのPCで旧版のランチャーを閉じてください。全PCで閉じたことを確認し、旧版のロックを解除しますか？'))return '共有先は変更していません。';
+      if(root!==folder)throw Error('保存先が変わりました。もう一度確認してください。');
+      await desktopHost.recoverShared(folder,info.revision);info=await desktopHost.sharedInfo(folder);
+    }
     if(!info.canShare)throw Error('ランチャー一式とゲームの保存先を、同じNASの共有フォルダー内に置いてください。');
     if(!confirm('「'+folder.name+'」を、同じNASのランチャーを開く未設定のPCの保存先にします。'+(info.exists?'現在の共有先を更新します。':'')+' 個別に設定済みのPCは変更しません。よろしいですか？'))return '共有先は変更していません。';
     if(root!==folder)throw Error('保存先が変わりました。もう一度確認してください。');

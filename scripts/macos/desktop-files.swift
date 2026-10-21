@@ -206,19 +206,46 @@ final class DesktopFiles {
     }
     func sharedInfo(_ root: Root) throws -> [String: Any] {
         let path = try sharedPath(root), revision = try sharedRevision()
-        return ["revision": revision, "canShare": path != nil && root.id != nil, "exists": revision != "missing"]
+        return ["revision": revision, "canShare": path != nil && root.id != nil, "exists": revision != "missing", "legacyLock": (try? application.appendingPathComponent(DesktopFiles.sharedLockName).resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true]
+    }
+    // POSIX record locks map to SMB byte-range locks on a shared volume.
+    // fcntl locks are per process: serialize all in-process acquisitions too.
+    static let sharedWriterGate = NSLock()
+    static let sharedLockName = ".gameportal-connection.lock"
+    func withSharedLock<T>(_ operation: () throws -> T) throws -> T {
+        guard DesktopFiles.sharedWriterGate.try() else { throw DesktopError("ほかの画面で共有設定を保存中です。") }
+        defer { DesktopFiles.sharedWriterGate.unlock() }
+        let file = application.appendingPathComponent(DesktopFiles.sharedLockName)
+        try checkAncestors(file)
+        var info = stat()
+        if lstat(file.path, &info) == 0 && info.st_mode & mode_t(S_IFMT) == mode_t(S_IFDIR) { throw DesktopError("旧版の保存ロックが残っています。「この保存先を共有」から解除してください。先にすべてのPCで旧版を閉じてください。") }
+        let fd = Darwin.open(file.path, O_RDWR | O_CREAT | O_NOFOLLOW | O_NONBLOCK, 0o666)
+        guard fd >= 0 else { throw posixError() }; defer { Darwin.close(fd) }
+        guard fstat(fd, &info) == 0, info.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else { throw DesktopError("共有設定のロックファイルを確認してください。") }
+        var record = flock(); record.l_type = Int16(F_WRLCK); record.l_whence = Int16(SEEK_SET); record.l_start = 0; record.l_len = 1
+        guard fcntl(fd, F_SETLK, &record) == 0 else { throw DesktopError("ほかのPCで共有設定を保存中です。完了してからもう一度共有してください。") }
+        // Do not unlink: all processes must keep locking the same file.
+        return try operation()
+    }
+    func recoverShared(_ expected: String) throws {
+        guard try sharedRevision() == expected else { throw DesktopError("ほかのPCで共有設定が変更されました。もう一度確認してください。") }
+        let file = application.appendingPathComponent(DesktopFiles.sharedLockName)
+        try checkAncestors(file)
+        var info = stat()
+        if lstat(file.path, &info) != 0 { if errno == ENOENT { return }; throw posixError() }
+        if info.st_mode & mode_t(S_IFMT) != mode_t(S_IFDIR) { return }
+        // UI requires all old clients closed; never recurse or delete file locks.
+        guard Darwin.rmdir(file.path) == 0 else { throw posixError() }
     }
     func publishShared(_ root: Root, expected: String) throws {
         _ = try get(root.token)
         guard let id = root.id, let path = try sharedPath(root) else { throw DesktopError("ランチャー一式とゲームの保存先を、同じNASの共有フォルダー内に置いてください。") }
-        let gate = application.appendingPathComponent(".gameportal-connection.lock")
-        try checkAncestors(gate)
-        guard Darwin.mkdir(gate.path, 0o777) == 0 else { throw DesktopError("共有設定を保存できません。ほかのPCの保存処理と、ランチャーの場所への書き込み権限を確認してください。") }
-        defer { _ = Darwin.rmdir(gate.path) }
-        guard try sharedRevision() == expected else { throw DesktopError("ほかのPCで共有設定が変更されました。内容を確認してから、もう一度共有してください。") }
-        _ = try get(root.token)
-        try atomic(desktopJSON(["schema": 1, "kind": "relative", "path": path, "libraryId": id]), application.appendingPathComponent("GAME-PORTAL-CONNECTION.json"), mode: 0o666)
-        connectionHint = "保存先を共有しました。同じNASのランチャーを開く未設定のPCは、自動で接続します。"
+        try withSharedLock {
+            guard try sharedRevision() == expected else { throw DesktopError("ほかのPCで共有設定が変更されました。内容を確認してから、もう一度共有してください。") }
+            _ = try get(root.token)
+            try atomic(desktopJSON(["schema": 1, "kind": "relative", "path": path, "libraryId": id]), application.appendingPathComponent("GAME-PORTAL-CONNECTION.json"), mode: 0o666)
+            connectionHint = "保存先を共有しました。同じNASのランチャーを開く未設定のPCは、自動で接続します。"
+        }
     }
     func rememberShared(_ root: Root) throws {
         connectionHint = ""
@@ -234,7 +261,7 @@ final class DesktopFiles {
                 if registered.id != root.id || registered.url != root.url { connectionHint = "このMacの保存先を記憶しました。共有の保存先は変更していません。" }; return
             }
             guard try sharedPath(root) != nil else { return }
-            // Directory locks and rename work on NAS volumes without hard links.
+            // Byte-range locks and rename need no hard-link support.
             try publishShared(root, expected: "missing")
         } catch { connectionHint = "このMacには記憶しました。接続先をほかのPCへ共有できませんでした：" + ((error as? DesktopError)?.message ?? error.localizedDescription) }
     }
@@ -265,10 +292,13 @@ final class DesktopFiles {
             return ["data": Data(bytes.prefix(count)).base64EncodedString(), "size": reader.before.st_size] as [String: Any]
         }
         if op == "abortWrite" { if let writer = data["writer"] as? String, state({ writers[writer]?.root.token }) == token { removeWriter(writer) }; return true }
-        let root = try get(token), url = try bound(root.url, path, allowRoot: ["list", "stat", "remember", "sharedConnection", "shareConnection"].contains(op))
+        let root = try get(token), url = try bound(root.url, path, allowRoot: ["list", "stat", "remember", "sharedConnection", "shareConnection", "recoverSharedConnection"].contains(op))
         switch op {
         case "remember": try remember(root); return true
         case "sharedConnection": return try sharedInfo(root)
+        case "recoverSharedConnection":
+            guard !player else { throw DesktopError("共有先の変更はクリエイター版で行ってください。", "NotAllowedError") }
+            try recoverShared(data["revision"] as? String ?? ""); return true
         case "shareConnection":
             guard !player else { throw DesktopError("共有先の変更はクリエイター版で行ってください。", "NotAllowedError") }
             try publishShared(root, expected: data["revision"] as? String ?? ""); return record(root)

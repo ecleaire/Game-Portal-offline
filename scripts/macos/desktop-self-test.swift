@@ -42,9 +42,24 @@ func desktopSelfTest(_ directory: URL) throws {
     try check(try sameFolder(restored.restore(), other), "personal folder selection retained")
     try denied { try files.publishShared(root, expected: oldRevision) }
     let newRevision = try files.sharedRevision(), gate = directory.appendingPathComponent(".gameportal-connection.lock")
+    try check(try gate.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true, "stable shared lock remains a file")
+    try files.withSharedLock {
+        try denied { try pinned.publishShared(pinned.register(disk.path), expected: newRevision) }
+        try files.recoverShared(newRevision)
+        try check(fm.fileExists(atPath: gate.path), "legacy recovery preserves a live file lock")
+    }
+    try fm.removeItem(at: gate)
     try fm.createDirectory(at: gate, withIntermediateDirectories: false)
-    try denied { try files.publishShared(root, expected: newRevision) }; try fm.removeItem(at: gate)
+    try denied { try files.publishShared(root, expected: newRevision) }
+    try denied { try files.recoverShared("outdated") }
+    let unknown = gate.appendingPathComponent("unknown.txt")
+    try Data("keep".utf8).write(to: unknown)
+    try denied { try files.recoverShared(newRevision) }
+    try check(fm.fileExists(atPath: unknown.path), "nonempty legacy lock retained")
+    try fm.removeItem(at: unknown); try files.recoverShared(newRevision)
+    try check(!fm.fileExists(atPath: gate.path), "confirmed empty legacy lock recovery")
     let freshRoot = try fresh.register(disk.path)
+    try denied { _ = try fresh.operate(["op": "recoverSharedConnection", "root": freshRoot.token, "revision": newRevision]) }
     try denied { _ = try fresh.operate(["op": "shareConnection", "root": freshRoot.token, "revision": newRevision]) }
     let privateApp = directory.appendingPathComponent("player-app"), privateDisk = privateApp.appendingPathComponent("games")
     try fm.createDirectory(at: privateDisk.appendingPathComponent(".gameportal"), withIntermediateDirectories: true)

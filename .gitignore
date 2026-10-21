@@ -35,3 +35,6 @@ GAME-PORTAL-CONNECTION.json.*.tmp
 /GAME-PORTAL-MOJAVE
 /GAME-PORTAL-MOJAVE.command
 /THIRD-PARTY-LICENSES.txt
+
+# Local shared-writer coordination file; never distribute instance state.
+.gameportal-connection.lock

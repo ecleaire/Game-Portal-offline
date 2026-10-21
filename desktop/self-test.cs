@@ -48,7 +48,22 @@ internal static class DesktopSelfTest {
         Assert(creatorFiles.Restore().Path==second,"creator without personal setup follows shared update");results.Add("creator uses new shared default");
         Fails(()=>publisher.Share(publisher.Register(sharedGames),revision),"stale shared update rejected",results);
         shareInfo=publisher.Parse(publisher.Serialize(publisher.SharedInfo(publisher.Register(sharedGames))));revision=DesktopFiles.Text(shareInfo,"revision");
-        Directory.CreateDirectory(Path.Combine(app,".gameportal-connection.lock"));Fails(()=>publisher.Share(publisher.Register(sharedGames),revision),"concurrent shared writer rejected",results);Directory.Delete(Path.Combine(app,".gameportal-connection.lock"));
+        string sharedLock=Path.Combine(app,DesktopSharedConnection.LockName);Assert(File.Exists(sharedLock),"stable shared lock remains a file");
+        string readyFile=Path.Combine(directory,"lock-ready");
+        var holder=System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName,"--self-test-shared-lock \""+app+"\" \""+readyFile+"\""){UseShellExecute=false,CreateNoWindow=true});
+        try{
+            var deadline=DateTime.UtcNow.AddSeconds(10);while(!File.Exists(readyFile)&&!holder.HasExited&&DateTime.UtcNow<deadline)System.Threading.Thread.Sleep(20);
+            Assert(File.Exists(readyFile),"independent shared lock holder ready");
+            Fails(()=>publisher.Share(publisher.Register(sharedGames),revision),"independent shared writer rejected",results);
+            publisher.RecoverShared(publisher.Register(sharedGames),revision);Assert(File.Exists(sharedLock),"active file lock cannot be removed");results.Add("active file lock preserved by legacy recovery");
+        }finally{if(!holder.HasExited)holder.Kill();holder.WaitForExit();holder.Dispose();}
+        publisher.Share(publisher.Register(sharedGames),revision);results.Add("forced process exit releases shared writer lock");
+        shareInfo=publisher.Parse(publisher.Serialize(publisher.SharedInfo(publisher.Register(sharedGames))));revision=DesktopFiles.Text(shareInfo,"revision");
+        File.Delete(sharedLock);Directory.CreateDirectory(sharedLock);
+        Fails(()=>publisher.Share(publisher.Register(sharedGames),revision),"legacy directory never automatically stolen",results);
+        Fails(()=>publisher.RecoverShared(publisher.Register(sharedGames),"outdated"),"stale legacy recovery rejected",results);
+        File.WriteAllText(Path.Combine(sharedLock,"unknown.txt"),"keep");Fails(()=>publisher.RecoverShared(publisher.Register(sharedGames),revision),"nonempty legacy lock preserved",results);File.Delete(Path.Combine(sharedLock,"unknown.txt"));
+        publisher.RecoverShared(publisher.Register(sharedGames),revision);Assert(!Directory.Exists(sharedLock),"confirmed empty legacy recovery");results.Add("confirmed empty legacy lock recovery");
         publisher.Share(publisher.Register(sharedGames),revision);
         string movedProfile=Path.Combine(directory,"publisher");var relocatedOld=new DesktopFiles(movedProfile,creator);Assert(relocatedOld.Restore().Path==second,"root profile survives platform move");results.Add("legacy profile preserved after platform move");
         Assert(PortalNative.ConfigurationDirectory(Path.Combine(app,"other"))==Path.Combine(app,"other"),"no arbitrary parent search");results.Add("configuration discovery bounded");

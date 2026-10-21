@@ -25,6 +25,9 @@ internal static class DesktopProgram {
     [DllImport("kernel32",CharSet=CharSet.Unicode,SetLastError=true)]static extern IntPtr LoadLibrary(string path);
     [STAThread]static void Main(string[] args){
         try{
+            if(args.Length==3&&args[0]=="--self-test-shared-lock"){
+                try{using(var held=DesktopSharedConnection.Acquire(Path.GetFullPath(args[1]))){File.WriteAllText(args[2],"ready");Thread.Sleep(Timeout.Infinite);}}catch{Environment.ExitCode=2;}return;
+            }
             string profile=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"GamePortalDesktop"),library=null,ready=null,selfTest=null;int port=0;bool testing=false;
             for(int i=0;i<args.Length;i++){
                 if(args[i]=="--profile")profile=Path.GetFullPath(args[++i]);else if(args[i]=="--library")library=Path.GetFullPath(args[++i]);else if(args[i]=="--debug-port")port=Int32.Parse(args[++i]);else if(args[i]=="--ready-file")ready=Path.GetFullPath(args[++i]);else if(args[i]=="--self-test")selfTest=Path.GetFullPath(args[++i]);else if(args[i]=="--test-mode")testing=true;else throw new Exception("起動オプションを確認してください。");
@@ -120,6 +123,7 @@ internal sealed class DesktopForm : Form {
         switch(op){
             case "remember":files.Remember(root,!DesktopProgram.PlayerOnly);return true;
             case "sharedConnection":return files.SharedInfo(root);
+            case "recoverSharedConnection":if(DesktopProgram.PlayerOnly)throw new UnauthorizedAccessException("共有先の変更はクリエイター版で行ってください。");files.RecoverShared(root,DesktopFiles.Text(data,"revision"));return true;
             case "shareConnection":if(DesktopProgram.PlayerOnly)throw new UnauthorizedAccessException("共有先の変更はクリエイター版で行ってください。");return files.Share(root,DesktopFiles.Text(data,"revision"));
             case "stat":return files.Stat(root,path);
             case "list":return files.List(root,path);

@@ -14,7 +14,7 @@ export async function macDesktopPage(html,bootstrap,licenses){
   if(start<0||end<0)throw Error('Mac file adapter marker changed');
   bootstrap=bootstrap.slice(0,start)+`      getFile:async()=>{
         const parts=[];let offset=0,reader=null,release=null;const job={id:0,reject:()=>{},cancelled:false};reads.add(job);notify();
-        try{release=await acquireReadSlot(job);if(job.cancelled)throw new DOMException('読み込みを中止しました。','NativeReadCancelled');reader=await rpc('beginRead',{root:root.token,path});do{if(job.cancelled)throw new DOMException('読み込みを中止しました。','NativeReadCancelled');const part=await rpc('readChunk',{root:root.token,reader:reader.reader,offset});const size=reader.size;if(part.size!==size)throw Error('読み込み中にファイルが変わりました。');if(!Number.isSafeInteger(size)||size<0||size>200*1024*1024)throw Error('ファイルは200MB以内にしてください。');const bytes=player.decodeBase64(part.data);if(!bytes.length&&offset<size)throw Error('読み込みが途中で止まりました。');parts.push(bytes);offset+=bytes.length;}while(offset<reader.size);await rpc('endRead',{root:root.token,reader:reader.reader});reader=null;return new File(parts,name);}finally{if(reader)await rpc('abortRead',{root:root.token,reader:reader.reader}).catch(()=>{});if(release)release();reads.delete(job);notify();}
+        try{release=await acquireReadSlot(job);if(job.cancelled)throw new DOMException('読み込みを中止しました。','NativeReadCancelled');reader=await rpc('beginRead',{root:root.token,path});do{if(job.cancelled)throw new DOMException('読み込みを中止しました。','NativeReadCancelled');const part=await rpc('readChunk',{root:root.token,reader:reader.reader,offset});const size=reader.size;if(part.size!==size)throw Error('読み込み中にファイルが変わりました。');if(!Number.isSafeInteger(size)||size<0||size>200*1024*1024)throw Error('ファイルは200MB以内にしてください。');const bytes=player.decodeBase64(part.data);if(!bytes.length&&offset<size)throw Error('読み込みが途中で止まりました。');parts.push(bytes);offset+=bytes.length;}while(offset<reader.size);await rpc('endRead',{root:root.token,reader:reader.reader});reader=null;return new File(parts,name);}finally{if(reader)void rpc('abortRead',{root:root.token,reader:reader.reader}).catch(()=>{});if(release)release();reads.delete(job);notify();}
       },
       createWritable:async()=>{
         const lease=await rpc('beginWrite',{root:root.token,path});let finished=false;
@@ -22,7 +22,7 @@ export async function macDesktopPage(html,bootstrap,licenses){
           close:async()=>{if(finished)throw Error('保存処理は終了しています。');finished=true;await rpc('commitWrite',{root:root.token,path,writer:lease.token});},
           abort:async()=>{finished=true;await rpc('abortWrite',{root:root.token,writer:lease.token});}};
       }`+bootstrap.slice(end);
-  replace("['restore','stat','list','selectPath','dropFolder','sharedConnection']", "['restore','stat','list','selectPath','dropFolder','sharedConnection','beginRead','readChunk','endRead']");
+  replace("['restore','stat','list','selectPath','dropFolder','sharedConnection']", "['restore','stat','list','selectPath','dropFolder','sharedConnection','beginRead','readChunk','endRead','abortRead','cancelReads']");
   replace("if(job.controller)job.controller.abort(reason);else{", "job.cancelled=true;job.cancelWait?.();if(job.controller)job.controller.abort(reason);else{");
   replace("reads.delete(job);}notify();};","reads.delete(job);}void rpc('cancelReads').catch(()=>{});notify();};");
   let page=desktopPage(html,bootstrap,licenses);
