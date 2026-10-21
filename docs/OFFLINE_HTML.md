@@ -4,7 +4,7 @@
 
 PC版Google Chrome（Windows / macOS）推奨です。配布ZIPを展開し、`GAME-PORTAL.html` をChromeで開きます。画面・Pyxel・Pyodide・Python標準ライブラリーをHTMLに同梱しています。使用中のCDN・Supabase・Google Drive接続、アカウント登録は不要です。
 
-[ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/tags/v0.24.3.zip)するか、GitHubでタグ `v0.24.3` を選び「Code → Download ZIP」を使います。展開後、**HTML → プレイ用／クリエイター用** を開き、用途に合うHTMLを起動してください。インストール・ビルド・Actionsの操作は不要です。補助ツールは「起動補助」、ライセンスは「_内部ファイル」にまとめています。Windows・Macアプリを使う場合は[READMEの表](../README.md#ダウンロードして使う)を確認してください。
+[ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.3.zip)するか、GitHubでタグ `v0.24.3` を選び「Code → Download ZIP」を使います。展開後、**HTML → プレイ用／クリエイター用** を開き、用途に合うHTMLを起動してください。インストール・ビルド・Actionsの操作は不要です。補助ツールは「起動補助」、ライセンスは「_内部ファイル」にまとめています。Windows・Macアプリを使う場合は[READMEの表](../README.md#ダウンロードして使う)を確認してください。
 
 保管先のフォルダー名を決められた名前へ変更する必要はありません。日本語・空白・記号など、OSとChromeで選択できる名前をそのまま使えます。名前は案内表示にだけ使い、ライブラリIDで保存先を識別します。ブラウザーがアクセスを許可しない場所や、読み取り・保存の権限がない場所は、名前を変えても利用できません。
 
@@ -270,7 +270,7 @@ GAME-PORTAL.html
 - 壊れた設定ファイルや同じ作品IDの重複は該当カードで案内し、そのゲームのプレイ・編集を止めます。他の正常なゲームは利用できます。同じゲームを別作品として複製する場合は「ゲームを追加」を使用してください。
 - 同じChromeプロファイルの別タブでは、同じゲームを同時起動できないようにしています。セーブ失敗時は未保存内容を保持して終了を止め、再試行やセーブ書き出しができます。
 
-[開発者向けのNAS実機検証](https://github.com/ecleaire/Game-Portal-offline-html/blob/main/docs/DEVELOPMENT.md#nasの実機検証) も参照してください。
+[開発者向けのNAS実機検証](https://github.com/ecleaire/Game-Portal-offline/blob/main/docs/DEVELOPMENT.md#nasの実機検証) も参照してください。
 
 ブラウザーの排他処理は、別PC間のNASロックを保証しません。**同じゲームの設定は同時編集しない運用にしてください。** 別PCの同時編集を厳密に制御するには、NAS上の管理サーバー等が必要です。NASのスナップショット・定期バックアップも併用してください。実NASのSMB接続、OSの権限設定、切断・復旧時の挙動は実機確認が必要です。
 
@@ -292,7 +292,7 @@ Chromeの閲覧データ削除・プロファイル変更・HTMLの配置先変�
 
 ## 開発・配布ビルド
 
-ソースの変更・ビルド・検証・公開前の確認は[GitHubの開発手順](https://github.com/ecleaire/Game-Portal-offline-html/blob/main/docs/DEVELOPMENT.md)を参照してください。使うだけの場合はビルド不要です。
+ソースの変更・ビルド・検証・公開前の確認は[GitHubの開発手順](https://github.com/ecleaire/Game-Portal-offline/blob/main/docs/DEVELOPMENT.md)を参照してください。使うだけの場合はビルド不要です。
 
 ## 投稿先の共有・自動確認
 

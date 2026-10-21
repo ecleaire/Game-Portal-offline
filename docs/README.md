@@ -26,4 +26,4 @@
 
 ## 開発する人へ
 
-開発コードやテストは配布ZIPから除外しています。変更する場合はGitでリポジトリを取得し、[GitHubの開発手順](https://github.com/ecleaire/Game-Portal-offline-html/blob/main/docs/DEVELOPMENT.md)を参照してください。
+開発コードやテストは配布ZIPから除外しています。変更する場合はGitでリポジトリを取得し、[GitHubの開発手順](https://github.com/ecleaire/Game-Portal-offline/blob/main/docs/DEVELOPMENT.md)を参照してください。

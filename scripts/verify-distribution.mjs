@@ -13,7 +13,7 @@ if(!await readFile('README.md','utf8').then(text=>text.includes('バージョン
 if(!await readFile('README.md','utf8').then(text=>text.includes('/archive/refs/tags/v'+version+'.zip')))throw Error('README download tag must match the distribution version.');
 for(const guide of ['README.md','docs/OFFLINE_HTML.md','docs/TRANSFER_GUIDE.md','docs/DEVELOPMENT.md']){
  const text=await readFile(guide,'utf8');
- for(const match of text.matchAll(/https:\/\/github\.com\/ecleaire\/Game-Portal-offline-html\/archive\/refs\/tags\/v([^/]+)\.zip/g))if(match[1]!==version)throw Error('Download tag differs from the distribution version: '+guide);
+ for(const match of text.matchAll(/https:\/\/github\.com\/ecleaire\/Game-Portal-offline\/archive\/refs\/tags\/v([^/]+)\.zip/g))if(match[1]!==version)throw Error('Download tag differs from the distribution version: '+guide);
 }
 const rootHelper=await readFile('GAME-PORTAL-WINDOWS.exe');
 if(!rootHelper.subarray(0,2).equals(Buffer.from('MZ'))||!rootHelper.includes(Buffer.from(version,'utf16le')))throw Error('The Code ZIP Windows helper is missing, corrupt or from another version. Rebuild on Windows.');
