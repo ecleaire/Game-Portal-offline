@@ -10,6 +10,11 @@ if(digest(rootHTML)!==digest(await readFile('offline-release/GAME-PORTAL.html'))
 if(!rootHTML.includes(Buffer.from('>v'+version+'</span>'))||!rootHTML.includes(Buffer.from('<script id="folderConnection" type="application/json">null</script>')))throw Error('Code ZIP HTML has an incorrect version or a personal folder connection.');
 if(digest(await readFile('THIRD-PARTY-LICENSES.txt'))!==digest(await readFile('offline-release/THIRD-PARTY-LICENSES.txt')))throw Error('Root runtime licenses differ.');
 if(!await readFile('README.md','utf8').then(text=>text.includes('バージョン：**'+version+'**')))throw Error('README version differs.');
+if(!await readFile('README.md','utf8').then(text=>text.includes('/archive/refs/tags/v'+version+'.zip')))throw Error('README download tag must match the distribution version.');
+for(const guide of ['README.md','docs/OFFLINE_HTML.md','docs/TRANSFER_GUIDE.md','docs/DEVELOPMENT.md']){
+ const text=await readFile(guide,'utf8');
+ for(const match of text.matchAll(/https:\/\/github\.com\/ecleaire\/Game-Portal-offline-html\/archive\/refs\/tags\/v([^/]+)\.zip/g))if(match[1]!==version)throw Error('Download tag differs from the distribution version: '+guide);
+}
 const rootHelper=await readFile('GAME-PORTAL-WINDOWS.exe');
 if(!rootHelper.subarray(0,2).equals(Buffer.from('MZ'))||!rootHelper.includes(Buffer.from(version,'utf16le')))throw Error('The Code ZIP Windows helper is missing, corrupt or from another version. Rebuild on Windows.');
 if(await readFile('README-WINDOWS.txt','utf8')!==(await readFile('docs/WINDOWS_EXE.md','utf8')).replaceAll('\r\n','\n'))throw Error('Windows guide differs from the built UTF-8 guide.');

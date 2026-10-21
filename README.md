@@ -6,9 +6,11 @@
 
 ## ダウンロードして使う
 
-**[最新版のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/heads/main.zip)**
+**[v0.24.3のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline-html/archive/refs/tags/v0.24.3.zip)**
 
-GitHubの **Code → Download ZIP** からも取得できます。[リリース情報](https://github.com/ecleaire/Game-Portal-offline-html/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
+展開すると **`Game-Portal-offline-html-0.24.3`** フォルダーになります。
+
+GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.24.3`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline-html/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
 
 1. `Windows`・`Mac`・`HTML` から使う環境を選びます。
 2. **プレイ用**または**クリエイター用**を開き、次のファイルを起動します。
