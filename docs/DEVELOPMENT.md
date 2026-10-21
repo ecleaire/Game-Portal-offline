@@ -47,8 +47,7 @@ Intel Mac用 `.app` はIntel Mac上で `node scripts/build-mojave.mjs` を実行
 | `HTML/プレイ用`・`HTML/クリエイター用` | そのまま開くHTMLと起動補助 |
 | `Windows/プレイ用`・`Windows/クリエイター用` | Windowsアプリとライセンス |
 | `Mac/プレイ用`・`Mac/クリエイター用` | Macアプリのbundle全体（実行ファイル・HTML・ライセンス・署名） |
-| `docs/GAME-PORTAL-FOLDER.example.txt` | 自動接続の設定例。個人の設定ファイルはGitへ含めません。 |
-| 最上位の `THIRD-PARTY-LICENSES.txt` | 同梱ランタイムのライセンス |
+| 各用途の `_内部ファイル/`・Macアプリ内 | 必要なランタイム・ライセンス・署名 |
 | `offline-html/` / `assets/` | HTML・画面・実行処理のソース |
 | `scripts/` / `tests/` / `.github/` | ビルド・検証・CI |
 | `docs/` | 利用・運用・開発の資料 |
@@ -77,3 +76,17 @@ HTMLビルドは `GAME-PORTAL.html`（クリエイター版）と `GAME-PORTAL-P
 追加検証：`node tests/offline-html/editions-browser.mjs`、Windows上では `node tests/desktop-player.mjs`。どちらも3回のプレイ・保存・再起動を確認します。Windowsのテストでは、アプリへの直接の変更要求も拒否されることを確認します。Mac実機の操作・実NAS・別PCの実権限は自動テストでは代替できません。
 
 配布ファイルは `Windows`・`Mac`・`HTML` の各用途フォルダーに追跡します。ビルドと既存の検証コマンドが使う最上位の生成ファイルは作業用で、Gitには含めません。`scripts/distribution.mjs` が展開・配置・一致検証を行います。配布フォルダーの目印は `_内部ファイル/GAME-PORTAL-DISTRIBUTION.json` です。旧配置の目印も読み取れます。`.gitattributes` の `export-ignore` により、Code ZIPには実行用・利用案内だけが残ります。`git archive --format=zip --output=.tools/distribution-check.zip HEAD` と `node scripts/verify-code-zip.mjs .tools/distribution-check.zip` で起動用ファイル・内部ファイルの配置とMac実行権限を確認してください。
+
+## NASの実機検証
+
+実作品と分けたテストフォルダーと2台のPCを使います。以下は運用前の検証項目で、実機での成功記録ではありません。
+
+1. 共有先設定から未設定PCが自動接続でき、個別設定済みPCは切り替わらないこと。
+2. 投稿・編集・本体更新が反映され、編集中・プレイ中の画面やIDを勝手に変更しないこと。
+3. 同時保存で競合した操作を拒否し、既存の作品・設定・履歴を保持すること。
+4. 読み取り中の切断で中止・別保存先への接続ができること。
+5. 保存中や読み戻し中の切断で結果未確認を表示し、再接続後に照合できること。書き込みを自動再実行しないこと。
+6. セーブ同期と競合選択、ゲーム本体更新・旧版復元、保管フォルダー全体の移行を確認すること。
+7. 共有設定の保存中に別PCから変更を拒否し、強制終了後に再保存できること。旧版ロックは全旧版終了の確認後だけ解除し、未知の内容は残すこと。
+
+OS・アプリ版・NAS／SMB設定・期待結果・実結果を記録します。CIの模擬障害・別プロセス検証は、実NAS・別PCの権限や排他動作を保証するものではありません。私的な接続情報・作品・セーブをGitや配布物へ含めません。

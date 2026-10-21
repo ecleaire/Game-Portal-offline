@@ -13,7 +13,7 @@
 | 別のPC・他の人へ渡す | [受け渡し手順](TRANSFER_GUIDE.md) |
 | HTML版を起動補助から自動接続する | [HTML版の起動補助（ベータ版）](AUTO_CONNECT.md) |
 | WindowsのEXEゲームを起動する | [EXE起動補助（ベータ版）](WINDOWS_EXE.md) |
-| NASで運用する前に確認する | [NAS検証手順](NAS_VALIDATION.md) |
+| NASで同じゲームと保存先を共有する | [NAS共有の手順](../README.md#nasで共有する) |
 | 更新内容を確認する | [変更履歴](CHANGELOG.md) |
 
 遊ぶときはプレイ専用版、ゲームを追加・管理するときはクリエイター版を選びます。どちらも同じゲームの保存先を使えます。

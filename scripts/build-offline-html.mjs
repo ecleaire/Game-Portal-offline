@@ -1,6 +1,6 @@
 import {materializeDistribution,publishDistribution} from './distribution.mjs';
 await materializeDistribution();
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { packageWebFiles } from '../assets/zip-upload.js';
@@ -65,15 +65,15 @@ const playerHTML=html.replace('<html lang="ja">','<html lang="ja" data-edition="
 await writeFile(join(root,'GAME-PORTAL-PLAY.html'),playerHTML);
 await writeFile(join(output,'GAME-PORTAL-PLAY.html'),playerHTML);
 const readme = await source('docs/OFFLINE_HTML.md');
-const nasGuide = await source('docs/NAS_VALIDATION.md');
 const transferGuide = await source('docs/TRANSFER_GUIDE.md');
 const licenses = lock.files.filter(f => f.path.endsWith('/LICENSE')).map(f => f.path + '\n' + Buffer.from(runtime[f.path], 'base64').toString('utf8')).join('\n\n');
 await writeFile(join(output, 'THIRD-PARTY-LICENSES.txt'), licenses);
 await writeFile(join(root, 'THIRD-PARTY-LICENSES.txt'), licenses);
+// Remove the retired checklist on repeat builds as well as fresh builds.
+await rm(join(output, 'NAS-VALIDATION.txt'), { force: true });
 await writeFile(join(output, 'README.txt'), readme);
-await writeFile(join(output, 'NAS-VALIDATION.txt'), nasGuide);
 await writeFile(join(output, 'START-HERE.txt'), transferGuide);
-const zip = await packageWebFiles([new File([html], 'GAME-PORTAL.html'), new File([playerHTML], 'GAME-PORTAL-PLAY.html'), new File([readme], 'README.txt'), new File([nasGuide], 'NAS-VALIDATION.txt'), new File([licenses], 'THIRD-PARTY-LICENSES.txt'), new File([transferGuide], 'START-HERE.txt')]);
+const zip = await packageWebFiles([new File([html], 'GAME-PORTAL.html'), new File([playerHTML], 'GAME-PORTAL-PLAY.html'), new File([readme], 'README.txt'), new File([licenses], 'THIRD-PARTY-LICENSES.txt'), new File([transferGuide], 'START-HERE.txt')]);
 await writeFile(join(output, 'GAME-PORTAL-HTML.zip'), Buffer.from(await zip.arrayBuffer()));
 console.log(`Offline launcher built: ${Buffer.byteLength(html)} bytes, ${lock.files.length} verified runtime files. No runtime network required.`);
 
