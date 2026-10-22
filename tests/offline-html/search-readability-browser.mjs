@@ -39,7 +39,7 @@ try{
   await page.locator('#tagSearch').fill('パズル');await expect(page.locator('#tagFilters button:visible')).toHaveCount(1);await page.locator('#tagSearch').fill('');
   if(width===390&&font===15){await page.locator('#filterDetails summary').scrollIntoViewIfNeeded();await page.screenshot({path:`offline-release/ui-checks/search-${theme}.png`});}
   await page.locator('.game-title-link').filter({hasText:'検索テスト'}).click();await page.waitForFunction(()=>!busy);await expect(page.frameLocator('#frame').locator('h1')).toHaveText('Game ready');
-  for(const selector of ['#fullscreen','#closePlayer']){
+  for(const selector of ['#fullscreen','#reloadPlaying','#closePlayer']){
    const button=page.locator(selector);await button.scrollIntoViewIfNeeded();const box=await button.boundingBox();assert(box.height>=48);
    assert(await button.evaluate(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return e===hit||e.contains(hit);}),`${selector}: covered ${width}/${font}`);
   }

@@ -82,7 +82,7 @@ body.working::before{content:'';position:fixed;top:0;left:0;right:0;height:3px;b
 #settings .settings-option>label[for=colorTheme]{margin:0 0 8px;font-weight:650;font-size:14px}
 #colorTheme{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
 
-.playerbar #playerHelpButton,.playerbar #fullscreen,.playerbar #closePlayer{font-weight:750;border-width:2px;border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 8%,var(--panel));color:var(--text)}
+.playerbar #playerHelpButton,.playerbar #fullscreen,.playerbar #reloadPlaying,.playerbar #closePlayer{font-weight:750;border-width:2px;border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 8%,var(--panel));color:var(--text)}
 .playerbar #closePlayer{background:color-mix(in srgb,var(--accent) 16%,var(--panel));border-color:color-mix(in srgb,var(--accent) 65%,var(--line))}
 .player-more-tools{margin:12px 0;color:var(--muted);font-size:13px}
 .player-more-tools summary{cursor:pointer;padding:8px 0}
@@ -118,7 +118,7 @@ header,main{max-width:1520px;padding-inline:clamp(16px,2vw,24px)}.grid{grid-temp
 #filters .tag-tools>label{min-width:min(180px,100%)}
 #filters .filter-chip,#tagFilters .tag{font-size:.933rem;line-height:1.5;min-height:38px}
 
-#player .playerbar #fullscreen,#player .playerbar #closePlayer{font-size:1.2rem;line-height:1.5;min-height:48px;padding:11px 18px;white-space:normal;overflow-wrap:anywhere}
+#player .playerbar #fullscreen,#player .playerbar #reloadPlaying,#player .playerbar #closePlayer{font-size:1.2rem;line-height:1.5;min-height:48px;padding:11px 18px;white-space:normal;overflow-wrap:anywhere}
 
 .settings-editing .check{gap:14px;min-height:58px;font-size:1.133rem;font-weight:750;flex-wrap:wrap}.settings-editing #enableEditing{width:28px;height:28px;flex-shrink:0}.editing-state{margin-left:auto;border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:.933rem;color:var(--muted);background:var(--bg)}.editing-mode .editing-state{color:var(--text);border-color:var(--editing-accent);background:color-mix(in srgb,var(--editing-accent) 16%,var(--panel))}.editing-mode .editing-indicator{font-size:1.067rem;line-height:1.5;padding:7px 14px;border-width:2px}.editing-mode .editing-indicator::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:currentColor;margin-right:9px}
 

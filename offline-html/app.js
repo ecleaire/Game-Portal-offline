@@ -299,6 +299,7 @@ function writeControls() {
   $('#cropFields').disabled=pendingEdit||!$('#enableCrop').checked;
   for(const button of document.querySelectorAll('[data-retry-settings]'))button.disabled=!editingEnabled;
   $('#fullscreen').disabled = !activePlay || !stopGame;
+  $('#reloadPlaying').disabled = busy || !!gameLoading || !activePlay || !stopGame || syncPaused;
   $('#exportSave').disabled=!activePlay||!stopGame;$('#importSaveButton').disabled=!activePlay||!stopGame;
   $('#captureReason').textContent = !editingEnabled ? '画像を設定するには「設定」で追加・編集を有効にしてください。' : '';
   $('#captureButton').title = $('#captureReason').textContent; $('#captureButton').setAttribute('aria-describedby','captureReason');
@@ -618,7 +619,7 @@ function updatePlayerInfo(){
   const native=openedGame.kind==='exe',mac=/Mac/i.test(navigator.platform);
   $('#nativeLaunch').hidden=!native;$('#nativeLaunch').disabled=busy||mac||!nativeBridge||!!openedGame.settingsError||syncPaused;
   $('#nativeReason').hidden=!native;$('#nativeReason').textContent=mac?'Windows用のEXEゲームはMacでは動きません。HTML・ZIPなどのWeb版を使ってください。':nativeBridge?'Windowsの別ウィンドウで起動します。信頼できるゲームだけ実行してください。セーブはゲーム自身が管理します。':'EXEを使うときは、同じフォルダーのGAME-PORTAL-WINDOWS.exeを開いてください。メイン画面はこのHTMLのままです。';
-  $('#playerMoreTools').hidden=native;$('#saveBackupsButton').hidden=native;$('#fullscreen').hidden=native;
+  $('#playerMoreTools').hidden=native;$('#saveBackupsButton').hidden=native;$('#fullscreen').hidden=native;$('#reloadPlaying').hidden=native;
   if(activePlay&&activePlay.game.id===openedGame.id)activePlay.game=openedGame;
   $('#playerTitle').textContent=openedGame.title;$('#playerEnvironment').textContent=openedGame.developmentEnvironment?'作成ツール：'+openedGame.developmentEnvironment:'';$('#playerEnvironment').hidden=!openedGame.developmentEnvironment;
   $('#playerDescription').textContent=openedGame.description||'';$('#playerInstructions').textContent=openedGame.instructions||'';
@@ -730,7 +731,7 @@ function stopPlayer(preserveLoad=false) {
   playRevision++;
   try { if (stopGame) stopGame(); } finally { stopGame = null; if (activePlay) activePlay.release(); activePlay = null; }
 }
-function updateGameLoadControls(){const button=$('#cancelGameLoad');button.hidden=!gameLoading;button.disabled=!gameLoading;}
+function updateGameLoadControls(){const button=$('#cancelGameLoad');button.hidden=!gameLoading;button.disabled=!gameLoading;$('#reloadPlaying').disabled=busy||!!gameLoading||!activePlay||!stopGame||syncPaused;}
 async function playGame(game,{refreshFirst=false}={}){
   if(!await flushSave())return;
   const wasOpen=$('#player').open;stopPlayer();const task={game,folder:root,controller:new AbortController(),cancelled:false,presented:false};gameLoading=task;
@@ -810,7 +811,9 @@ async function loadGame(game,task) {
   finally{loading=false;if(releaseRequested)unlock();}
 }
 
-$('#retryPlaying').onclick=()=>action(async()=>{const game=openedGame;if(game)await playGame(game,{refreshFirst:true});},false,true);
+function reopenPlaying(){return action(async()=>{const game=openedGame;if(game)await playGame(game,{refreshFirst:true});},false,true);}
+$('#retryPlaying').onclick=reopenPlaying;
+$('#reloadPlaying').onclick=()=>{if(busy||gameLoading||!activePlay||!stopGame||syncPaused)return;return reopenPlaying();};
 $('#nativeLaunch').onclick=()=>action(async()=>{
   await requireLibraryConnection();if(openedGame?.kind!=='exe'||openedGame.settingsError)throw new Error('ゲームの設定を確認してください。');
   try{await nativeTools.launchNative(nativeBridge,localLibrary,openedGame,compatibilityTools.LAUNCHER_VERSION);$('#playerStatus').textContent='Windowsの別ウィンドウで起動しました。';}
