@@ -147,7 +147,7 @@ html[data-edition="player"] :is(#post,#edit,#contentUpdate,#capture,#history,#in
 
 html[data-edition="player"] :is(#informationTools,#information,#gameInformationTools){display:none!important}.information-rows{max-height:48dvh;overflow:auto;overscroll-behavior:contain}.information-row{display:flex!important;align-items:flex-start;gap:12px;margin:0!important;padding:14px;border-bottom:1px solid var(--line);min-width:0}.information-row input{width:22px!important;height:22px;flex:0 0 22px;margin:2px 0!important}.information-row span{min-width:0;overflow-wrap:anywhere}.information-row small{display:block;margin-top:6px;color:var(--muted);font-size:13px}.information-row img{max-width:160px;max-height:90px;object-fit:contain}#information{max-width:860px}#information .dialog-actions{flex-wrap:wrap}@media(max-width:560px){.information-row{padding:10px}.information-row small{font-size:12px}}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.5</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.6</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -165,7 +165,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
         <details><summary>次回の起動・表示モード</summary><p>保存先を記憶し、アクセスできれば次回は自動接続します。HTMLで許可が切れたときは、ホーム画面をクリックしてChromeの確認を許可してください。別PCでは、そのPCでの許可が必要です。HTMLは同じ場所に置き、ブックマークしておくと便利です。</p><p>ライト／ダークは「設定」→「表示モード」で選びます。初期状態はダークです。選択は開き直しても引き継ぎます。</p></details>
       </section>
       <section id="helpPlay" class="help-section" tabindex="-1"><h3>遊ぶ・ゲームを探す</h3>
-        <h4>ゲームを開く・一覧に戻る</h4><ol><li><strong>カードの画像かゲーム名</strong>を押します。</li><li>概要と操作方法は、ゲーム画面の下で確認できます。</li><li><strong>「← ゲーム一覧」</strong>で戻ります。読み込み中は読み込みを中止し、プレイ中はセーブを確認してから終了します。</li></ol>
+        <h4>ゲームを開く・一覧に戻る</h4><ol><li><strong>カードの画像かゲーム名</strong>を押します。</li><li>概要と操作方法は、ゲーム画面の下で確認できます。</li><li><strong>「← ゲーム一覧」</strong>で戻ります。読み込み中は読み込みを中止し、プレイ中はセーブを確認してから終了します。「再読込」も読み込み中に使えます。続けて操作したときは最後に押した操作を優先します。セーブの保存中だけは完了を待ちます。</li></ol>
         <p>「全画面」で大きく表示し、Escキーで戻れます。「再読込」で今のゲームを開き直せます。保存済みのセーブは引き継ぎますが、ゲーム内で未保存の進行は戻ることがあります。セーブの操作は、概要の下の<strong>「その他」</strong>にあります。</p>
         <h4>検索・タグで探す</h4><ul><li>検索欄にゲーム名などを入力します。空白で区切ると、すべてのキーワードに一致するゲームを探します。</li><li>検索欄を押すと出る<strong>「くわしくさがす」</strong>で、形式・作成ツール・タグ・並べ替えを選べます。</li><li>カードやゲーム画面の<strong>タグを押す</strong>と、同じタグが付いたゲームを探せます。タグが多い場合は、ゲーム画面のタグ枠をスクロールできます。</li><li><strong>「絞り込みを解除」</strong>で条件を戻します。ロゴの「GAME PORTAL」でも、検索条件を解除してホームへ戻れます。</li></ul>
       </section>
@@ -501,7 +501,7 @@ function legacyScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.24.5';
+const LAUNCHER_VERSION = '0.24.6';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -2147,6 +2147,7 @@ async function recoverFolderConnection(){
 setInterval(()=>{void recoverFolderConnection();},5000);
 window.addEventListener('hashchange',()=>{if(nativeBridge&&(!root||root.nativeReadOnly)&&['','#main','#libraryTitle'].includes(location.hash))try{rememberNativePageConnection(location.href);}catch{}});
 let openedGame = null, stopGame = null, pendingSave = null, saveTimer, flushing = null, activePlay = null, closingPlayer = false;
+let actionCompletion=null,playerRequest=null,playerReloadWorker=null,playerCloseOperation=null;
 let editingEnabled = false, starting = true;
 let informationState=null,informationController=null,importedInformationThumbnail=undefined,informationImageRevision=0;
 let inspectionRoot = null, inspectionReport = null, selectedHistory = null, capturedImage = null;
@@ -2325,7 +2326,7 @@ function nativeReadControls(count=root?.pendingReads||0){
 }
 for(const id of ['cancelConnection','cancelFolderRead'])$('#'+id).onclick=cancelFolderConnection;
 function writeControls() {
-  nativeReadControls();updateGameLoadControls();
+  nativeReadControls();
   const nativeRetryNeeded=!!nativeBridge&&nativeRetry&&(!root||root.nativeReadOnly);
   if(nativeRetryNeeded)$('#reconnect').hidden=false;
   const reconnectNeeded=(!!remembered||nativeRetryNeeded)&&!$('#reconnect').hidden;
@@ -2360,7 +2361,6 @@ function writeControls() {
   $('#cropFields').disabled=pendingEdit||!$('#enableCrop').checked;
   for(const button of document.querySelectorAll('[data-retry-settings]'))button.disabled=!editingEnabled;
   $('#fullscreen').disabled = !activePlay || !stopGame;
-  $('#reloadPlaying').disabled = busy || !!gameLoading || !activePlay || !stopGame || syncPaused;
   $('#exportSave').disabled=!activePlay||!stopGame;$('#importSaveButton').disabled=!activePlay||!stopGame;
   $('#captureReason').textContent = !editingEnabled ? '画像を設定するには「設定」で追加・編集を有効にしてください。' : '';
   $('#captureButton').title = $('#captureReason').textContent; $('#captureButton').setAttribute('aria-describedby','captureReason');
@@ -2383,13 +2383,15 @@ function writeControls() {
   $('#updatePlaying').disabled=syncPaused||!root||!openedGame||!updateTools.canUpdateGame(openedGame)||!!openedGame.settingsError&&!(openedGame.contentError&&openedGame.contentPending)||pendingSettings(openedGame.path);
   informationControls();
   if(starting)document.querySelectorAll('button').forEach(button=>{button.disabled=!button.matches('#helpButton,#settingsButton,[data-close]');});
+  updateGameLoadControls();
 }
 async function action(fn, reconnecting = false, prioritizePlay = false) {
-  if (busy) return; busy = true;
+  if (busy||playerRequest&&!prioritizePlay) return; busy = true;
+  let finishAction;const completion=new Promise(resolve=>{finishAction=resolve;});actionCompletion=completion;
   folderRecoveryAbort?.abort();
   if(prioritizePlay)syncController?.abort();
   document.body.setAttribute('aria-busy','true');document.body.classList.add('working');
-  document.querySelectorAll('button:not([data-close]):not(#closePlayer):not(#cancelUsage):not(#cancelInformation):not(#cancelGameInformation)').forEach(b => b.disabled = true);
+  document.querySelectorAll('button:not([data-close]):not(#closePlayer):not(#reloadPlaying):not(#cancelUsage):not(#cancelInformation):not(#cancelGameInformation)').forEach(b => b.disabled = true);
   if(root?.nativeReadOnly||nativeReadAbort)for(const id of ['helpButton','settingsButton'])$('#'+id).disabled=false;
   nativeReadControls();
   document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=true);
@@ -2400,7 +2402,7 @@ async function action(fn, reconnecting = false, prioritizePlay = false) {
     const result=await fn();status(typeof result==='string'?result:'');
   }
   catch (e) { compatibilityFailure(e);if(e.code==='LIBRARY_ID_CHANGED')syncPaused=true;if(nativeBridge&&root?.nativeReadOnly&&transientFolderError(e))nativeRetry=true;queueFolderRecovery(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;status(e.name === 'AbortError' ? '選択をキャンセルしました。' : e.message || '操作できませんでした。');if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
-  finally { busy = false;document.body.setAttribute('aria-busy','false');document.body.classList.remove('working'); document.querySelectorAll('button').forEach(b => b.disabled = false);document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=false); writeControls(); }
+  finally { busy = false;document.body.setAttribute('aria-busy','false');document.body.classList.remove('working'); document.querySelectorAll('button').forEach(b => b.disabled = false);document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=false);try{writeControls();}finally{if(actionCompletion===completion)actionCompletion=null;finishAction();} }
 }
 async function refresh({signal}={}) {
   if (!root) return;
@@ -2792,7 +2794,45 @@ function stopPlayer(preserveLoad=false) {
   playRevision++;
   try { if (stopGame) stopGame(); } finally { stopGame = null; if (activePlay) activePlay.release(); activePlay = null; }
 }
-function updateGameLoadControls(){$('#reloadPlaying').disabled=busy||!!gameLoading||!activePlay||!stopGame||syncPaused;}
+function updateGameLoadControls(){
+  $('#reloadPlaying').disabled=!openedGame||openedGame.kind==='exe';
+  if($('#player').open)$('#closePlayer').disabled=false;
+  $('#player').setAttribute('aria-busy',String(!!gameLoading||!!playerRequest));
+}
+function interruptPlayerReads(){
+  folderRecoveryAbort?.abort();folderWatchAbort?.abort();syncController?.abort();idleSyncController?.abort();
+  const folder=gameLoading?.folder;
+  if(gameLoading){gameLoading.cancelled=true;gameLoading.controller.abort();if(gameLoading.folder?.nativeReadOnly)gameLoading.folder.cancelReads?.();}
+  if(root!==folder&&(root?.nativeReadOnly||root?.nativeDesktop))root.cancelReads?.();
+}
+function requestPlayerOperation(kind){
+  playerRequest={kind,game:openedGame,folder:root,libraryId:localLibrary,loadingGame:gameLoading?.game};
+  interruptPlayerReads();$('#playerStatus').textContent=kind==='reload'?'再読込を準備しています…':'一覧へ戻っています…';updateGameLoadControls();
+  return playerRequest;
+}
+function runPlayerReloads(){
+  if(playerReloadWorker)return playerReloadWorker;
+  playerReloadWorker=(async()=>{
+    while(playerRequest?.kind==='reload'){
+      const request=playerRequest;
+      if(!await flushSave()){if(playerRequest===request)playerRequest=null;return;}
+      if(playerRequest!==request)continue;
+      stopPlayer();$('#frame').hidden=true;$('#playerStatus').textContent='再読込を準備しています…';
+      // A cancelled read settles promptly. A started write must finish before
+      // another action or play session can begin; the List button stays usable.
+      await actionCompletion;
+      if(playerRequest!==request)continue;
+      if(!$('#player').open||root!==request.folder||localLibrary!==request.libraryId){playerRequest=null;return;}
+      await action(async()=>{if(playerRequest===request)await playGame(request.game,{refreshFirst:true});},false,true);
+      if(playerRequest===request)playerRequest=null;
+    }
+  })().finally(()=>{playerReloadWorker=null;updateGameLoadControls();if(playerRequest?.kind==='reload')return runPlayerReloads();});
+  return playerReloadWorker;
+}
+function reloadPlayer(){
+  if(!openedGame||openedGame.kind==='exe')return;
+  requestPlayerOperation('reload');return runPlayerReloads();
+}
 async function playGame(game,{refreshFirst=false}={}){
   if(!await flushSave())return;
   const wasOpen=$('#player').open;stopPlayer();const task={game,folder:root,controller:new AbortController(),cancelled:false,presented:false};gameLoading=task;
@@ -2872,13 +2912,12 @@ async function loadGame(game,task) {
       if(message?.type==='status'&&!playerReady&&!playerFailed&&$('#playerStatus').textContent===loadingStatus){loadingStatus=String(message.message).slice(0,500);$('#playerStatus').textContent=loadingStatus;}
       if (message?.type === 'save') receiveSave(session, message.data);
     });
-  } catch (e) { if(activePlay!==session)return;stopPlayer();$('#playerStatus').textContent='ゲームを開けませんでした。接続・作品のファイルを確認して再試行してください：'+e.message;$('#retryPlaying').hidden=false;throw new Error($('#playerStatus').textContent); }
+  } catch (e) { if(activePlay!==session)return;stopPlayer();if(task.cancelled)return;$('#playerStatus').textContent='ゲームを開けませんでした。接続・作品のファイルを確認して再試行してください：'+e.message;$('#retryPlaying').hidden=false;throw new Error($('#playerStatus').textContent); }
   finally{loading=false;if(releaseRequested)unlock();}
 }
 
-function reopenPlaying(){return action(async()=>{const game=openedGame;if(game)await playGame(game,{refreshFirst:true});},false,true);}
-$('#retryPlaying').onclick=reopenPlaying;
-$('#reloadPlaying').onclick=()=>{if(busy||gameLoading||!activePlay||!stopGame||syncPaused)return;return reopenPlaying();};
+$('#retryPlaying').onclick=reloadPlayer;
+$('#reloadPlaying').onclick=reloadPlayer;
 $('#nativeLaunch').onclick=()=>action(async()=>{
   await requireLibraryConnection();if(openedGame?.kind!=='exe'||openedGame.settingsError)throw new Error('ゲームの設定を確認してください。');
   try{await nativeTools.launchNative(nativeBridge,localLibrary,openedGame,compatibilityTools.LAUNCHER_VERSION);$('#playerStatus').textContent='Windowsの別ウィンドウで起動しました。';}
@@ -3165,16 +3204,18 @@ $('#editForm').onsubmit = event => { event.preventDefault();if(busy)return;addEn
   else if (image === true) image = await asDataURL(await library.getFile(root, `.gameportal/thumbnails/${editing.id}.webp`));
   await requireLibraryConnection(true);await library.saveGameSettings(root, editing, { ...values,thumbnail: image || null }); $('#edit').close();return savedResult('作品情報を保存しました。');
 }); };
-$('#closePlayer').onclick = async () => {
-  if(closingPlayer)return;
-  const loadingGame=gameLoading?.game;closingPlayer=true;$('#closePlayer').disabled=true;
-  try {
-    if(!await flushSave())return;
-    if(gameLoading){gameLoading.cancelled=true;if(gameLoading.folder?.nativeReadOnly)gameLoading.folder.cancelReads?.();}
-    stopPlayer();$('#player').close();openedGame=null;
+$('#closePlayer').onclick = () => {
+  requestPlayerOperation('close');
+  if(playerCloseOperation)return playerCloseOperation;
+  closingPlayer=true;
+  playerCloseOperation=(async()=>{
+    if(!await flushSave()){if(playerRequest?.kind==='close')playerRequest=null;return;}
+    if(playerRequest?.kind!=='close')return;
+    const loadingGame=playerRequest.loadingGame;
+    stopPlayer();$('#player').close();openedGame=null;playerRequest=null;
     if(loadingGame)cardCache.get(loadingGame.path)?.node.querySelector('.game-title-link')?.focus({preventScroll:true});
-  }
-  finally {closingPlayer=false;$('#closePlayer').disabled=false;}
+  })().finally(()=>{closingPlayer=false;playerCloseOperation=null;updateGameLoadControls();});
+  return playerCloseOperation;
 };
 $('#player').addEventListener('cancel', event => { event.preventDefault(); $('#closePlayer').click(); });
 $('#fullscreen').onclick = () => $('#frame').requestFullscreen().catch(e => { $('#playerStatus').textContent = e.message; });
