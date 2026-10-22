@@ -2326,7 +2326,7 @@ function nativeReadControls(count=root?.pendingReads||0){
 }
 for(const id of ['cancelConnection','cancelFolderRead'])$('#'+id).onclick=cancelFolderConnection;
 function writeControls() {
-  nativeReadControls();updateGameLoadControls();
+  nativeReadControls();
   const nativeRetryNeeded=!!nativeBridge&&nativeRetry&&(!root||root.nativeReadOnly);
   if(nativeRetryNeeded)$('#reconnect').hidden=false;
   const reconnectNeeded=(!!remembered||nativeRetryNeeded)&&!$('#reconnect').hidden;
@@ -2361,7 +2361,6 @@ function writeControls() {
   $('#cropFields').disabled=pendingEdit||!$('#enableCrop').checked;
   for(const button of document.querySelectorAll('[data-retry-settings]'))button.disabled=!editingEnabled;
   $('#fullscreen').disabled = !activePlay || !stopGame;
-  updateGameLoadControls();
   $('#exportSave').disabled=!activePlay||!stopGame;$('#importSaveButton').disabled=!activePlay||!stopGame;
   $('#captureReason').textContent = !editingEnabled ? '画像を設定するには「設定」で追加・編集を有効にしてください。' : '';
   $('#captureButton').title = $('#captureReason').textContent; $('#captureButton').setAttribute('aria-describedby','captureReason');
@@ -2384,6 +2383,7 @@ function writeControls() {
   $('#updatePlaying').disabled=syncPaused||!root||!openedGame||!updateTools.canUpdateGame(openedGame)||!!openedGame.settingsError&&!(openedGame.contentError&&openedGame.contentPending)||pendingSettings(openedGame.path);
   informationControls();
   if(starting)document.querySelectorAll('button').forEach(button=>{button.disabled=!button.matches('#helpButton,#settingsButton,[data-close]');});
+  updateGameLoadControls();
 }
 async function action(fn, reconnecting = false, prioritizePlay = false) {
   if (busy||playerRequest&&!prioritizePlay) return; busy = true;

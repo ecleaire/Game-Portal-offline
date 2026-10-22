@@ -21,6 +21,8 @@ try{
   await page.locator('#setupFolder').click();await page.waitForFunction(()=>!busy);await page.locator('.game-title-link').filter({hasText:'Game'}).click();
   const body=page.frameLocator('#frame').locator('body'),reload=page.locator('#reloadPlaying');await expect(body.locator('h1')).toHaveText('Original');await expect(reload).toBeEnabled();
   assert.equal(await reload.evaluate(b=>b.previousElementSibling.id),'fullscreen');const firstBoot=await body.getAttribute('data-boot');
+  // A late initialization update must not disable the two priority controls.
+  await page.evaluate(()=>{starting=true;writeControls();});await expect(reload).toBeEnabled();await expect(page.locator('#closePlayer')).toBeEnabled();await page.evaluate(()=>{starting=false;writeControls();});
   // Save failures must keep the running document and pending save intact.
   await page.evaluate(()=>{window.normalSave=localState.writeLocalSave;localState.writeLocalSave=async()=>{throw Error('Simulated full disk');};});
   await body.evaluate(()=>localStorage.score='keep');await page.waitForFunction(()=>activePlay?.latest?.score==='keep');
