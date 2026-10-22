@@ -800,7 +800,11 @@ async function loadGame(game,task) {
     }
     if (activePlay !== session) return;
     let loadingStatus=$('#playerStatus').textContent,playerReady=false,playerFailed=false;
-    stopGame = player.startPlayer($('#frame'), options, preview, message => {
+    // A fresh browsing context releases the previous WASM/graphics document.
+    // Reusing a hidden Pyxel frame can leave its new document without a layout.
+    const previousFrame=$('#frame'),frame=previousFrame.cloneNode(false);
+    frame.removeAttribute('srcdoc');previousFrame.replaceWith(frame);
+    stopGame = player.startPlayer(frame, options, preview, message => {
       if (activePlay !== session) return;
       if(message?.type==='ready'&&!playerFailed){if(gameLoading===task){gameLoading=null;updateGameLoadControls();}playerReady=true;if($('#playerStatus').textContent===loadingStatus)$('#playerStatus').textContent='';$('#retryPlaying').hidden=true;}
       if(message?.type==='error'){if(gameLoading===task){gameLoading=null;updateGameLoadControls();}playerFailed=true;$('#playerStatus').textContent=String(message.message).slice(0,500);$('#retryPlaying').hidden=false;}
