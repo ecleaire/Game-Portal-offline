@@ -68,7 +68,7 @@ jobs:
         with:
           path: .tools/cef
           key: cef-mac-v2-${{ matrix.os }}-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
-      - run: node scripts/build-macos.mjs
+      - run: node --import ./scripts/ci-native-build-trace.mjs scripts/build-macos.mjs
         if: ${{ !inputs.use_prebuilt }}
       - uses: actions/cache/save@v4
         if: always() && !cancelled() && !inputs.use_prebuilt && steps.cef-cache.outputs.cache-hit != 'true'

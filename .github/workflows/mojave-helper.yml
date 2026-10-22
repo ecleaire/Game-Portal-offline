@@ -39,7 +39,7 @@ jobs:
         with:
           path: .tools/cef
           key: cef-mac-v2-macos-15-intel-${{ runner.arch }}-${{ hashFiles('scripts/macos/cef-lock.json') }}
-      - run: node scripts/build-mojave.mjs
+      - run: node --import ./scripts/ci-native-build-trace.mjs scripts/build-mojave.mjs
         if: ${{ !inputs.use_prebuilt }}
       - uses: actions/cache/save@v4
         if: always() && !cancelled() && !inputs.use_prebuilt && steps.cef-cache.outputs.cache-hit != 'true'
