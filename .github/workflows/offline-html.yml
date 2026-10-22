@@ -54,6 +54,8 @@ jobs:
       - run: npm test
       - run: npx playwright install chromium
       - run: npm run test:browser
+        env:
+          NODE_OPTIONS: --import ./scripts/ci-failure-diagnostics.mjs
       - run: npm run build:windows
         if: matrix.os == 'windows-latest'
       - run: npm run test:native
