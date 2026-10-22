@@ -1117,17 +1117,26 @@ $('#confirmPost').onclick=()=>action(async()=>{
   const posted=games.find(game=>game.path===path);if(posted){editGame(posted);$('#postEditNotice').hidden=false;$('#editHeading').textContent='名前や画像を決める';$('#cancelEdit').textContent='あとで設定';}
   return 'ゲームの追加が完了しました。作品情報を設定できます。';
 });
+function restoreEditImagePreview(){
+  const image=importedInformationThumbnail===undefined?editing?.thumbnail:importedInformationThumbnail;
+  $('#editImagePreview').hidden=$('#clearImage').checked||typeof image!=='string';
+  if(typeof image==='string')$('#editImagePreview').src=image;else $('#editImagePreview').removeAttribute('src');
+}
 $('#editImage').onchange=async()=>{
-  const revision=++editImageRevision,file=$('#editImage').files[0];if(!file)return;
+  const revision=++editImageRevision,file=$('#editImage').files[0];
+  if(!file){
+    imageProcessing=false;imageError='';$('#editImage').setCustomValidity('');$('#imageStatus').textContent='';
+    resetCropState();restoreEditImagePreview();updateEditDirty();if(!busy)writeControls();return;
+  }
   imageProcessing=true;imageError='';$('#editImage').setCustomValidity('');$('#imageStatus').textContent='画像を確認しています…';$('#saveGameSettings').disabled=true;
   resetCropState();$('#editImagePreview').hidden=true;
-  try {await thumbnail(file);const bitmap=await createImageBitmap(file);if(revision!==editImageRevision){bitmap.close();return;}if(cropBitmap)cropBitmap.close();cropBitmap=bitmap;$('#cropZoom').value='1';$('#cropX').value='50';$('#cropY').value='50';$('#clearImage').checked=false;$('#cropControls').hidden=false;selectEditTab('Image');renderCropPreview();}
+  try {await thumbnail(file);if(revision!==editImageRevision)return;const bitmap=await createImageBitmap(file);if(revision!==editImageRevision){bitmap.close();return;}if(cropBitmap)cropBitmap.close();cropBitmap=bitmap;$('#cropZoom').value='1';$('#cropX').value='50';$('#cropY').value='50';$('#clearImage').checked=false;$('#cropControls').hidden=false;selectEditTab('Image');renderCropPreview();}
   catch(error){if(revision===editImageRevision){imageError=/画像は/.test(error.message)?error.message:'画像を読み取れません。正常なJPG・PNGを選び直すか、サムネイルを解除してください。';$('#editImage').setCustomValidity(imageError);$('#imageStatus').textContent=imageError;status(imageError);}}
   finally{if(revision===editImageRevision){imageProcessing=false;if(!imageError)$('#imageStatus').textContent='画像の読み込みが完了しました。';if(!busy)writeControls();}}
 };
 $('#clearImage').onchange=()=>{
   editImageRevision++;imageProcessing=false;imageError='';$('#editImage').setCustomValidity('');$('#imageStatus').textContent='';if($('#clearImage').checked){$('#editImage').value='';$('#editImagePreview').hidden=true;resetCropState();}
-  else {const image=importedInformationThumbnail===undefined?editing?.thumbnail:importedInformationThumbnail;$('#editImagePreview').hidden=typeof image!=='string';if(typeof image==='string')$('#editImagePreview').src=image;}
+  else restoreEditImagePreview();
   $('#imageStatus').textContent=$('#clearImage').checked?'保存するとサムネイルを外します。チェックを外すと元の画像に戻ります。':'';
   updateEditDirty();
   if(!busy)writeControls();

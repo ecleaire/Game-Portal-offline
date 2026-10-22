@@ -1,6 +1,6 @@
 {
-  "version": "0.3.0-beta.7",
-  "launcherVersion": "0.24.6",
+  "version": "0.3.0-beta.8",
+  "launcherVersion": "0.24.7",
   "webview2": {
     "version": "1.0.4258.31",
     "url": "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.4258.31/microsoft.web.webview2.1.0.4258.31.nupkg",
