@@ -6,11 +6,11 @@
 	<dict>
 		<key>Resources/GAME-PORTAL-DESKTOP.html</key>
 		<data>
-		9u3g7+YT8oK17owFnaS8ecnXQ2g=
+		QD7AXqBJYjHGMNc+8Yrjw8tyoPE=
 		</data>
 		<key>Resources/GAME-PORTAL.html</key>
 		<data>
-		5MPrXvPx4SGv7RHgmalMtREgqKU=
+		KwUSXDwHnIji6hXS6YdWiK5xr9g=
 		</data>
 		<key>Resources/MAC-DESKTOP-LICENSES.txt</key>
 		<data>
@@ -22,15 +22,15 @@
 		</data>
 		<key>Resources/build.json</key>
 		<data>
-		9TDkZj+yN63m4qx7r/fhpnPBETk=
+		0INUeJJcv76v9cJ8wFSMfqONAbY=
 		</data>
 		<key>Resources/engine.json</key>
 		<data>
-		mWJpy3KGyFqiCLRLhrm+5AWV4/w=
+		2AuMvnH4mftrBzTb9I3atemXCmM=
 		</data>
 		<key>Resources/engine/x86_64/engine.part00</key>
 		<data>
-		TeOp6mE0rCiyLGQ9rp4/BiSVeRE=
+		Ck9ne+CQ8+YznIqtnWqBHxondYA=
 		</data>
 		<key>Resources/engine/x86_64/engine.part01</key>
 		<data>
@@ -38,7 +38,7 @@
 		</data>
 		<key>Resources/engine/x86_64/engine.part02</key>
 		<data>
-		kBzwdzhYMlCznOlWDkcWWTA7FIs=
+		lonj3yPFAtJdbUUtoi4LSyVI6Y0=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -47,14 +47,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			BV4loY0lsHVsKZrwg2Qn3tPXSQRTwRJHhrOncsBAuZg=
+			NWy7ReE9eeZrHXpVQ7Tu4kWv0NO9/YwkMoD0BStfIeQ=
 			</data>
 		</dict>
 		<key>Resources/GAME-PORTAL.html</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			f8XLkhZlk2k+aDNFXaZYNbT7TGKLFLnkFUM1O+0qxK8=
+			7Ejyi7p6mjjIhXtoCvqwxeDaxJpkUIuHRc2UD1i5pAQ=
 			</data>
 		</dict>
 		<key>Resources/MAC-DESKTOP-LICENSES.txt</key>
@@ -75,21 +75,21 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			IDcns2cyaTVRPVRN0dZhSIACUmw504g2KW61NV/qV2w=
+			JkYvA9FUHSL6BxjvUzDt8eLaTunpxPBZjhwtfDP4dd8=
 			</data>
 		</dict>
 		<key>Resources/engine.json</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			CGnW3lf8zlzrCTgC8JAYIbRAWPelsViGUY4x3yuG1V4=
+			M16/Egk/DVzMHQp2FiOsJ9ZnMC/cl/2nDr3fk8LtDbg=
 			</data>
 		</dict>
 		<key>Resources/engine/x86_64/engine.part00</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			khB1zpkgGAWhu870Fo4J/qmBJDPOz8+xtxw0J7H3yDI=
+			VWbIZr5soXOK7DfsrQV7/p0jfIJiEYUJGIzPz51A5vc=
 			</data>
 		</dict>
 		<key>Resources/engine/x86_64/engine.part01</key>
@@ -103,7 +103,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			c6pY0svSMf5tAmjiR+4XzonrTjwRV8KMOsXGp8ds7QM=
+			vpi83QDtTwjIHCvxNGjxXFGqVK3NMVfjYVpqg/Hw2io=
 			</data>
 		</dict>
 	</dict>
