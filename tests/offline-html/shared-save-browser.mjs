@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
-const html=await readFile('offline-release/GAME-PORTAL.html'),server=createServer((q,r)=>r.end(html));await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const html=await readFile('offline-release/GAME-PORTAL.html'),playerHtml=await readFile('offline-release/GAME-PORTAL-PLAY.html'),server=createServer((q,r)=>r.end(q.url==='/player'?playerHtml:html));await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const temp=await mkdtemp(join(tmpdir(),'portal-shared-saves-')),contexts=[];
 try{
   const pages=[],errors=[];
@@ -23,7 +23,10 @@ try{
   const sync=async page=>{if(!await page.locator('#settings').isVisible())await page.locator('#settingsButton').click();await page.locator('#syncSaves').click();await page.waitForFunction(()=>!busy);};
   const editSave=(page,level)=>page.evaluate(async level=>localState.writeLocalSave(localLibrary,games[0].id,{level}),level);
   const data=page=>page.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id));
-  await editSave(a,'1');await sync(a);await expect(a.locator('#sharedSaveStatus')).toContainText('変更 1件');await copy(a,b);
+  await editSave(a,'1');await sync(a);await expect(a.locator('#sharedSaveStatus')).toContainText('変更 1件');
+  // Copying/browsing NAS folders can leave OS metadata alongside save snapshots.
+  await a.evaluate(async()=>{const path='.gameportal/shared-saves/'+games[0].id+'/';const dir=await(await(await root.getDirectoryHandle('.gameportal')).getDirectoryHandle('shared-saves')).getDirectoryHandle(games[0].id);let snapshot;for await(const entry of dir.values())if(/^[a-f0-9]{32}\.json$/.test(entry.name)){snapshot=entry.name;break;}for(const name of ['.DS_Store','Thumbs.db','desktop.ini','._'+snapshot])await library.writeFile(root,path+name,'OS metadata');});
+  await copy(a,b);
   // Closing during an in-flight IDB import retains the play lock until it drains.
   await b.evaluate(()=>{window.originalCommit=localState.commitSaveSync;localState.commitSaveSync=async(...args)=>{await new Promise(r=>window.finishImport=r);return originalCommit(...args);};});
   await b.locator('.game-title-link').click();await b.waitForFunction(()=>!!window.finishImport);await b.locator('#closePlayer').click();await b.waitForFunction(()=>!closingPlayer);
@@ -40,5 +43,10 @@ try{
   await sync(a);await expect(a.locator('#sharedSaveResults')).toContainText('共有結果');const pending=await a.evaluate(async()=>{const value=await localState.loadSaveSync(localLibrary,games[0].id);return value.state.pending.revision;});assert(pending);assert.deepEqual(await data(a),{level:'3'});
   await a.reload();await expect(a.locator('html')).toHaveAttribute('data-ready','true');await expect(a.locator('#folderName')).toHaveText('shared-library');await sync(a);assert.equal(await a.evaluate(async()=>(await localState.loadSaveSync(localLibrary,games[0].id)).state.pending),null);assert.equal((await files(a)).filter(([path])=>path.endsWith('/'+pending+'.json')).length,1);
   await a.locator('#settings [data-close]').click();await editSave(a,'4');await a.locator('body').dispatchEvent('pointermove');await a.clock.fastForward(179000);assert.equal(await a.evaluate(async()=>(await localState.loadSaveSync(localLibrary,games[0].id)).state.base),'{"level":"3"}');await a.clock.fastForward(10000);await a.waitForFunction(()=>!syncPromise);await expect(a.locator('#sharedSaveStatus')).toContainText('変更 1件');assert.equal(await a.evaluate(async()=>(await localState.loadSaveSync(localLibrary,games[0].id)).state.base),'{"level":"4"}');
-  assert.deepEqual(errors,[]);console.log('Shared saves passed: independent profiles with simulated folder transfer, pre-play download, conflict choice and backups, atomic IDB abort/stale rejection, uncertain close/reload confirmation and three-minute idle publication. Physical NAS remains untested.');
+  // The Player edition uses the same metadata-tolerant pre-play download.
+  await copy(a,b);await b.goto('http://127.0.0.1:'+server.address().port+'/player');await expect(b.locator('html')).toHaveAttribute('data-ready','true');
+  await b.evaluate(async()=>{window.fixtureRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('shared-library');window.showDirectoryPicker=async()=>fixtureRoot;});await connect(b);
+  await b.locator('.game-title-link').click();await b.waitForFunction(()=>!busy);await expect(b.frameLocator('#frame').locator('body')).toHaveAttribute('data-level','4');await b.locator('#closePlayer').click();await b.waitForFunction(()=>!closingPlayer);
+  for(const page of [a,b])assert.equal((await files(page)).filter(([path,text])=>path.startsWith('.gameportal/shared-saves/')&&text==='OS metadata').length,4);
+  assert.deepEqual(errors,[]);console.log('Shared saves passed: independent profiles with simulated folder transfer, OS metadata preservation in Creator and Player, pre-play download, conflict choice and backups, atomic IDB abort/stale rejection, uncertain close/reload confirmation and three-minute idle publication. Physical NAS remains untested.');
 }finally{await Promise.all(contexts.map(context=>context.close()));await new Promise(r=>server.close(r));await rm(temp,{recursive:true,force:true});}

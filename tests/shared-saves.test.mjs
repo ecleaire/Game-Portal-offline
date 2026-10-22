@@ -82,3 +82,16 @@ test('cancellation drains a publication already started but prevents a new inten
   release();await work;assert.equal(a.peek().state.pending,null);assert.deepEqual(a.peek().data,{v:'keep'});assert.equal(f.dir().files.size,1);
   const other=fixture(),b=client('2'.repeat(32),{v:'local'}),abort=new AbortController();b.saveDeviceId=async()=>{abort.abort();return '2'.repeat(32);};await assert.rejects(other.run(b,{signal:abort.signal}),error=>error.name==='AbortError');assert.equal(b.peek().state.pending,null);assert.equal(other.dir(),undefined);
 });
+
+test('OS metadata in a shared-save folder cannot block play or sync and is never read or removed',async()=>{
+  const f=fixture(),a=client('1'.repeat(32),{level:'1'}),b=client('2'.repeat(32));await f.run(a);
+  const dir=f.dir(),snapshot=[...dir.files.keys()][0],metadata=['.DS_Store','Thumbs.db','desktop.ini','._'+snapshot];
+  for(const name of metadata)dir.files.set(name,'OS metadata, not JSON');
+  const get=dir.getFileHandle;dir.getFileHandle=async function(name,...args){const handle=await get.call(this,name,...args);if(metadata.includes(name))handle.getFile=async()=>{throw Error('Metadata must not be opened');};return handle;};
+  assert.equal((await f.run(b,{pullOnly:true})).state,'downloaded');assert.deepEqual(b.peek().data,{level:'1'});
+  b.edit({level:'2'});assert.equal((await f.run(b)).state,'uploaded');await f.run(a);assert.deepEqual(a.peek().data,{level:'2'});
+  for(const name of metadata)assert.equal(dir.files.get(name),'OS metadata, not JSON');
+  for(const name of ['notes.json','unknown.tmp','._notes.json']){dir.files.set(name,'keep');await assert.rejects(f.run(a),/不明なファイル/);assert.equal(dir.files.get(name),'keep');dir.files.delete(name);}
+  const values=dir.values;dir.values=async function*(){yield {name:'.DS_Store',kind:'directory'};yield* values.call(this);};await assert.rejects(f.run(a),/不明なファイル/);dir.values=values;
+  dir.files.set(snapshot,'{broken');await assert.rejects(f.run(a),/壊れて/);assert.deepEqual(a.peek().data,{level:'2'});
+});

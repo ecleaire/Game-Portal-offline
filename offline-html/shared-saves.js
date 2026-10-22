@@ -16,7 +16,12 @@ async function readRecords(dir,libraryId,gameId,local,signal){
   const read=operation=>readWithSignal(operation,signal),iterator=dir.values()[Symbol.asyncIterator]();
   for(;;){
     const next=await read(()=>iterator.next());if(next.done)break;const entry=next.value;
-    cancelled(signal);if(entry.kind!=='file'||!/^([a-f0-9]{32})\.json$/.test(entry.name))throw Error('共有セーブに不明なファイルがあります。元データを残して確認してください。');
+    cancelled(signal);
+    // Finder/Explorer metadata can accompany copied NAS folders. Never read or
+    // delete it, and do not mistake it for a corrupt save. Keep unknown entries
+    // and real snapshot validation strict.
+    if(entry.kind==='file'&&/^(?:\.DS_Store|Thumbs\.db|desktop\.ini|\._[a-f0-9]{32}\.json)$/i.test(entry.name))continue;
+    if(entry.kind!=='file'||!/^([a-f0-9]{32})\.json$/.test(entry.name))throw Error('共有セーブに不明なファイルがあります。元データを残して確認してください。');
     if(++count>256)throw Error('共有セーブの記録が多すぎます。フォルダーをバックアップして確認してください。');
     const file=await read(()=>entry.getFile());total+=file.size;if(file.size>510000||total>16*1024*1024)throw Error('共有セーブの容量が大きすぎます。');
     const text=await read(()=>file.text());let record;try{record=JSON.parse(text);}catch{throw Error('共有セーブが壊れているか保存途中です。保存したPCで同期を再試行してください。');}
