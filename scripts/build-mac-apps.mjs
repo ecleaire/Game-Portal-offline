@@ -14,7 +14,8 @@ export async function macDesktopManifest(root,version,edition){
 }
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 async function compileCEF(root,build,arch){
- const cef=await prepareCEF(arch),toolchain=execFileSync('xcrun',['clang','--version'],{encoding:'utf8'}),directory=join(root,'.tools/cef/build-'+arch+'-'+digest(Buffer.from(cef.version+'\n'+toolchain)).slice(0,16));
+ // CMake caches contain absolute source/build paths and cannot move between checkouts.
+ const cef=await prepareCEF(arch),toolchain=execFileSync('xcrun',['clang','--version'],{encoding:'utf8'}),directory=join(root,'.tools/cef/build-'+arch+'-'+digest(Buffer.from(cef.version+'\n'+toolchain+'\n'+root)).slice(0,16));
  execFileSync('cmake',['-S',join(root,'scripts/macos/cef'),'-B',directory,'-DCEF_ROOT='+cef.sdk,'-DPROJECT_ARCH='+arch,'-DCMAKE_BUILD_TYPE=Release','-DCMAKE_POLICY_VERSION_MINIMUM=3.5','-DCMAKE_OSX_ARCHITECTURES='+arch,'-DCMAKE_CXX_FLAGS=-ffile-prefix-map='+root+'=. -Wno-deprecated-declarations'],{stdio:'inherit'});
  execFileSync('cmake',['--build',directory,'--config','Release','--parallel','4'],{stdio:'inherit'});
  return {...cef,directory};
