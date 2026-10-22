@@ -731,7 +731,7 @@ function stopPlayer(preserveLoad=false) {
   playRevision++;
   try { if (stopGame) stopGame(); } finally { stopGame = null; if (activePlay) activePlay.release(); activePlay = null; }
 }
-function updateGameLoadControls(){const button=$('#cancelGameLoad');button.hidden=!gameLoading;button.disabled=!gameLoading;$('#reloadPlaying').disabled=busy||!!gameLoading||!activePlay||!stopGame||syncPaused;}
+function updateGameLoadControls(){$('#reloadPlaying').disabled=busy||!!gameLoading||!activePlay||!stopGame||syncPaused;}
 async function playGame(game,{refreshFirst=false}={}){
   if(!await flushSave())return;
   const wasOpen=$('#player').open;stopPlayer();const task={game,folder:root,controller:new AbortController(),cancelled:false,presented:false};gameLoading=task;
@@ -1105,11 +1105,16 @@ $('#editForm').onsubmit = event => { event.preventDefault();if(busy)return;addEn
   await requireLibraryConnection(true);await library.saveGameSettings(root, editing, { ...values,thumbnail: image || null }); $('#edit').close();return savedResult('作品情報を保存しました。');
 }); };
 $('#closePlayer').onclick = async () => {
-  if(closingPlayer)return;closingPlayer=true;$('#closePlayer').disabled=true;
-  try {if(!await flushSave())return;if(gameLoading){gameLoading.cancelled=true;if(gameLoading.folder?.nativeReadOnly)gameLoading.folder.cancelReads?.();}stopPlayer();$('#player').close();openedGame=null;}
+  if(closingPlayer)return;
+  const loadingGame=gameLoading?.game;closingPlayer=true;$('#closePlayer').disabled=true;
+  try {
+    if(!await flushSave())return;
+    if(gameLoading){gameLoading.cancelled=true;if(gameLoading.folder?.nativeReadOnly)gameLoading.folder.cancelReads?.();}
+    stopPlayer();$('#player').close();openedGame=null;
+    if(loadingGame)cardCache.get(loadingGame.path)?.node.querySelector('.game-title-link')?.focus({preventScroll:true});
+  }
   finally {closingPlayer=false;$('#closePlayer').disabled=false;}
 };
-$('#cancelGameLoad').onclick=async()=>{const game=gameLoading?.game;if(!game)return;await $('#closePlayer').onclick();if(!$('#player').open)cardCache.get(game.path)?.node.querySelector('.game-title-link')?.focus({preventScroll:true});};
 $('#player').addEventListener('cancel', event => { event.preventDefault(); $('#closePlayer').click(); });
 $('#fullscreen').onclick = () => $('#frame').requestFullscreen().catch(e => { $('#playerStatus').textContent = e.message; });
 function initialized() { if(connectionError)status(connectionError);starting = false; document.querySelectorAll('button').forEach(button => { button.disabled = false; }); writeControls(); document.documentElement.dataset.ready = 'true'; }
