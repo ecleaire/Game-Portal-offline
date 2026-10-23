@@ -46,13 +46,20 @@ export function analyzeDependencies(source,path,type,documentEntry=path){
     const literal=(i,at,call,worker=false)=>{const token=t[i];if(token?.type==='string'&&!token.dynamic&&[',',')',';'].includes(v(i+1))){if(call==='import'||call==='require')addImport(token.value);else add(token.value,at);if(worker){const ref=resolveReference(token.value,at);if(ref?.path)workerEntries.add(ref.path);}return true;}unverified.add(call+' の動的な参照は静的に確認できません。');return false;};
     for(let i=0;i<t.length;i++){
       if(t[i].type!=='word')continue;const name=v(i);
+      const member=v(i-1)==='.',owner=i-(v(i-2)==='?'?3:2);
+      const globalMember=member&&['window','self','globalThis'].includes(v(owner))&&v(owner-1)!=='.';
       if(name==='import'||name==='export'){
+        // Object methods named import/export are not JavaScript module syntax.
+        if(member){if(v(i+1)==='(')unverified.add(name+' のオブジェクト経由の呼び出しは静的に確認できません。');continue;}
         if(name==='import'&&v(i+1)==='.')continue;
         if(name==='import'&&v(i+1)==='('){literal(i+2,base,'import');continue;}
         if(name==='import'&&t[i+1]?.type==='string'&&!t[i+1].dynamic){addImport(t[i+1].value);continue;}
         for(let n=i+1;n<Math.min(t.length,i+50)&&v(n)!==';';n++)if(v(n)==='from'&&t[n+1]?.type==='string'){if(!t[n+1].dynamic)addImport(t[n+1].value);break;}
       }
       if(['fetch','Worker','SharedWorker','importScripts','require'].includes(name)&&v(i+1)==='('){
+        // A game may use these names for data methods. Only a bare call or a
+        // directly named browser global is evidence of a file dependency.
+        if(member&&!globalMember){unverified.add(name+' のオブジェクト経由の呼び出しは静的に確認できません。');continue;}
         if(['Worker','SharedWorker'].includes(name)&&v(i+2)==='new'&&v(i+3)==='URL')continue;
         literal(i+2,name==='require'?base:documentEntry,name,['Worker','SharedWorker'].includes(name));
         if(name==='importScripts'){for(let n=i+3;n<t.length&&v(n)!==')';n++)if(v(n)===',')literal(n+1,documentEntry,name);}

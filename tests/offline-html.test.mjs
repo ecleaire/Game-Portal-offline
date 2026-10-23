@@ -192,6 +192,15 @@ test('dependency checks resolve JS module and document bases and ignore comments
   const embedded='<script>const css="<style>.x{background:url(fake.png)}</style>";const comment="<!-- <img src=fake2.png> -->";fetch("actual.png");</script><!-- <script>fetch("comment.png")</script> -->';assert.deepEqual(analyzeDependencies(embedded,'index.html','html').required,['actual.png']);assert.deepEqual(localResources(embedded,'index.html'),[]);
   assert.deepEqual(analyzeDependencies('<script data="encoded > style=\'url(fake.png)\'"></script><object data="actual.bin"></object>','index.html','html').required,['actual.bin']);
 });
+test('dependency checks distinguish custom member methods from global resource calls',async()=>{
+  const custom=`scores.fetch('best-score');scores?.fetch('optional-score');game.Worker('turn');modules.require('./rule');store.import('./record');store.export('record');model.window.fetch('nested-score');`;
+  const result=analyzeDependencies(custom,'js/main.js','js','index.html');
+  assert.deepEqual(result.required,[]);assert(result.unverified.length>0);
+  const globals=analyzeDependencies(`fetch('a.json');window.fetch('b.json');self.fetch('c.json');globalThis?.fetch('d.json');new window.Worker('worker.js');self.importScripts('extra.js');require('./module.js');import('./late.js');`,'js/main.js','js','index.html');
+  assert.deepEqual(globals.required.sort(),['a.json','b.json','c.json','d.json','worker.js','extra.js','js/module.js','js/late.js'].sort());assert.deepEqual(globals.unverified,[]);assert.deepEqual(globals.workerEntries,['worker.js']);
+  const checked=await checkUpload([new File(['<script>'+custom+'</script>'],'game.html')],library,preview,localResources);assert.deepEqual(checked.missing,[]);
+  await assert.rejects(checkUpload([new File(['<script>window.fetch("missing.json")</script>'],'game.html')],library,preview,localResources),/不足.*missing.json/);
+});
 test('upload checks follow CSS import chains and JS literal imports, report dynamic/external refs and respect analysis budgets',async()=>{
   const text=(name,value)=>new File([value],name);const files=new Map([['index.html',text('index.html','<link rel="stylesheet" href="css/main.css"><script src="js/main.js"></script>')],['css/main.css',text('main.css','@import "theme.css";')],['css/theme.css',text('theme.css','.x{background:url(../missing.png)}')],['js/main.js',text('main.js','import "./child.js";fetch(variable);fetch("https://example.test/api");')],['js/child.js',text('child.js','import "./main.js";')]]);
   let result=await inspectUploadDependencies(files,'index.html',localResources);assert.deepEqual(result.missing,['missing.png']);assert.equal(result.external.length,1);assert(result.unverified.length>0);assert.equal(result.checkedFiles,5);
