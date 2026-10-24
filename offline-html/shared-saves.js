@@ -6,7 +6,7 @@ export const saveText=data=>JSON.stringify(Object.fromEntries(Object.keys(data).
 export function validClock(clock){return !!clock&&typeof clock==='object'&&!Array.isArray(clock)&&Object.keys(clock).length<=128&&Object.entries(clock).every(([key,n])=>id.test(key)&&Number.isSafeInteger(n)&&n>0);}
 const covers=(a,b)=>Object.entries(b).every(([key,n])=>(a[key]||0)>=n);
 const combine=records=>{const clock={};for(const record of records)for(const [key,n]of Object.entries(record.clock))clock[key]=Math.max(clock[key]||0,n);return clock;};
-export function validSnapshot(value,libraryId,gameId,validSave){return !!value&&value.schema===1&&value.libraryId===libraryId&&value.gameId===gameId&&id.test(value.revision)&&id.test(value.deviceId)&&validClock(value.clock)&&value.clock[value.deviceId]>0&&typeof value.createdAt==='string'&&Number.isFinite(Date.parse(value.createdAt))&&validSave(value.data);}
+export function validSnapshot(value,libraryId,gameId,validSave){return !!value&&value.schema===1&&value.libraryId===libraryId&&value.gameId===gameId&&typeof value.revision==='string'&&typeof value.deviceId==='string'&&id.test(value.revision)&&id.test(value.deviceId)&&validClock(value.clock)&&value.clock[value.deviceId]>0&&typeof value.createdAt==='string'&&Number.isFinite(Date.parse(value.createdAt))&&validSave(value.data);}
 export function saveHeads(records){return records.filter(a=>!records.some(b=>a!==b&&covers(b.clock,a.clock)&&!covers(a.clock,b.clock)));}
 const cancelled=signal=>signal?.throwIfAborted();
 async function checkRoot(root,libraryId,tools,signal){if(await readWithSignal(()=>tools.loadLibraryId(root),signal)!==libraryId)throw Error('セーブの共有先IDが変わりました。フォルダーを再接続してください。');}

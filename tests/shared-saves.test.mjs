@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {syncSave,saveText,saveHeads} from '../offline-html/shared-saves.js';
-import {validSave} from '../offline-html/local-state.js';
+import {validSave,commitSaveSync} from '../offline-html/local-state.js';
 const libraryId='a'.repeat(32),gameId='b'.repeat(32);
 function folder(){
   const files=new Map(),dirs=new Map();
@@ -103,4 +103,14 @@ test('NAS thumbnail directory is ignored without traversal while unknown directo
  b.edit({level:'next'});assert.equal((await f.run(b)).state,'uploaded');await f.run(a);assert.deepEqual(a.peek().data,{level:'next'});
  for(name of ['unknown','@eaDir-backup','.DS_Store'])await assert.rejects(f.run(a),/不明なファイル/);
  name='@eaDir';const snapshot=[...dir.files.keys()][0];dir.files.set(snapshot,'{broken');await assert.rejects(f.run(a),/壊れて/);
+});
+
+test('snapshot IDs must be strings rather than arrays that coerce to valid IDs',async()=>{
+ const f=fixture(),a=client('1'.repeat(32),{v:'keep'});await f.run(a);const dir=f.dir(),[name,text]=[...dir.files][0],record=JSON.parse(text);
+ for(const key of ['revision','deviceId']){dir.files.set(name,JSON.stringify({...record,[key]:[record[key]]}));await assert.rejects(f.run(client('2'.repeat(32))),/形式・作品ID/);}
+});
+
+test('malformed pending IDs are rejected before opening the local database',async()=>{
+ const device='1'.repeat(32),record={schema:1,libraryId,gameId,revision:'2'.repeat(32),deviceId:device,clock:{[device]:1},createdAt:new Date().toISOString(),data:{v:'keep'}};
+ for(const key of ['revision','deviceId'])await assert.rejects(commitSaveSync(libraryId,gameId,{data:{},state:{}},{schema:1,base:null,clock:{},pending:{...record,[key]:[record[key]]}}),/セーブ同期の形式/);
 });

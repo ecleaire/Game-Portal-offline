@@ -173,7 +173,7 @@ function validSync(value,libraryId,gameId){
   const clock=v=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length<=128&&Object.entries(v).every(([k,n])=>/^[a-f0-9]{32}$/.test(k)&&Number.isSafeInteger(n)&&n>0);
   if(!value||value.schema!==1||!clock(value.clock)||value.base!==null&&(typeof value.base!=='string'||value.base.length>500000))return false;
   if(value.base!==null)try{if(!validSave(JSON.parse(value.base)))return false;}catch{return false;}
-  const p=value.pending;return p===null||p&&p.schema===1&&p.libraryId===libraryId&&p.gameId===gameId&&/^[a-f0-9]{32}$/.test(p.revision)&&/^[a-f0-9]{32}$/.test(p.deviceId)&&clock(p.clock)&&p.clock[p.deviceId]>0&&typeof p.createdAt==='string'&&Number.isFinite(Date.parse(p.createdAt))&&validSave(p.data);
+  const p=value.pending;return p===null||p&&p.schema===1&&p.libraryId===libraryId&&p.gameId===gameId&&typeof p.revision==='string'&&typeof p.deviceId==='string'&&/^[a-f0-9]{32}$/.test(p.revision)&&/^[a-f0-9]{32}$/.test(p.deviceId)&&clock(p.clock)&&p.clock[p.deviceId]>0&&typeof p.createdAt==='string'&&Number.isFinite(Date.parse(p.createdAt))&&validSave(p.data);
 }
 export async function loadSaveSync(libraryId,gameId){
   backupKey(libraryId,gameId);const db=await openDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction(['settings','saves'],'readonly'),a=tx.objectStore('saves').get([libraryId,gameId]),b=tx.objectStore('settings').get(['save-sync',libraryId,gameId]);
