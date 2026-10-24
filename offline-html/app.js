@@ -87,6 +87,7 @@ setInterval(()=>{void recoverFolderConnection();},5000);
 window.addEventListener('hashchange',()=>{if(nativeBridge&&(!root||root.nativeReadOnly)&&['','#main','#libraryTitle'].includes(location.hash))try{rememberNativePageConnection(location.href);}catch{}});
 let openedGame = null, stopGame = null, pendingSave = null, saveTimer, flushing = null, activePlay = null, closingPlayer = false;
 let actionCompletion=null,playerRequest=null,playerReloadWorker=null,playerCloseOperation=null;
+let saveImportRead=null;
 let editingEnabled = false, starting = true;
 let informationState=null,informationController=null,importedInformationThumbnail=undefined,informationImageRevision=0;
 let inspectionRoot = null, inspectionReport = null, selectedHistory = null, capturedImage = null;
@@ -739,6 +740,7 @@ function updateGameLoadControls(){
   $('#player').setAttribute('aria-busy',String(!!gameLoading||!!playerRequest));
 }
 function interruptPlayerReads(){
+  saveImportRead?.abort();
   folderRecoveryAbort?.abort();folderWatchAbort?.abort();syncController?.abort();idleSyncController?.abort();
   const folder=gameLoading?.folder;
   if(gameLoading){gameLoading.cancelled=true;gameLoading.controller.abort();if(gameLoading.folder?.nativeReadOnly)gameLoading.folder.cancelReads?.();}
@@ -1223,14 +1225,20 @@ $('#importSave').onchange = event => action(async () => {
   const session = activePlay, file = event.target.files[0]; event.target.value = '';
   if (!session || !file) return;
   if (file.size > 600000) throw new Error('セーブは600KB以内のJSONを選択してください。');
-  let parsed;try{parsed=JSON.parse(await file.text());}catch{throw new Error('セーブJSONを読み取れません。正常な書き出しファイルを選び直してください。');}let data=parsed;
+  const controller=new AbortController();saveImportRead=controller;
+  let parsed;
+  try{parsed=JSON.parse(await readTasks.readWithSignal(()=>file.text(),controller.signal));}
+  catch(error){if(controller.signal.aborted)throw controller.signal.reason;throw new Error('セーブJSONを読み取れません。正常な書き出しファイルを選び直してください。',{cause:error});}
+  finally{if(saveImportRead===controller)saveImportRead=null;}
+  if(activePlay!==session||playerRequest)return;
+  let data=parsed;
   if (parsed?.schema === 1) {
     if (parsed.gameId !== session.game.id) throw new Error('別のゲームのセーブです。');
     data = parsed.data;
   }
   if (!localState.validSave(data)) throw new Error('セーブの形式を確認してください。');
   if (!confirm('このPCの現在のセーブを、選択したファイルで置き換えてゲームを再起動しますか？')) return;
-  if (!await flushSave() || activePlay !== session) return;
+  if (!await flushSave() || activePlay !== session || playerRequest) return;
   stopPlayer();const restart=playRevision;
   try{await localState.writeLocalSave(session.libraryId,session.game.id,data);}
   catch(error){const message='セーブの読み込みに失敗しました。既存のセーブは保持しています。このPCの保存領域を確認してください。';if(playRevision===restart&&$('#player').open){$('#frame').hidden=true;$('#playerStatus').textContent=message+'「起動を再試行」で元のセーブから再開できます。';$('#retryPlaying').hidden=false;}throw new Error(message,{cause:error});}
