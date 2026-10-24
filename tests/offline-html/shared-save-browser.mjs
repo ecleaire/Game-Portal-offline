@@ -16,7 +16,7 @@ try{
   }
   const [a,b]=pages;
   const files=page=>page.evaluate(async()=>{const result=[];async function walk(dir,prefix=''){for await(const entry of dir.values()){if(entry.kind==='directory')await walk(entry,prefix+entry.name+'/');else result.push([prefix+entry.name,await(await entry.getFile()).text()]);}}await walk(window.fixtureRoot||root);return result;});
-  const copy=async(from,to)=>to.evaluate(async entries=>{for(const [path,text]of entries)await library.writeFile(fixtureRoot,path,text);},await files(from));
+  const copy=async(from,to)=>to.evaluate(async entries=>{for(const [path,text]of entries){await library.writeFile(fixtureRoot,path,text);if(/^\.gameportal\/shared-saves\/[a-f0-9]{32}\//.test(path)){const id=path.split('/')[2];await(await(await(await fixtureRoot.getDirectoryHandle('.gameportal')).getDirectoryHandle('shared-saves')).getDirectoryHandle(id)).getDirectoryHandle('@eaDir',{create:true});}}},await files(from));
   const connect=async page=>{await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);};
   await a.evaluate(async()=>{await library.writeFile(fixtureRoot,'game.html','<body><script>document.body.dataset.level=localStorage.getItem("level")||"none";</script>Game');});await connect(a);await copy(a,b);await connect(b);
   const ids=await a.evaluate(()=>({library:localLibrary,game:games[0].id}));assert.deepEqual(await b.evaluate(()=>({library:localLibrary,game:games[0].id})),ids);
@@ -25,7 +25,7 @@ try{
   const data=page=>page.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id));
   await editSave(a,'1');await sync(a);await expect(a.locator('#sharedSaveStatus')).toContainText('変更 1件');
   // Copying/browsing NAS folders can leave OS metadata alongside save snapshots.
-  await a.evaluate(async()=>{const path='.gameportal/shared-saves/'+games[0].id+'/';const dir=await(await(await root.getDirectoryHandle('.gameportal')).getDirectoryHandle('shared-saves')).getDirectoryHandle(games[0].id);let snapshot;for await(const entry of dir.values())if(/^[a-f0-9]{32}\.json$/.test(entry.name)){snapshot=entry.name;break;}for(const name of ['.DS_Store','Thumbs.db','desktop.ini','._'+snapshot])await library.writeFile(root,path+name,'OS metadata');});
+  await a.evaluate(async()=>{const path='.gameportal/shared-saves/'+games[0].id+'/';const dir=await(await(await root.getDirectoryHandle('.gameportal')).getDirectoryHandle('shared-saves')).getDirectoryHandle(games[0].id);let snapshot;for await(const entry of dir.values())if(/^[a-f0-9]{32}\.json$/.test(entry.name)){snapshot=entry.name;break;}await dir.getDirectoryHandle('@eaDir',{create:true});for(const name of ['.DS_Store','Thumbs.db','desktop.ini','._'+snapshot])await library.writeFile(root,path+name,'OS metadata');});
   await copy(a,b);
   // Closing during an in-flight IDB import retains the play lock until it drains.
   await b.evaluate(()=>{window.originalCommit=localState.commitSaveSync;localState.commitSaveSync=async(...args)=>{await new Promise(r=>window.finishImport=r);return originalCommit(...args);};});

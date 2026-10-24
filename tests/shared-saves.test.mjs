@@ -95,3 +95,12 @@ test('OS metadata in a shared-save folder cannot block play or sync and is never
   const values=dir.values;dir.values=async function*(){yield {name:'.DS_Store',kind:'directory'};yield* values.call(this);};await assert.rejects(f.run(a),/不明なファイル/);dir.values=values;
   dir.files.set(snapshot,'{broken');await assert.rejects(f.run(a),/壊れて/);assert.deepEqual(a.peek().data,{level:'2'});
 });
+
+test('NAS thumbnail directory is ignored without traversal while unknown directories remain errors',async()=>{
+ const f=fixture(),a=client('1'.repeat(32),{level:'keep'}),b=client('2'.repeat(32));await f.run(a);const dir=f.dir(),values=dir.values;
+ let name='@eaDir';dir.values=async function*(){yield {name,kind:'directory',values(){throw Error('Must not traverse NAS metadata');}};yield* values.call(this);};
+ assert.equal((await f.run(b,{pullOnly:true})).state,'downloaded');assert.deepEqual(b.peek().data,{level:'keep'});
+ b.edit({level:'next'});assert.equal((await f.run(b)).state,'uploaded');await f.run(a);assert.deepEqual(a.peek().data,{level:'next'});
+ for(name of ['unknown','@eaDir-backup','.DS_Store'])await assert.rejects(f.run(a),/不明なファイル/);
+ name='@eaDir';const snapshot=[...dir.files.keys()][0];dir.files.set(snapshot,'{broken');await assert.rejects(f.run(a),/壊れて/);
+});

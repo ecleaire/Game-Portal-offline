@@ -21,6 +21,8 @@ async function readRecords(dir,libraryId,gameId,local,signal){
     // delete it, and do not mistake it for a corrupt save. Keep unknown entries
     // and real snapshot validation strict.
     if(entry.kind==='file'&&/^(?:\.DS_Store|Thumbs\.db|desktop\.ini|\._[a-f0-9]{32}\.json)$/i.test(entry.name))continue;
+    // Synology creates this thumbnail directory beside files. Do not enter it.
+    if(entry.kind==='directory'&&entry.name==='@eaDir')continue;
     if(entry.kind!=='file'||!/^([a-f0-9]{32})\.json$/.test(entry.name))throw Error('共有セーブに不明なファイルがあります。元データを残して確認してください。');
     if(++count>256)throw Error('共有セーブの記録が多すぎます。フォルダーをバックアップして確認してください。');
     const file=await read(()=>entry.getFile());total+=file.size;if(file.size>510000||total>16*1024*1024)throw Error('共有セーブの容量が大きすぎます。');
