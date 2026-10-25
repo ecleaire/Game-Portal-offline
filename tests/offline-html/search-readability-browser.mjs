@@ -54,5 +54,6 @@ try{
   }
   await page.locator('#closePlayer').click();await expect(page.locator('#player')).toBeHidden();cases++;
  }
+ await page.emulateMedia({reducedMotion:'reduce'});await page.locator('.card').first().hover();assert.equal(await page.locator('.card').first().evaluate(e=>getComputedStyle(e).transform),'none');
  assert.deepEqual(errors,[]);console.log(`Search/readability passed: ${cases} theme/viewport/font cases; keyboard opening, zero results, clear, tag search, control hit targets, fullscreen entry/exit and denial preserving play, repeated play/return. Native picker remains simulated.`);
 }finally{await context?.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true});}

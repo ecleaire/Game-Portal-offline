@@ -866,7 +866,7 @@ $('#nativeLaunch').onclick=()=>action(async()=>{
 },false,true);
 const helpTopics=[...document.querySelectorAll('.help-index [data-help-topic]')];
 function markHelpTopic(id){for(const button of helpTopics){if(button.dataset.helpTopic===id)button.setAttribute('aria-current','location');else button.removeAttribute('aria-current');}}
-function resetHelp(){ $('#helpContent').scrollTop=0;$('.help-index').scrollTop=0;markHelpTopic('helpSetup'); }
+function resetHelp(){ $('#helpContent').scrollTop=0;$('.help-index').scrollTop=0;$('.help-index').scrollLeft=0;markHelpTopic('helpSetup'); }
 for(const id of ['helpButton','playerHelpButton'])$('#'+id).onclick=()=>{if(!$('#help').open){$('#help').showModal();resetHelp();$('#helpTitle').focus({preventScroll:true});}};
 for(const button of document.querySelectorAll('[data-help-topic]'))button.onclick=()=>{
   const section=$('#'+button.dataset.helpTopic),content=$('#helpContent');

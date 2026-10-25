@@ -144,3 +144,18 @@ html[data-edition="player"] :is(#post,#edit,#contentUpdate,#capture,#history,#in
 #playerTags{max-height:108px;overflow-y:auto;overscroll-behavior:contain;align-content:start;padding:2px 4px 4px 0;scrollbar-width:thin}#playerTags .game-tag{flex-shrink:0}#playerTags:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 
 html[data-edition="player"] :is(#informationTools,#information,#gameInformationTools){display:none!important}.information-rows{max-height:48dvh;overflow:auto;overscroll-behavior:contain}.information-row{display:flex!important;align-items:flex-start;gap:12px;margin:0!important;padding:14px;border-bottom:1px solid var(--line);min-width:0}.information-row input{width:22px!important;height:22px;flex:0 0 22px;margin:2px 0!important}.information-row span{min-width:0;overflow-wrap:anywhere}.information-row small{display:block;margin-top:6px;color:var(--muted);font-size:13px}.information-row img{max-width:160px;max-height:90px;object-fit:contain}#information{max-width:860px}#information .dialog-actions{flex-wrap:wrap}@media(max-width:560px){.information-row{padding:10px}.information-row small{font-size:12px}}
+
+/* Keep the reading area usable on narrow screens without hiding help topics. */
+@media(max-width:600px){
+ .help-layout{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:12px}
+ .help-index{flex-direction:row;align-items:center;gap:8px;overflow-x:auto;overflow-y:hidden;border-right:0;border-bottom:1px solid var(--line);padding:4px 4px 10px;scroll-padding:4px}
+ .help-index-label{padding:0 4px;white-space:nowrap;flex-shrink:0}
+ .help-index button{white-space:nowrap;min-height:44px;font-size:.933rem;padding:8px 12px}
+ .help-content{padding:4px 6px 20px 4px;scroll-padding-top:8px}
+ .help-section p,.help-section li{font-size:1rem;line-height:1.85}
+ .help-section h3{font-size:1.2rem}
+}
+/* Separate pinned player actions from the content scrolling underneath. */
+#player .playerbar{border-bottom:1px solid var(--line);padding-bottom:14px}
+@media(hover:none){.card:hover,.card:focus-within{transform:none}}
+@media(prefers-reduced-motion:reduce){.card:hover,.card:focus-within{transform:none}}

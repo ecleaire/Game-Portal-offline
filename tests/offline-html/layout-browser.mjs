@@ -40,12 +40,24 @@ try{
      if(content.height<48)out.push('editor content collapsed: '+content.height);
      if(content.top<tabs.bottom-1||content.bottom>actions.top+1)out.push('editor sections overlap');
     }
+    if(scenario==='help'&&innerWidth<=600){
+     const nav=document.querySelector('.help-index').getBoundingClientRect(),content=document.querySelector('.help-content').getBoundingClientRect();
+     if(nav.bottom>content.top+1)out.push('help navigation overlaps reading area');
+     if(content.width<container.clientWidth-60)out.push('help reading area too narrow');
+    }
     if(scenario==='player'){
      const title=document.querySelector('#playerTitle').getBoundingClientRect(),buttons=document.querySelector('#player .playerbar>.buttons').getBoundingClientRect();
      if(Math.min(title.right,buttons.right)-Math.max(title.left,buttons.left)>1&&Math.min(title.bottom,buttons.bottom)-Math.max(title.top,buttons.top)>1)out.push('player title/buttons overlap');
     }
     return out;
    },scenario);
+   if(scenario==='help'&&width===390&&font===15){
+    await page.locator('.help-index [data-help-topic=helpTrouble]').click();await expect(page.locator('#helpTrouble')).toBeFocused();
+    assert(await page.locator('.help-index').evaluate(e=>e.scrollLeft>0));
+    await page.locator('#help [data-close]').click();await page.locator('#helpButton').click();
+    assert.equal(await page.locator('.help-index').evaluate(e=>e.scrollLeft),0);await expect(page.locator('#helpTitle')).toBeFocused();
+    await page.screenshot({path:'offline-release/ui-checks/help-mobile-improved.png'});
+   }
    if(result.length){issues.push({width,height,font,scenario,result});await page.screenshot({path:`offline-release/ui-checks/layout-${scenario}-${width}-${height}-${font}.png`});}
    if(!result.length&&(scenario==='player'&&width===800||scenario==='edit'&&width===1280&&height===360))await page.screenshot({path:`offline-release/ui-checks/layout-${scenario}-${width}-${height}-${font}-fixed.png`});
    if(scenario==='edit'&&!result.length){

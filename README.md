@@ -1,18 +1,18 @@
 # GAME PORTAL
 
-バージョン：**0.24.11**
+バージョン：**0.24.12**
 
 フォルダーに保存したゲームを、オフラインで探して遊ぶランチャーです。ゲームの追加、名前・サムネイル・タグなどの編集にも対応しています。アカウント登録は不要で、保存先にはPC内のフォルダーやNASを指定できます。
 
-今回の更新では、NASの管理フォルダーが共有セーブの読み込みを妨げる問題と、不正なID形式の同期記録を受け入れてしまう問題を修正しました。詳しくは[変更履歴](docs/CHANGELOG.md)をご覧ください。
+今回の更新では、小さい画面でヘルプの目次を上部にまとめ、本文を広く読めるようにしました。プレイ画面の操作バーの区切りと、タッチ操作・動きを抑える設定への対応も改善しています。詳しくは[変更履歴](docs/CHANGELOG.md)をご覧ください。
 
 ## ダウンロードして使う
 
-**[v0.24.11のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.11.zip)**
+**[v0.24.12のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.12.zip)**
 
-展開すると **`Game-Portal-offline-0.24.11`** フォルダーになります。
+展開すると **`Game-Portal-offline-0.24.12`** フォルダーになります。
 
-GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.24.11`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
+GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.24.12`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
 
 1. `Windows`・`Mac`・`HTML` から使う環境を選びます。
 2. **プレイ用**または**クリエイター用**を開き、次のファイルを起動します。
