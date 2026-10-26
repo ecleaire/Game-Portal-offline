@@ -27,5 +27,17 @@ try{await context.addInitScript(()=>{if(top!==window)return;FileSystemDirectoryH
  assert.equal(await snapshot(),filesBefore);
  await page.locator('#libraryView').selectOption('all');await expect(page.locator('.card')).toHaveCount(2);await page.evaluate(()=>{window.normalParallelWrite=localState.updateGameView;window.parallelReleases={};localState.updateGameView=async(...args)=>{await new Promise(r=>parallelReleases[args[1]]=r);return normalParallelWrite(...args);};});
  const first=page.locator('.card').filter({hasText:'Alpha'}).locator('.favorite-button'),second=page.locator('.card').filter({hasText:'Beta'}).locator('.favorite-button');await first.focus();await page.keyboard.press('Enter');await second.focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>Object.keys(parallelReleases).length===2);await page.evaluate(()=>parallelReleases[games.find(g=>g.title==='Alpha').id]());await expect(first).toBeEnabled();await expect(first).not.toBeFocused();await page.evaluate(()=>{localState.updateGameView=normalParallelWrite;parallelReleases[games.find(g=>g.title==='Beta').id]();});await expect(second).toBeEnabled();await expect(second).toBeFocused();
- assert.deepEqual(errors,[]);console.log('Library view UI passed: individual view reset, favorites persistence/removal, recent play, compact preference, priority controls, actual save status, keyboard focus recovery, no focus stealing across pending writes, duplicate-click suppression, 12 size/viewport cases, independent windows and no game-folder writes.');
+ // An older refresh must not clear a newer error or resurrect an obsolete one.
+ for(const rolePath of ['/player','/']){
+  await page.goto(url+rolePath);await expect(page.locator('html')).toHaveAttribute('data-ready','true');await connect();
+ for(const olderFails of [false,true]){
+  await page.evaluate(olderFails=>{window.normalRaceViews=localState.loadGameViews;window.raceViewCalls=0;window.releaseOlderViews=null;localState.loadGameViews=async(...args)=>{if(++raceViewCalls===1){const values=await normalRaceViews(...args);await new Promise(resolve=>window.releaseOlderViews=resolve);if(olderFails)throw Error('Older view read failed');return values;}if(!olderFails)throw Error('Newest view read failed');return normalRaceViews(...args);};viewsLibrary=null;window.olderViewRender=render();},olderFails);
+  await page.waitForFunction(()=>!!releaseOlderViews);await page.evaluate(()=>render());
+  if(olderFails)await expect(page.locator('#viewPreferenceNotice')).toBeHidden();else await expect(page.locator('#viewPreferenceNotice')).toBeVisible();
+  await page.evaluate(async()=>{releaseOlderViews();await olderViewRender;localState.loadGameViews=normalRaceViews;});
+  if(olderFails){await expect(page.locator('#viewPreferenceNotice')).toBeHidden();await expect(page.locator('.favorite-button').first()).toBeEnabled();}else{await expect(page.locator('#viewPreferenceNotice')).toBeVisible();await expect(page.locator('.favorite-button').first()).toBeDisabled();}
+  if(!olderFails){await page.locator('#retryGameViews').click();await expect(page.locator('#viewPreferenceNotice')).toBeHidden();}
+ }
+ }
+ assert.deepEqual(errors,[]);console.log('Library view UI passed: individual view reset, favorites persistence/removal, recent play, compact preference, priority controls, actual save status, keyboard focus recovery, no focus stealing across pending writes, duplicate-click suppression, 12 size/viewport cases, independent windows, no game-folder writes and obsolete read success/failure isolation in both editions.');
 }finally{await context.close();await new Promise(r=>server.close(r));await rm(dir,{recursive:true,force:true});}

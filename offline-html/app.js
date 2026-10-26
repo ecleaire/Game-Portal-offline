@@ -556,7 +556,12 @@ function loadingStage(task,name,active=true){
 }
 async function render() {
   const revision = ++renderRevision, folder = root,viewLibrary=localLibrary;
-  if(viewsLibrary!==localLibrary){let values=[];try{values=await localState.loadGameViews(localLibrary);viewPreferencesReady=true;$('#viewPreferenceNotice').hidden=true;}catch(error){viewPreferencesReady=false;viewPreferenceError(error,true);}if(revision!==renderRevision||root!==folder||localLibrary!==viewLibrary)return;gameViews=new Map(values.map(v=>[v.id,v]));viewsLibrary=localLibrary;}
+  if(viewsLibrary!==localLibrary){
+    let values=[],loadError=null;try{values=await localState.loadGameViews(localLibrary);}catch(error){loadError=error;}
+    if(revision!==renderRevision||root!==folder||localLibrary!==viewLibrary)return;
+    viewPreferencesReady=!loadError;if(loadError)viewPreferenceError(loadError,true);else $('#viewPreferenceNotice').hidden=true;
+    gameViews=new Map(values.map(v=>[v.id,v]));viewsLibrary=localLibrary;
+  }
   $('#libraryViewTools').hidden=!root;$('#games').dataset.size=$('#cardSize').value;
   if($('#libraryView').value!=='recent'&&$('#sortGames').value==='played')$('#sortGames').value='name-asc';
   const allTags = [...new Set(games.flatMap(g => g.tags))].sort((a,b) => a.localeCompare(b,'ja'));
@@ -568,14 +573,17 @@ async function render() {
   const tagCategories=[...new Set(tagPresets.map(t=>t.category))].concat('マイタグ');
   const category=$('#tagCategory').value;$('#tagCategory').replaceChildren(new Option('すべての分類',''));for(const name of tagCategories)$('#tagCategory').append(new Option(name,name));$('#tagCategory').value=category;
   const tagQuery=$('#tagSearch').value.normalize('NFKC').toLocaleLowerCase();let shownTags=0;
-  $('#tagFilters').replaceChildren(); $('#knownTags').replaceChildren();
+  const previousTags=new Map([...$('#tagFilters').children].map(button=>[button.getAttribute('aria-label'),button])),visibleTags=[];
+  $('#knownTags').replaceChildren();
   for (const tag of allTags) {
     const option = document.createElement('option'); option.value = tag; $('#knownTags').append(option);
     if(!tag.normalize('NFKC').toLocaleLowerCase().includes(tagQuery)||category&&(tagPresets.find(t=>t.name===tag)?.category||'マイタグ')!==category)continue;shownTags++;
     const count=tagCounts.get(tag);
-    const button = document.createElement('button'); button.className = 'tag' + (selectedTags.has(tag) ? ' active' : ''); button.textContent = tag+' '+count;button.setAttribute('aria-label',tag);button.setAttribute('aria-pressed', String(selectedTags.has(tag)));
-    button.onclick = () => { selectedTags.has(tag) ? selectedTags.delete(tag) : selectedTags.add(tag); render().catch(e => status(e.message)); }; $('#tagFilters').append(button);
+    const button = previousTags.get(tag)||document.createElement('button'); button.type='button';button.className = 'tag' + (selectedTags.has(tag) ? ' active' : ''); button.textContent = tag+' '+count;button.setAttribute('aria-label',tag);button.setAttribute('aria-pressed', String(selectedTags.has(tag)));
+    button.onclick = () => { selectedTags.has(tag) ? selectedTags.delete(tag) : selectedTags.add(tag); render().catch(e => status(e.message)); }; visibleTags.push(button);
   }
+  const wantedTags=new Set(visibleTags);for(const button of [...$('#tagFilters').children])if(!wantedTags.has(button))button.remove();
+  visibleTags.forEach((button,index)=>{const current=$('#tagFilters').children[index];if(current!==button)$('#tagFilters').insertBefore(button,current||null);});
   $('#tagFilterSummary').textContent=`${allTags.length}タグ中 ${shownTags}件`;
   const keyword = $('#search').value.trim().toLocaleLowerCase();
   let matches = searchTools.searchGames(games,{query:keyword,scope:$('#searchScope').value,kind:$('#kindFilter').value,environment:$('#environmentFilter').value,tags:selectedTags,tagMatch:$('#tagMatch').value,sort:$('#sortGames').value});

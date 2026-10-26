@@ -4,8 +4,8 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
-const html=await readFile('offline-release/GAME-PORTAL.html');
-const server=createServer((q,r)=>r.end(html));await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const html=await readFile('offline-release/GAME-PORTAL.html'),playerHtml=await readFile('GAME-PORTAL-PLAY.html');
+const server=createServer((q,r)=>r.end(q.url==='/player'?playerHtml:html));await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const profile=await mkdtemp(join(tmpdir(),'portal-search-'));let context;
 try{
  context=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
@@ -24,8 +24,8 @@ try{
  await page.locator('#searchScope').selectOption('description');await page.locator('#search').fill('キーワード');await expect(page.locator('.card')).toHaveCount(2);
  await page.locator('#search').fill('存在しない');await expect(page.locator('.card')).toHaveCount(0);
  await page.locator('#clearFilters').click();await expect(page.locator('.card')).toHaveCount(2);
- await page.locator('#tagFilters button').filter({hasText:'パズル'}).click();await expect(page.locator('.card')).toHaveCount(1);
- await page.locator('#clearFilters').click();await expect(page.locator('.card')).toHaveCount(2);
+ const puzzleTag=page.locator('#tagFilters').getByRole('button',{name:'パズル',exact:true});await puzzleTag.focus();await page.keyboard.press('Enter');await expect(page.locator('.card')).toHaveCount(1);await expect(puzzleTag).toBeFocused();await page.keyboard.press('Space');await expect(puzzleTag).toHaveAttribute('aria-pressed','false');await expect(page.locator('.card')).toHaveCount(2);
+ await expect(page.locator('#clearFilters')).toBeHidden();
  await mkdir('offline-release/ui-checks',{recursive:true});
  let cases=0;
  for(const theme of ['dark','light'])for(const [width,height,font] of [[1920,1080,15],[1280,720,15],[800,600,15],[640,400,15],[390,700,15],[320,568,15],[640,480,24],[320,568,24]]){
@@ -55,5 +55,11 @@ try{
   await page.locator('#closePlayer').click();await expect(page.locator('#player')).toBeHidden();cases++;
  }
  await page.emulateMedia({reducedMotion:'reduce'});await page.locator('.card').first().hover();assert.equal(await page.locator('.card').first().evaluate(e=>getComputedStyle(e).transform),'none');
- assert.deepEqual(errors,[]);console.log(`Search/readability passed: ${cases} theme/viewport/font cases; keyboard opening, zero results, clear, tag search, control hit targets, fullscreen entry/exit and denial preserving play, repeated play/return. Native picker remains simulated.`);
+ // Exercise pagination using real folder entries, then keyboard tag changes in Player too.
+ await page.evaluate(async()=>{for(let i=0;i<125;i++)await library.writeFile(root,'Bulk-'+String(i).padStart(3,'0')+'.html','<h1>Bulk fixture</h1>');await refresh();});
+ await expect(page.locator('.card')).toHaveCount(60);await page.locator('#loadMore').click();await expect(page.locator('.card')).toHaveCount(120);await page.locator('#loadMore').click();await expect(page.locator('.card')).toHaveCount(127);await expect(page.locator('#loadMore')).toBeHidden();assert.equal(new Set(await page.locator('.game-title-link').allTextContents()).size,127);
+ await page.locator('#search').fill('Bulk');await expect(page.locator('#count')).toHaveText('125');await page.locator('#clearFilters').click();await expect(page.locator('.card')).toHaveCount(60);
+ const peer=await context.newPage();peer.on('pageerror',e=>errors.push(e.message));await peer.goto('http://127.0.0.1:'+server.address().port+'/player');await expect(peer.locator('html')).toHaveAttribute('data-ready','true');await peer.evaluate(async()=>{const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('検索追加検証');window.showDirectoryPicker=async()=>folder;});await peer.locator('#setupFolder').click();await peer.waitForFunction(()=>!busy);await peer.locator('#search').focus();await peer.keyboard.press('Tab');await expect(peer.locator('#filterDetails summary')).toBeFocused();await peer.keyboard.press('Enter');
+ const playerTag=peer.locator('#tagFilters').getByRole('button',{name:'パズル',exact:true});await playerTag.focus();for(const key of ['Enter','Space','Enter','Space']){await peer.keyboard.press(key);await expect(playerTag).toBeFocused();}await expect(playerTag).toHaveAttribute('aria-pressed','false');await expect(peer.locator('#count')).toHaveText('127');await peer.close();
+ assert.deepEqual(errors,[]);console.log(`Search/readability passed: ${cases} theme/viewport/font cases; keyboard opening and repeated tag changes in both editions, 127-game pagination without duplicates, zero results, clear, tag search, control hit targets, fullscreen entry/exit and denial preserving play, repeated play/return. Native picker remains simulated.`);
 }finally{await context?.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true});}

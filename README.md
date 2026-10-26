@@ -1,18 +1,18 @@
 # GAME PORTAL
 
-バージョン：**0.24.15**
+バージョン：**0.24.16**
 
 フォルダーに保存したゲームを、オフラインで探して遊ぶランチャーです。ゲームの追加、名前・サムネイル・タグなどの編集にも対応しています。アカウント登録は不要で、保存先にはPC内のフォルダーやNASを指定できます。
 
-今回の更新では、お気に入りをキーボードで解除した後も続けて操作できるように改善しました。使い方の案内も整理しています。詳しくは[変更履歴](docs/CHANGELOG.md)をご覧ください。
+今回の更新では、タグをキーボードで続けて選べるようにし、読み込みが重なった場合のエラー表示と再試行を改善しました。詳しくは[変更履歴](docs/CHANGELOG.md)をご覧ください。
 
 ## ダウンロードして使う
 
-**[v0.24.15のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.15.zip)**
+**[v0.24.16のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.16.zip)**
 
-展開すると **`Game-Portal-offline-0.24.15`** フォルダーになります。
+展開すると **`Game-Portal-offline-0.24.16`** フォルダーになります。
 
-GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.24.15`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
+GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.24.16`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
 
 **ゲーム本体はZIPに含まれていません。** 遊ぶゲームを保存したフォルダーを用意してください。
 
