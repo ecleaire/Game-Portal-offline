@@ -48,5 +48,14 @@ try{
   await b.evaluate(async()=>{window.fixtureRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('shared-library');window.showDirectoryPicker=async()=>fixtureRoot;});await connect(b);
   await b.locator('.game-title-link').click();await b.waitForFunction(()=>!busy);await expect(b.frameLocator('#frame').locator('body')).toHaveAttribute('data-level','4');await b.locator('#closePlayer').click();await b.waitForFunction(()=>!closingPlayer);
   for(const page of [a,b])assert.equal((await files(page)).filter(([path,text])=>path.startsWith('.gameportal/shared-saves/')&&text==='OS metadata').length,4);
+  for(const page of [a,b])assert.equal(await page.evaluate(async()=>{
+   const id=games[0].id,original=await localState.loadSaveSync(localLibrary,id),db=await new Promise((resolve,reject)=>{const r=indexedDB.open('game-portal-offline-folder-v1',3);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+   const put=(store,key,value)=>new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).put(value,key);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});
+   try{
+    await put('settings',['save-sync',localLibrary,id],{...original.state,clock:new Date()});let rejected=false;try{await localState.loadSaveSync(localLibrary,id);}catch(e){rejected=e.message.includes('同期記録');}if(!rejected)return false;
+    if(JSON.stringify(await localState.loadLocalSave(localLibrary,id))!==JSON.stringify(original.data))return false;
+    await put('settings',['save-sync',localLibrary,id],original.state);await put('saves',[localLibrary,id],new Map());rejected=false;try{await localState.loadLocalSave(localLibrary,id);}catch(e){rejected=e.message.includes('セーブ形式');}return rejected;
+   }finally{await put('settings',['save-sync',localLibrary,id],original.state);await put('saves',[localLibrary,id],original.data);db.close();}
+  }),true);
   assert.deepEqual(errors,[]);console.log('Shared saves passed: independent profiles with simulated folder transfer, OS metadata preservation in Creator and Player, pre-play download, conflict choice and backups, atomic IDB abort/stale rejection, uncertain close/reload confirmation and three-minute idle publication. Physical NAS remains untested.');
 }finally{await Promise.all(contexts.map(context=>context.close()));await new Promise(r=>server.close(r));await rm(temp,{recursive:true,force:true});}

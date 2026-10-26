@@ -82,7 +82,7 @@ export async function trackSettingsReceipt(attempt,remove=false,replaces=null){
   });
 }
 export function validSave(data) {
-  return data && typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length <= 1000 &&
+  return data && typeof data === 'object' && (Object.getPrototypeOf(data)===Object.prototype||Object.getPrototypeOf(data)===null) && Object.keys(data).length <= 1000 &&
     Object.values(data).every(v => typeof v === 'string') && new TextEncoder().encode(JSON.stringify(data)).length <= 500000;
 }
 export async function loadLocalSave(libraryId, gameId) {
@@ -170,7 +170,7 @@ export async function saveDeviceId(){
 const canonicalSave=data=>JSON.stringify(Object.fromEntries(Object.keys(data).sort().map(key=>[key,data[key]])));
 const emptySync=()=>({schema:1,base:null,clock:{},pending:null});
 function validSync(value,libraryId,gameId){
-  const clock=v=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length<=128&&Object.entries(v).every(([k,n])=>/^[a-f0-9]{32}$/.test(k)&&Number.isSafeInteger(n)&&n>0);
+  const clock=v=>v&&typeof v==='object'&&(Object.getPrototypeOf(v)===Object.prototype||Object.getPrototypeOf(v)===null)&&Object.keys(v).length<=128&&Object.entries(v).every(([k,n])=>/^[a-f0-9]{32}$/.test(k)&&Number.isSafeInteger(n)&&n>0);
   if(!value||value.schema!==1||!clock(value.clock)||value.base!==null&&(typeof value.base!=='string'||value.base.length>500000))return false;
   if(value.base!==null)try{if(!validSave(JSON.parse(value.base)))return false;}catch{return false;}
   const p=value.pending;return p===null||p&&p.schema===1&&p.libraryId===libraryId&&p.gameId===gameId&&typeof p.revision==='string'&&typeof p.deviceId==='string'&&/^[a-f0-9]{32}$/.test(p.revision)&&/^[a-f0-9]{32}$/.test(p.deviceId)&&clock(p.clock)&&p.clock[p.deviceId]>0&&typeof p.createdAt==='string'&&Number.isFinite(Date.parse(p.createdAt))&&validSave(p.data);

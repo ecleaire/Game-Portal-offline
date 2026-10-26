@@ -1,5 +1,5 @@
 // Raise the floor only when a library format requires new reader/writer behavior.
-export const LAUNCHER_VERSION = '0.24.13';
+export const LAUNCHER_VERSION = '0.24.14';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];

@@ -3,7 +3,7 @@
 import {readWithSignal} from './read-task.js';
 const id=/^[a-f0-9]{32}$/;
 export const saveText=data=>JSON.stringify(Object.fromEntries(Object.keys(data).sort().map(key=>[key,data[key]])));
-export function validClock(clock){return !!clock&&typeof clock==='object'&&!Array.isArray(clock)&&Object.keys(clock).length<=128&&Object.entries(clock).every(([key,n])=>id.test(key)&&Number.isSafeInteger(n)&&n>0);}
+export function validClock(clock){return !!clock&&typeof clock==='object'&&(Object.getPrototypeOf(clock)===Object.prototype||Object.getPrototypeOf(clock)===null)&&Object.keys(clock).length<=128&&Object.entries(clock).every(([key,n])=>id.test(key)&&Number.isSafeInteger(n)&&n>0);}
 const covers=(a,b)=>Object.entries(b).every(([key,n])=>(a[key]||0)>=n);
 const combine=records=>{const clock={};for(const record of records)for(const [key,n]of Object.entries(record.clock))clock[key]=Math.max(clock[key]||0,n);return clock;};
 export function validSnapshot(value,libraryId,gameId,validSave){return !!value&&value.schema===1&&value.libraryId===libraryId&&value.gameId===gameId&&typeof value.revision==='string'&&typeof value.deviceId==='string'&&id.test(value.revision)&&id.test(value.deviceId)&&validClock(value.clock)&&value.clock[value.deviceId]>0&&typeof value.createdAt==='string'&&Number.isFinite(Date.parse(value.createdAt))&&validSave(value.data);}
