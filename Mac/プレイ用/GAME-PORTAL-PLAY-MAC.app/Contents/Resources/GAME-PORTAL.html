@@ -170,7 +170,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 
 .filter-context{align-self:center;font-size:.9rem;color:var(--muted);padding:4px 8px}html[data-edition="player"] .player-secondary-actions{display:none!important}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.17</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.18</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -524,7 +524,7 @@ function legacyScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.24.17';
+const LAUNCHER_VERSION = '0.24.18';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -3699,7 +3699,7 @@ $('#gameInformationFile').onchange=()=>{const file=$('#gameInformationFile').fil
  if(!editing||!editingEnabled||launcherEdition!=='creator')throw Error('編集モードでゲームを開いてください。');
  const controller=new AbortController();informationController=controller;informationControls();try{const archive=await readInformationFile(file,controller.signal);if(archive.games.length!==1)throw Error('複数のゲーム情報は、設定の「ゲーム情報の保存・読み込み」から読み込んでください。');
  const info=archive.games[0];$('#editTitle').value=info.title;$('#editEnvironment').value=info.developmentEnvironment;$('#editTags').value=info.tags.join(', ');$('#editDescription').value=info.description;$('#editInstructions').value=info.instructions;
- importedInformationThumbnail=info.thumbnail;informationImageRevision++;editImageRevision++;$('#editImage').value='';$('#clearImage').checked=false;imageProcessing=false;imageError='';$('#editImage').setCustomValidity('');resetCropState();
+ importedInformationThumbnail=info.thumbnail;informationImageRevision++;editImageRevision++;$('#editImage').value='';$('#clearImage').checked=false;imageProcessing=false;imageError='';$('#editImage').setCustomValidity('');$('#imageStatus').textContent='';resetCropState();
  $('#editImagePreview').hidden=!info.thumbnail;if(info.thumbnail)$('#editImagePreview').src=info.thumbnail;else $('#editImagePreview').removeAttribute('src');
  autoEnvironmentTag=info.tags.includes(info.developmentEnvironment)?info.developmentEnvironment:'';$('#newTag').value='';renderTagChoices();updateFormCounters();updateEditDirty();selectEditTab('Basic');
  $('#gameInformationNotice').textContent='「'+info.title+'」の情報を読み込みました。内容を確認し、「保存」でこのゲームに反映します。';return '情報を編集画面に読み込みました。「保存」するまでゲームは変更されません。';}finally{informationController=null;informationControls();}
