@@ -7,3 +7,12 @@ test('save data and synchronization clocks reject non-record objects',async()=>{
  }
  const save=Object.create(null);save.score='42';assert.equal(validSave(save),true);const clock=Object.create(null);clock[id]=1;assert.equal(validClock(clock),true);
 });
+
+test('settings receipts reject coerced identifiers before opening storage',async()=>{
+ const {trackSettingsReceipt}=await import('../offline-html/local-state.js');
+ const receipt={schema:1,libraryId:'a'.repeat(32),id:'b'.repeat(32),gamePath:'Game.html',historyName:'abc.json',expectedHash:'c'.repeat(64),beforeHash:null,kind:'edit',uploadFolder:null};
+ for(const field of ['libraryId','id','historyName','expectedHash','beforeHash','uploadFolder']){
+  const text=field==='beforeHash'?'d'.repeat(64):field==='uploadFolder'?'game-abcd':receipt[field];
+  for(const value of [[text],new String(text)])await assert.rejects(trackSettingsReceipt({...receipt,[field]:value}),/保存確認記録の形式/);
+ }
+});

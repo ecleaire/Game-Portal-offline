@@ -69,7 +69,7 @@ async function scopedFolder(scope,record=null,forget=false){
     tx.onabort=()=>{clearTimeout(timeout);reject(error||tx.error||new Error('保存先の記憶を更新できませんでした。'));};tx.onerror=()=>{};
   });
 }
-function validReceipt(v){return v&&v.schema===1&&/^[0-9a-f]{32}$/.test(v.libraryId)&&/^[0-9a-f]{32}$/.test(v.id)&&typeof v.gamePath==='string'&&v.gamePath.length>0&&v.gamePath.length<=1000&&/^[0-9a-f-]+\.json$/.test(v.historyName)&&/^[0-9a-f]{64}$/.test(v.expectedHash)&&(v.beforeHash===null||/^[0-9a-f]{64}$/.test(v.beforeHash))&&['edit','capture','restore','post'].includes(v.kind)&&(v.uploadFolder===null||/^game-[0-9a-f-]+$/.test(v.uploadFolder));}
+function validReceipt(v){return v&&v.schema===1&&(typeof v.libraryId==='string'&&/^[0-9a-f]{32}$/.test(v.libraryId))&&(typeof v.id==='string'&&/^[0-9a-f]{32}$/.test(v.id))&&typeof v.gamePath==='string'&&v.gamePath.length>0&&v.gamePath.length<=1000&&(typeof v.historyName==='string'&&/^[0-9a-f-]+\.json$/.test(v.historyName))&&(typeof v.expectedHash==='string'&&/^[0-9a-f]{64}$/.test(v.expectedHash))&&(v.beforeHash===null||(typeof v.beforeHash==='string'&&/^[0-9a-f]{64}$/.test(v.beforeHash)))&&['edit','capture','restore','post'].includes(v.kind)&&(v.uploadFolder===null||(typeof v.uploadFolder==='string'&&/^game-[0-9a-f-]+$/.test(v.uploadFolder)));}
 export async function loadSettingsReceipts(){const value=await access('settings','readonly',s=>s.get('save-receipts'));if(value===undefined)return [];if(!Array.isArray(value)||value.length>1000||!value.every(validReceipt))throw new Error('このPCの保存確認記録を確認してください。');return value;}
 export async function trackSettingsReceipt(attempt,remove=false,replaces=null){
   if(!validReceipt(attempt))throw new Error('保存確認記録の形式を確認してください。');
@@ -163,7 +163,7 @@ export async function acquirePlaySession(libraryId, gameId) {
 }
 export async function saveDeviceId(){
   const db=await openDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),store=tx.objectStore('settings'),request=store.get('save-sync-device');let value;
-    request.onsuccess=()=>{value=request.result;if(value===undefined){value=crypto.randomUUID().replaceAll('-','');store.put(value,'save-sync-device');}else if(!/^[a-f0-9]{32}$/.test(value))tx.abort();};
+    request.onsuccess=()=>{value=request.result;if(value===undefined){value=crypto.randomUUID().replaceAll('-','');store.put(value,'save-sync-device');}else if(typeof value!=='string'||!/^[a-f0-9]{32}$/.test(value))tx.abort();};
     tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(tx.error||new Error('このPCの同期IDを確認してください。'));tx.onerror=()=>{};
   });
 }
