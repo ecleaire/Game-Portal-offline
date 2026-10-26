@@ -97,7 +97,7 @@ $('#gameInformationFile').onchange=()=>{const file=$('#gameInformationFile').fil
  if(!editing||!editingEnabled||launcherEdition!=='creator')throw Error('編集モードでゲームを開いてください。');
  const controller=new AbortController();informationController=controller;informationControls();try{const archive=await readInformationFile(file,controller.signal);if(archive.games.length!==1)throw Error('複数のゲーム情報は、設定の「ゲーム情報の保存・読み込み」から読み込んでください。');
  const info=archive.games[0];$('#editTitle').value=info.title;$('#editEnvironment').value=info.developmentEnvironment;$('#editTags').value=info.tags.join(', ');$('#editDescription').value=info.description;$('#editInstructions').value=info.instructions;
- importedInformationThumbnail=info.thumbnail;informationImageRevision++;editImageRevision++;$('#editImage').value='';$('#clearImage').checked=false;imageProcessing=false;imageError='';$('#editImage').setCustomValidity('');resetCropState();
+ importedInformationThumbnail=info.thumbnail;informationImageRevision++;editImageRevision++;$('#editImage').value='';$('#clearImage').checked=false;imageProcessing=false;imageError='';$('#editImage').setCustomValidity('');$('#imageStatus').textContent='';resetCropState();
  $('#editImagePreview').hidden=!info.thumbnail;if(info.thumbnail)$('#editImagePreview').src=info.thumbnail;else $('#editImagePreview').removeAttribute('src');
  autoEnvironmentTag=info.tags.includes(info.developmentEnvironment)?info.developmentEnvironment:'';$('#newTag').value='';renderTagChoices();updateFormCounters();updateEditDirty();selectEditTab('Basic');
  $('#gameInformationNotice').textContent='「'+info.title+'」の情報を読み込みました。内容を確認し、「保存」でこのゲームに反映します。';return '情報を編集画面に読み込みました。「保存」するまでゲームは変更されません。';}finally{informationController=null;informationControls();}
