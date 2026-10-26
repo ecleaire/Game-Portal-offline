@@ -196,3 +196,19 @@ export async function commitSaveSync(libraryId,gameId,expected,state,data=expect
     a.onsuccess=apply;b.onsuccess=apply;c.onsuccess=apply;tx.oncomplete=()=>resolve();tx.onabort=()=>reject(failure||tx.error||new Error('セーブ同期をこのPCへ記録できません。'));tx.onerror=()=>{};
   });
 }
+
+// Per-library display preferences stay on this PC, separate from game metadata.
+export async function loadGameViews(libraryId){
+ if(typeof libraryId!=='string'||!/^[a-f0-9]{32}$/.test(libraryId))return [];
+ const values=await access('settings','readonly',s=>s.getAll(IDBKeyRange.bound(['game-view',libraryId,''],['game-view',libraryId,'\uffff'])));
+ return values.filter(v=>v&&typeof v.id==='string'&&/^[a-f0-9]{32}$/.test(v.id)&&typeof v.favorite==='boolean'&&Number.isSafeInteger(v.lastPlayed)&&v.lastPlayed>=0);
+}
+export async function updateGameView(libraryId,gameId,change){
+ if(!change||typeof change!=='object'||Array.isArray(change)||Object.keys(change).some(k=>!['favorite','played'].includes(k))||('favorite'in change&&typeof change.favorite!=='boolean')||('played'in change&&change.played!==true))throw Error('表示設定の形式を確認してください。');
+ if(![libraryId,gameId].every(v=>typeof v==='string'&&/^[a-f0-9]{32}$/.test(v)))throw Error('ゲーム情報を確認してください。');
+ const db=await openDatabase();return new Promise((resolve,reject)=>{
+  const tx=db.transaction('settings','readwrite'),store=tx.objectStore('settings'),key=['game-view',libraryId,gameId],request=store.get(key);let result;
+  request.onsuccess=()=>{const old=request.result;result={id:gameId,favorite:old?.favorite===true,lastPlayed:Number.isSafeInteger(old?.lastPlayed)&&old.lastPlayed>=0?old.lastPlayed:0};if(typeof change.favorite==='boolean')result.favorite=change.favorite;if(change.played===true)result.lastPlayed=Date.now();store.put(result,key);};
+  tx.oncomplete=()=>resolve(result);tx.onabort=()=>reject(tx.error||Error('このPCに表示設定を保存できませんでした。'));tx.onerror=()=>{};
+ });
+}
