@@ -148,7 +148,7 @@ try {
   await expect(peer.locator('#folderName')).toHaveText('games');
   await expect(peer.locator('#postButton')).toBeDisabled();
   const peerCard=peer.locator('.card').filter({has:peer.getByRole('heading',{name:'My portable game',exact:true})});
-  await expect(peerCard.locator('button:not(.game-tag):not(.game-tags-more)')).toHaveCount(0);
+  await expect(peerCard.locator('button:not(.game-tag):not(.game-tags-more):not(.favorite-button)')).toHaveCount(0);
   await peerCard.locator('.game-title-link').click(); await expect(peer.locator('#status')).toContainText('別のタブで起動中');
   await expect(peer.locator('#player')).not.toBeVisible();
   await page.getByRole('button',{name:'← ゲーム一覧',exact:true}).click();
