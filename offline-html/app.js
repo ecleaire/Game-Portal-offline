@@ -90,7 +90,7 @@ setInterval(()=>{void recoverFolderConnection();},5000);
 window.addEventListener('hashchange',()=>{if(nativeBridge&&(!root||root.nativeReadOnly)&&['','#main','#libraryTitle'].includes(location.hash))try{rememberNativePageConnection(location.href);}catch{}});
 let openedGame = null, stopGame = null, pendingSave = null, saveTimer, flushing = null, activePlay = null, closingPlayer = false;
 let actionCompletion=null,playerRequest=null,playerReloadWorker=null,playerCloseOperation=null;
-let saveImportRead=null;
+let saveFileRead=null;
 let editingEnabled = false, starting = true;
 let informationState=null,informationController=null,importedInformationThumbnail=undefined,informationImageRevision=0;
 let inspectionRoot = null, inspectionReport = null, selectedHistory = null, capturedImage = null;
@@ -782,7 +782,7 @@ function updateGameLoadControls(){
   $('#player').setAttribute('aria-busy',String(!!gameLoading||!!playerRequest));
 }
 function interruptPlayerReads(){
-  saveImportRead?.abort();
+  saveFileRead?.abort();
   folderRecoveryAbort?.abort();folderWatchAbort?.abort();syncController?.abort();idleSyncController?.abort();
   const folder=gameLoading?.folder;
   if(gameLoading){gameLoading.cancelled=true;gameLoading.controller.abort();if(gameLoading.folder?.nativeReadOnly)gameLoading.folder.cancelReads?.();}
@@ -1264,20 +1264,26 @@ writeControls();
 
 $('#exportSave').onclick = () => action(async () => {
   const session = activePlay; if (!session) throw new Error('ゲームを起動してから操作してください。');
-  const data = session.latest || await localState.loadLocalSave(session.libraryId, session.game.id);
-  const blob = new Blob([JSON.stringify({ schema: 1, gameId: session.game.id, data }, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = 'game-save-' + session.game.id + '.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const controller=new AbortController();saveFileRead=controller;
+  try{
+    const stored=session.latest||await readTasks.readWithSignal(()=>localState.loadLocalSave(session.libraryId,session.game.id),controller.signal);
+    controller.signal.throwIfAborted();if(activePlay!==session||playerRequest)return;
+    // Gameplay may have produced a newer snapshot while the saved copy was read.
+    const data=session.latest||stored;
+    const blob = new Blob([JSON.stringify({ schema: 1, gameId: session.game.id, data }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = 'game-save-' + session.game.id + '.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }finally{if(saveFileRead===controller)saveFileRead=null;}
 });
 $('#importSaveButton').onclick = () => $('#importSave').click();
 $('#importSave').onchange = event => action(async () => {
   const session = activePlay, file = event.target.files[0]; event.target.value = '';
   if (!session || !file) return;
   if (file.size > 600000) throw new Error('セーブは600KB以内のJSONを選択してください。');
-  const controller=new AbortController();saveImportRead=controller;
+  const controller=new AbortController();saveFileRead=controller;
   let parsed;
   try{parsed=JSON.parse(await readTasks.readWithSignal(()=>file.text(),controller.signal));}
   catch(error){if(controller.signal.aborted)throw controller.signal.reason;throw new Error('セーブJSONを読み取れません。正常な書き出しファイルを選び直してください。',{cause:error});}
-  finally{if(saveImportRead===controller)saveImportRead=null;}
+  finally{if(saveFileRead===controller)saveFileRead=null;}
   if(activePlay!==session||playerRequest)return;
   let data=parsed;
   if (parsed?.schema === 1) {
