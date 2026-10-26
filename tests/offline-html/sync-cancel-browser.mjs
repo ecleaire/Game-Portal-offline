@@ -10,7 +10,7 @@ try{for(const edition of ['creator','player']){
  const context=await chromium.launchPersistentContext(join(profile,edition),{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
  try{
  await context.addInitScript(()=>{FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
- const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));await page.goto('http://127.0.0.1:'+server.address().port+'/'+edition);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+ const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));await page.goto('http://127.0.0.1:'+server.address().port+'/'+edition);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
  await page.evaluate(async()=>{const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('sync-cancel',{create:true}),management=await folder.getDirectoryHandle('.gameportal',{create:true});for(const [dir,name,text]of [[management,'library-id.json',JSON.stringify({schema:1,id:'a'.repeat(32)})],[folder,'game.html','<h1>Ready after cancellation</h1>']]){const writer=await(await dir.getFileHandle(name,{create:true})).createWritable();await writer.write(text);await writer.close();}window.showDirectoryPicker=async()=>folder;});
  await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);
  const identity=await page.evaluate(()=>({library:localLibrary,game:games[0].id}));

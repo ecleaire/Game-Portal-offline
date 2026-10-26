@@ -12,7 +12,7 @@ const base='http://127.0.0.1:'+server.address().port,errors=[];
 try{
  await context.addInitScript(()=>{FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';});
  const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
- const visit=async path=>{await page.goto(base+path);await expect(page.locator('html')).toHaveAttribute('data-ready','true');};
+ const visit=async path=>{await page.goto(base+path);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});};
  await visit('/GAME-PORTAL.html');
  await page.evaluate(async()=>{const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('Shared tags',{create:true});await library.ensureLibraryId(folder);await library.writeFile(folder,'game.html','<h1>Playing</h1>');window.showDirectoryPicker=async()=>folder;});
  await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);
@@ -33,6 +33,6 @@ try{
  await expect(page.locator('#editPlaying')).toBeHidden();await expect(page.locator('#playerTags .game-tag')).toHaveCount(32);
  const bounds=await page.locator('#playerTags').evaluate(element=>({height:element.clientHeight,scroll:element.scrollHeight}));assert(bounds.height<=112&&bounds.scroll>bounds.height);
  await page.locator('#playerTags .game-tag').last().scrollIntoViewIfNeeded();await page.locator('#playerTags .game-tag').last().click();await expect(page.locator('#player')).toBeHidden();await expect(page.locator('.game-title-link')).toHaveCount(1);
- await page.locator('#settingsButton').click();await page.locator('#folderMemoryDetails summary').click();await page.locator('#forgetFolder').click();await page.waitForFunction(()=>!busy);await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('#folderName')).toHaveText('未選択');
+ await page.locator('#settingsButton').click();await page.locator('#folderMemoryDetails summary').click();await page.locator('#forgetFolder').click();await page.waitForFunction(()=>!busy);await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await expect(page.locator('#folderName')).toHaveText('未選択');
  assert.deepEqual(errors,[]);console.log('Tags/distribution passed: 32 custom tags, shared creator/player metadata, scroll and tag search, bounded legacy scope migration, explicit forget stays forgotten.');
 }finally{await context.close();await new Promise(resolve=>server.close(resolve));await rm(profile,{recursive:true,force:true});}

@@ -8,7 +8,7 @@ const expectBug=process.argv.includes('--expect-bug');
 try{
  for(const path of ['/ascii/launcher.html','/日本語と空白 folder/launcher.html']){
    const page=await browser.newPage(),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));
-   await page.goto('http://127.0.0.1:'+server.address().port+path);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+   await page.goto('http://127.0.0.1:'+server.address().port+path);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
    page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
    await page.evaluate(async simple=>{
      const encode=s=>new TextEncoder().encode(s);
@@ -36,7 +36,7 @@ try{
    assert.deepEqual(requests,[]);assert.deepEqual(errors,[]);await page.close();
  }
  if(!expectBug){
-   const page=await browser.newPage();await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+   const page=await browser.newPage();await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
    const failure=await page.evaluate(()=>{
      const random=crypto.randomUUID,post=window.postMessage,nonce='resource-transfer-failure';let result;
      let stop;

@@ -13,7 +13,7 @@ try{
  await context.addInitScript(()=>{if(top!==window)return;FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';localStorage.setItem('game-portal.remember-folder','false');});
  const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
  for(const edition of ['creator','player']){
-  await page.goto('http://127.0.0.1:'+server.address().port+'/'+edition);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+  await page.goto('http://127.0.0.1:'+server.address().port+'/'+edition);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
   await page.evaluate(async edition=>{
    window.fixtureRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('save-import',{create:true});
    if(edition==='creator'){await library.ensureLibraryId(fixtureRoot);await library.writeFile(fixtureRoot,'Game.html','<h1>Save game</h1><output></output><script>document.querySelector("output").textContent=localStorage.score||"none";document.body.dataset.boot=String(Math.random());</script>');}

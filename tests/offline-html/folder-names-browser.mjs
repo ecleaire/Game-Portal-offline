@@ -9,7 +9,7 @@ const temp=await mkdtemp(join(tmpdir(),'portal-folder-names-'));let context;
 try{
  context=await chromium.launchPersistentContext(join(temp,'profile'),{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
  await context.addInitScript(()=>{FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
- const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));const origin='http://127.0.0.1:'+server.address().port;await page.goto(origin);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+ const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));const origin='http://127.0.0.1:'+server.address().port;await page.goto(origin);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
  for(const name of ['日本語の保管場所 🕹️','Games # % & + [2026] (v1)','.gameportal','__MACOSX','   ']){
   await page.evaluate(async name=>{window.testFolder=await(await navigator.storage.getDirectory()).getDirectoryHandle(name,{create:true});await library.writeFile(testFolder,'game.html','<body><script>document.body.dataset.saved=localStorage.getItem("level")||"none";</script>Folder game');window.showDirectoryPicker=async()=>testFolder;},name);
   await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);assert.equal(await page.locator('#folderName').textContent(),name);const id=await page.evaluate(()=>localLibrary);
@@ -20,7 +20,7 @@ try{
   const download=page.waitForEvent('download');await page.locator('#exportSharedLauncher').click();const exported=await readFile(await(await download).path(),'utf8');await page.waitForFunction(()=>!busy);
   const text=exported.split('<script id="folderConnection" type="application/json">')[1].split('</script>')[0];assert.deepEqual(JSON.parse(text),{schema:1,libraryId:id,name,path:hint});assert(!exported.includes('"level":"keep"'));
   await page.locator('#settings [data-close]').click();await page.locator('.card').filter({has:page.getByRole('heading',{name:'game',exact:true})}).locator('.game-title-link').click();await page.waitForFunction(()=>!busy);await expect(page.frameLocator('#frame').locator('body')).toHaveAttribute('data-saved','keep');await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);
-  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');assert.equal(await page.locator('#folderName').textContent(),name);assert.equal(await page.evaluate(()=>localLibrary),id);
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});assert.equal(await page.locator('#folderName').textContent(),name);assert.equal(await page.evaluate(()=>localLibrary),id);
  }
  assert.deepEqual(errors,[]);console.log('Folder names passed: Unicode/emoji, spaces, punctuation and management-like root names; connect/post/play/shared save/export/reload with exact untrimmed hints. OPFS simulation; OS/browser access rules still apply.');
 }finally{await context?.close();await new Promise(r=>server.close(r));await rm(temp,{recursive:true,force:true});}

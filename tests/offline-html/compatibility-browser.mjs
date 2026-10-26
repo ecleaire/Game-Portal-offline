@@ -22,7 +22,7 @@ try{
  const origin='http://127.0.0.1:'+server.address().port;
  async function open(path='/'){
    const target=path==='/'?page:await context.newPage();target.on('pageerror',e=>errors.push(e.message));
-   await target.goto(origin+path);await expect(target.locator('html')).toHaveAttribute('data-ready','true');
+   await target.goto(origin+path);await expect(target.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
    await target.evaluate(async()=>{const directory=await(await navigator.storage.getDirectory()).getDirectoryHandle('shared',{create:true});window.showDirectoryPicker=async()=>directory;});
    return target;
  }

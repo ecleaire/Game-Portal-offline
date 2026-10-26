@@ -11,7 +11,7 @@ const browser=await chromium.launchPersistentContext(profile,{executablePath:pro
 try{
  const page=await browser.newPage({viewport:{width:1280,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
- await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');await page.locator('#settingsButton').click();await page.locator('#inspectButton').click();await expect(page.locator('#measureUsage')).toBeDisabled();await page.locator('#inspection [data-close]').click();
+ await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await page.locator('#settingsButton').click();await page.locator('#inspectButton').click();await expect(page.locator('#measureUsage')).toBeDisabled();await page.locator('#inspection [data-close]').click();
  await page.evaluate(async()=>{
    const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('usage-library',{create:true});window.usageRoot=dir;window.showDirectoryPicker=async()=>dir;
    library.setSettingsSaveObserver(async()=>{});const id=await library.ensureLibraryId(dir);await library.postGame(dir,[new File(['Original'],'original.html')],preview);

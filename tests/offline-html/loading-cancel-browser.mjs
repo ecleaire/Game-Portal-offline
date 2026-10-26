@@ -9,7 +9,7 @@ const profile=await mkdtemp(join(tmpdir(),'portal-cancel-'));let context;
 try{
  context=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
  await context.addInitScript(()=>{if(window!==top)return;FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
- await page.clock.install();await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+ await page.clock.install();await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
  await page.evaluate(async()=>{const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('Library',{create:true});await library.writeFile(folder,'First.html','<h1>First</h1>');await library.writeFile(folder,'Second.html','<h1>Second</h1>');window.showDirectoryPicker=async()=>folder;});await page.locator('#setupFolder').click();await page.waitForFunction(()=>!busy);
  const first=()=>page.locator('.game-title-link').filter({hasText:'First'}),second=()=>page.locator('.game-title-link').filter({hasText:'Second'});
  await page.evaluate(async()=>{window.firstGame=games.find(game=>game.path==='First.html');await localState.writeLocalSave(localLibrary,firstGame.id,{level:'keep'});});

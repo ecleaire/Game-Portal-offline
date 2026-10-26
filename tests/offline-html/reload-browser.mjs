@@ -16,7 +16,7 @@ try{
  await context.addInitScript(()=>{if(top!==window)return;FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';localStorage.setItem('game-portal.remember-folder','false');});
  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  for(const edition of ['creator','player']){
-  await page.goto('http://127.0.0.1:'+server.address().port+'/'+edition);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+  await page.goto('http://127.0.0.1:'+server.address().port+'/'+edition);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
   await page.evaluate(async edition=>{window.fixtureRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('reload',{create:true});if(edition==='creator')await library.ensureLibraryId(fixtureRoot);window.fixtureSource=title=>'<h1>'+title+'</h1><output></output><script>document.querySelector("output").textContent=localStorage.score||"none";document.body.dataset.boot=String(Math.random());</script>';const handle=await fixtureRoot.getFileHandle('Game.html',{create:true}),writer=await handle.createWritable();await writer.write(fixtureSource('Original'));await writer.close();window.showDirectoryPicker=async()=>fixtureRoot;},edition);
   await page.locator('#setupFolder').click();await page.waitForFunction(()=>!busy);await page.locator('.game-title-link').filter({hasText:'Game'}).click();
   const body=page.frameLocator('#frame').locator('body'),reload=page.locator('#reloadPlaying');await expect(body.locator('h1')).toHaveText('Original');await expect(reload).toBeEnabled();

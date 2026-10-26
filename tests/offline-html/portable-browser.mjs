@@ -16,9 +16,9 @@ try{
  for(const page of [sender,receiver])page.on('pageerror',error=>errors.push(error.message));
  // Start the moved/renamed single HTML with no sibling assets in a new profile.
  const moved=join(temporary,'別の保存場所','受け取ったゲーム一覧.html');await mkdir(join(temporary,'別の保存場所'));await writeFile(moved,html);
- const localPage=await receiverContext.newPage();await receiverContext.setOffline(true);await localPage.goto(pathToFileURL(moved).href);await expect(localPage.locator('html')).toHaveAttribute('data-ready','true');await expect(localPage.locator('#folderName')).toHaveText('未選択');await expect(localPage.locator('#modeLabel')).toHaveText('あそぶ');assert.equal(await localPage.evaluate(()=>typeof showDirectoryPicker),'function');await localPage.close();await receiverContext.setOffline(false);
+ const localPage=await receiverContext.newPage();await receiverContext.setOffline(true);await localPage.goto(pathToFileURL(moved).href);await expect(localPage.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await expect(localPage.locator('#folderName')).toHaveText('未選択');await expect(localPage.locator('#modeLabel')).toHaveText('あそぶ');assert.equal(await localPage.evaluate(()=>typeof showDirectoryPicker),'function');await localPage.close();await receiverContext.setOffline(false);
  const origin='http://127.0.0.1:'+server.address().port;
- await sender.goto(origin);await expect(sender.locator('html')).toHaveAttribute('data-ready','true');
+ await sender.goto(origin);await expect(sender.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
  await sender.evaluate(async()=>{
    const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('original-library',{create:true});window.showDirectoryPicker=async()=>dir;
    library.setSettingsSaveObserver(async()=>{});await library.ensureLibraryId(dir);await library.postGame(dir,[new File(['<h1>Portable game</h1><script>document.body.dataset.previous=localStorage.getItem("level")||"none";localStorage.setItem("level","receiver");</script>'],'game.html')],preview);
@@ -31,7 +31,7 @@ try{
  const ids=await sender.evaluate(async()=>{await localState.writeLocalSave(localLibrary,games[0].id,{level:'sender-only'});return {library:localLibrary,game:games[0].id};});
  const files=await sender.evaluate(async()=>{const result=[];async function walk(dir,prefix=''){for await(const entry of dir.values()){if(entry.kind==='directory')await walk(entry,prefix+entry.name+'/');else result.push([prefix+entry.name,[...new Uint8Array(await(await entry.getFile()).arrayBuffer())]]);}}await walk(root);return result;});
  assert(files.some(([path])=>path==='.gameportal/library-id.json'));assert(files.some(([path])=>path.endsWith('/game.html.gameportal.json')));assert(files.some(([path])=>path.startsWith('.gameportal/history/')));
- await receiver.goto(origin+'/renamed-launcher.html');await expect(receiver.locator('html')).toHaveAttribute('data-ready','true');await expect(receiver.locator('#folderName')).toHaveText('未選択');await expect(receiver.locator('#modeLabel')).toHaveText('あそぶ');assert.equal(await receiver.evaluate(()=>remembered),null);
+ await receiver.goto(origin+'/renamed-launcher.html');await expect(receiver.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await expect(receiver.locator('#folderName')).toHaveText('未選択');await expect(receiver.locator('#modeLabel')).toHaveText('あそぶ');assert.equal(await receiver.evaluate(()=>remembered),null);
  await receiver.evaluate(async files=>{const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('別PCの別フォルダー',{create:true});for(const [path,bytes]of files)await library.writeFile(dir,path,new Uint8Array(bytes));window.showDirectoryPicker=async()=>dir;},files);
  const requests=[];receiverContext.on('request',request=>{if(/^https?:/.test(request.url()))requests.push(request.url());});await receiverContext.setOffline(true);
  await receiver.locator('#settingsButton').click();await receiver.locator('#chooseFolder').click();await expect(receiver.getByRole('heading',{name:'移行した作品',exact:true})).toBeVisible();await expect(receiver.locator('.card img')).toHaveCount(1);

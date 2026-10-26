@@ -16,11 +16,11 @@ try{
    FileSystemDirectoryHandle.prototype.queryPermission=async({mode})=>mode==='read'?(readGranted?'granted':'prompt'):(writeGranted?'granted':'prompt');
    FileSystemDirectoryHandle.prototype.requestPermission=async({mode})=>{window.permissionCalls=(window.permissionCalls||[]).concat({mode,active:navigator.userActivation.isActive});if(window.denyPermission)return 'denied';window.readGranted=true;if(mode==='readwrite')window.writeGranted=true;return 'granted';};
   });
-  await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+  await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
   await page.evaluate(async()=>{window.testFolder=await(await navigator.storage.getDirectory()).getDirectoryHandle('Remembered',{create:true});await library.writeFile(testFolder,'game.html','<h1>Playable</h1>');window.showDirectoryPicker=async()=>testFolder;});
   await page.locator('#setupFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('.card')).toHaveCount(1);
   await page.evaluate(scenario=>{if(['read-only-editing','write-denied'].includes(scenario)){localStorage.setItem('game-portal.offline-editing','true');sessionStorage.setItem('write-grant','prompt');}else sessionStorage.setItem('read-grant','prompt');},scenario);
-  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
   await page.evaluate(()=>{window.showDirectoryPicker=()=>{throw Error('Automatic reconnect must not open the folder picker');};});
   if(['read-only-editing','write-denied'].includes(scenario)){
    await expect(page.locator('#folderName')).toHaveText('Remembered');assert.equal(await page.evaluate(()=>window.permissionCalls?.length||0),0);

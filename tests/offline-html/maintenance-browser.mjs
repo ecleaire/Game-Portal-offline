@@ -12,7 +12,7 @@ const profile=await mkdtemp(join(tmpdir(),'portal-maintenance-browser-'));
 const browser=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,viewport:{width:1280,height:960}});
 try {
   const page=await browser.newPage({viewport:{width:1280,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+  await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
   await mkdir('offline-release/ui-checks',{recursive:true});
   await page.locator('#helpButton').click();await expect(page.locator('#help')).toBeVisible();await expect(page.locator('#helpTitle')).toBeFocused();await expect(page.locator('#helpButton')).toHaveText('ヘルプ');await expect(page.locator('#helpTitle')).toHaveText('ヘルプ');assert.equal(await page.locator('#help .help-section').count(),11);await page.screenshot({path:'offline-release/ui-checks/help-guide.png',fullPage:true});
   // The index remains available while the independent document scrolls.

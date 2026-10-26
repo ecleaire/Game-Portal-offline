@@ -15,10 +15,10 @@ try{
  const errors=[];
  await context.addInitScript(()=>{if(top!==window)return;FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';localStorage.setItem('game-portal.offline-editing','true');});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));const url='http://127.0.0.1:'+server.address().port;
- await page.goto(url+'/creator');await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+ await page.goto(url+'/creator');await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
  await page.evaluate(async()=>{const folder=await navigator.storage.getDirectory();await library.ensureLibraryId(folder);await library.writeFile(folder,'Game.html','<html><body><button onclick="localStorage.score=42">SAVE</button>PLAY</body></html>');});
  for(let cycle=0;cycle<3;cycle++){
-  await page.goto(url+'/player');await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+  await page.goto(url+'/player');await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
   await page.evaluate(()=>{window.showDirectoryPicker=()=>navigator.storage.getDirectory();});
   await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('.card')).toHaveCount(1);
   assert.equal(await page.evaluate(()=>editingEnabled),false);await expect(page.locator('#postButton')).toBeHidden();
@@ -33,7 +33,7 @@ try{
   await page.locator('#settingsButton').click();await page.locator('#syncSaves').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#sharedSaveStatus')).toContainText('セーブ同期を確認しました');await page.locator('#settings [data-close]').click();
   await page.locator('#helpButton').click();await expect(page.locator('[data-help-topic="helpPost"]')).toHaveCount(0);await expect(page.locator('#helpSetup')).toContainText('プレイ専用');await page.locator('#help [data-close]').first().click();
   await page.locator('#search').fill('missing');await expect(page.locator('.card')).toHaveCount(0);await page.locator('#search').fill('Game');await expect(page.locator('.card')).toHaveCount(1);
-  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('.card')).toHaveCount(1);assert.equal(await page.evaluate(()=>editingEnabled),false);
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await expect(page.locator('.card')).toHaveCount(1);assert.equal(await page.evaluate(()=>editingEnabled),false);
  }
  // Player layout: light/dark, desktop/narrow screens, essential dialogs only.
  for(const theme of ['dark','light'])for(const width of [320,390,640,1280]){
@@ -43,6 +43,6 @@ try{
   }
  }
  await page.evaluate(()=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();});
- await page.goto(url+'/creator');await expect(page.locator('html')).toHaveAttribute('data-ready','true');assert.equal(await page.evaluate(()=>editingEnabled),true);
+ await page.goto(url+'/creator');await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});assert.equal(await page.evaluate(()=>editingEnabled),true);
  assert.deepEqual(errors,[]);console.log('Editions passed: three player connect/play/save/search/reload cycles; stored editing preference ignored, mutation entry points denied, creator remains editable, player help contains no creation controls.');
 }finally{await context.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:200});}

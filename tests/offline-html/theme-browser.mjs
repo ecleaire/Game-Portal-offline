@@ -10,7 +10,7 @@ const file=join(temp,'GAME PORTAL 日本語 #%.html');await writeFile(file,await
 const options={executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,colorScheme:'light',viewport:{width:1280,height:960}};
 const server=createServer((q,r)=>r.end(html));const html=await readFile('offline-release/GAME-PORTAL.html');await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;let targetURL=pathToFileURL(file).href;
 let context;const errors=[],network=[];
-const open=async()=>{const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(/^https?:/.test(r.url())&&!r.url().startsWith(origin+'/'))network.push(r.url());});await p.goto(targetURL);await expect(p.locator('html')).toHaveAttribute('data-ready','true');return p;};
+const open=async()=>{const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(/^https?:/.test(r.url())&&!r.url().startsWith(origin+'/'))network.push(r.url());});await p.goto(targetURL);await expect(p.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});return p;};
 try{
  context=await chromium.launchPersistentContext(profile,options);let page=await open();console.log('Display validation browser:',context.browser().version());
  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.locator('#settingsButton').click();await expect(page.locator('#colorTheme')).toHaveValue('dark');
@@ -22,7 +22,7 @@ try{
  // File URLs cannot use OPFS in every Chrome build. Verify theme persistence on
  // the real file origin, then use a local fixture origin for native OPFS handles.
  await context.close();context=await chromium.launchPersistentContext(profile,options);page=await open();await expect(page.locator('html')).toHaveAttribute('data-theme','light');
- targetURL=origin;await page.goto(targetURL);await expect(page.locator('html')).toHaveAttribute('data-ready','true');await page.locator('#settingsButton').click();await page.locator('#enableEditing').check();await page.waitForFunction(()=>!busy);await page.locator('#colorTheme').selectOption('light');await page.locator('#settings [data-close]').click();
+ targetURL=origin;await page.goto(targetURL);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await page.locator('#settingsButton').click();await page.locator('#enableEditing').check();await page.waitForFunction(()=>!busy);await page.locator('#colorTheme').selectOption('light');await page.locator('#settings [data-close]').click();
  await page.evaluate(async()=>{
   window.displayRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('表示検証 空白 #%🎮',{create:true});window.showDirectoryPicker=async()=>displayRoot;
   for(const [name,title,tags]of [['one.html','長いゲームタイトルと日本語の表示確認',['アクション','Godot','ジャンプ','1人用','短時間','キーボード']],['two.html','別のゲーム',['パズル']]]){

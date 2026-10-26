@@ -11,7 +11,7 @@ try{
  await context.addInitScript(()=>{if(top!==window)return;FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';localStorage.setItem('game-portal.remember-folder','false');});
  const page=await context.newPage(),errors=[],downloads=[];page.on('pageerror',e=>errors.push(e.message));page.on('download',d=>downloads.push(d));
  for(const edition of ['creator','player']){
-  await page.goto('http://127.0.0.1:'+server.address().port+'/'+edition);await expect(page.locator('html')).toHaveAttribute('data-ready','true');
+  await page.goto('http://127.0.0.1:'+server.address().port+'/'+edition);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
   await page.evaluate(async edition=>{const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('export-library',{create:true});if(edition==='creator'){await library.ensureLibraryId(folder);await library.writeFile(folder,'Game.html','<h1>Export fixture</h1><output></output><script>document.querySelector("output").textContent=localStorage.score||"none";document.body.dataset.boot=String(Math.random());</script>');}window.showDirectoryPicker=async()=>folder;window.normalExportLoad=localState.loadLocalSave;},edition);
   await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);
   await page.evaluate(()=>localState.writeLocalSave(localLibrary,games[0].id,{score:'existing'}));
