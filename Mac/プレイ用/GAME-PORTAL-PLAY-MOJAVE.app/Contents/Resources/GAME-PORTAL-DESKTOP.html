@@ -170,7 +170,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 
 .filter-context{align-self:center;font-size:.9rem;color:var(--muted);padding:4px 8px}html[data-edition="player"] .player-secondary-actions{display:none!important}
 #exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}.desktop-path{margin-top:8px}.desktop-path input{flex:1 1 240px;min-width:0;width:100%}</style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.14</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.15</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -1204,7 +1204,7 @@ function legacyScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.24.14';
+const LAUNCHER_VERSION = '0.24.15';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -2881,6 +2881,9 @@ document.getElementById('desktopShareConnection')?.addEventListener('click',()=>
 });
 
 const $ = selector => document.querySelector(selector);
+// A completed write may restore focus only if no newer interaction superseded it.
+let favoriteFocusRevision=0;
+for(const type of ['pointerdown','keydown'])document.addEventListener(type,()=>{favoriteFocusRevision++;},true);
 const editionLabel=$('#homeLink .app-edition')||document.createElement('span');editionLabel.className='app-edition';editionLabel.textContent=launcherEdition==='player'?'プレイ専用':'クリエイター';$('#homeLink').append(editionLabel);
 for(const duplicate of document.querySelectorAll('#homeLink .app-edition'))if(duplicate!==editionLabel)duplicate.remove();
 if(launcherEdition==='player'){
@@ -3491,7 +3494,7 @@ async function render() {
     const open=document.createElement('a');open.href='#player';open.className='game-title-link';const titleText=document.createElement('span');titleText.className='game-title-text';titleText.textContent=game.title;open.append(titleText);open.onclick=event=>{event.preventDefault();playCurrent();};title.replaceChildren(open);
     const thumb=document.createElement('a');thumb.href='#player';thumb.className='game-thumb-link';thumb.tabIndex=-1;thumb.setAttribute('aria-label',game.title+'の画面を開く');thumb.onclick=open.onclick;thumb.append(cover);
     for(const img of cover.querySelectorAll('img')){img.loading='lazy';img.decoding='async';}
-    const favorite=document.createElement('button');favorite.type='button';favorite.className='secondary favorite-button';favorite.dataset.gameId=game.id||'';updateFavoriteButton(favorite,game);favorite.onclick=event=>{event.stopPropagation();if(favorite.dataset.saving==='true')return;const current=games.find(g=>g.id===game.id&&g.path===game.path);if(current){favorite.dataset.saving='true';favorite.disabled=true;void changeGameView(current,{favorite:!gameViews.get(game.id)?.favorite}).catch(viewPreferenceError).finally(()=>{delete favorite.dataset.saving;updateFavoriteButton(favorite,current);});}};
+    const favorite=document.createElement('button');favorite.type='button';favorite.className='secondary favorite-button';favorite.dataset.gameId=game.id||'';updateFavoriteButton(favorite,game);favorite.onclick=event=>{event.stopPropagation();if(favorite.dataset.saving==='true')return;const current=games.find(g=>g.id===game.id&&g.path===game.path);if(current){const restoreFocus=document.activeElement===favorite,focusRevision=++favoriteFocusRevision;favorite.dataset.saving='true';favorite.disabled=true;void changeGameView(current,{favorite:!gameViews.get(game.id)?.favorite}).catch(viewPreferenceError).finally(()=>{delete favorite.dataset.saving;updateFavoriteButton(favorite,current);if(restoreFocus&&focusRevision===favoriteFocusRevision&&document.activeElement===document.body){const target=favorite.isConnected?favorite:$('#libraryView');target.focus({preventScroll:true});}});}};
     body.append(type,title,tags);
     if(game.description){const summary=document.createElement('p');summary.className='game-summary';summary.textContent=game.description.slice(0,100)+(game.description.length>100?'…':'');body.append(summary);}
     if(game.settingsError){const warning=document.createElement('p');warning.className='hint';warning.textContent='設定の確認が必要です：'+game.settingsError;body.append(warning);}
