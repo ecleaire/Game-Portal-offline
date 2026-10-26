@@ -468,7 +468,7 @@ for(const id of ['cropZoom','cropX','cropY'])$('#'+id).oninput=renderCropPreview
 $('#resetCrop').onclick=()=>{$('#cropZoom').value='1';$('#cropX').value='50';$('#cropY').value='50';renderCropPreview();};
 $('#edit').addEventListener('close',()=>{editImageRevision++;resetCropState();});
 async function connect(handle, request = false, restoring = false, shared = false, signal = null, {expectedLibrary=null,preserveSearch=false,readOnlySelection=false,manualSelection=false,finishReading=()=>{}}={}) {
-  if(!restoring||manualSelection)status('フォルダー確認中…アクセス権とゲーム一覧を確認しています。NASの応答や作品数によって時間がかかります。');
+  if(!restoring||manualSelection)status('ゲームの一覧を確認しています…');
   signal?.throwIfAborted();
   const read=operation=>readTasks.readWithSignal(operation,signal);
   if(connectionError)throw new Error(connectionError);
@@ -535,8 +535,8 @@ new ResizeObserver(entries=>{const width=entries[0]?.contentRect.width;if(width=
 let gameViews=new Map(),viewsLibrary=null,viewPreferencesReady=false;
 function viewPreferenceError(error,loading=false){$('#viewPreferenceNotice').hidden=false;$('#viewPreferenceMessage').textContent=(loading?'このPCのお気に入り・履歴を確認できませんでした。確認できるまで全ゲームを表示します。':'表示設定を保存できませんでした。表示設定を再読込してから再試行してください。')+'元の情報は変更していません：'+error.message;}
 $('#retryGameViews').onclick=()=>{viewsLibrary=null;void render().catch(viewPreferenceError);};
-async function changeGameView(game,change){
- const id=localLibrary;if(!id||!game.id)return;
+async function changeGameView(game,change,id=localLibrary){
+ if(id!==localLibrary||!id||!game?.id)return;
  const value=await localState.updateGameView(id,game.id,change);if(localLibrary!==id)return;
  gameViews.set(game.id,value);$('#viewPreferenceNotice').hidden=true;await render();
 }
@@ -549,7 +549,7 @@ function showLocalSave(state,message){$('#playSaveStatus').hidden=false;$('#play
 $('#retryLocalSave').onclick=()=>action(async()=>{if(!await flushSave())return '保存できませんでした。空き容量を確認して再試行してください。';return 'このPCにセーブを保存しました。';});
 function loadingStage(task,name,active=true){
  if(gameLoading!==task||task.cancelled)return;task.stages||=new Set();active?task.stages.add(name):task.stages.delete(name);
- $('#loadStage').hidden=!task.stages.size;$('#loadStage').textContent=[...task.stages].join('・')+(task.stages.size?'。NASの応答やファイル量によって時間がかかります。「再読込」「ゲーム一覧」は操作できます。':'');
+ $('#loadStage').hidden=!task.stages.size;$('#loadStage').textContent=[...task.stages].join('・')+(task.stages.size?'。少しお待ちください。':'');
 }
 async function render() {
   const revision = ++renderRevision, folder = root,viewLibrary=localLibrary;
@@ -743,7 +743,7 @@ async function flushSave() {
   flushing = (async () => {
     while (pendingSave) {
       const pending = pendingSave; pendingSave = null;
-      try { showLocalSave('saving','未保存：このPCに保存しています…');await localState.writeLocalSave(pending.libraryId, pending.id, pending.data);if(!pendingSave)showLocalSave('saved','このPCに保存済み。共有先への同期状況は「設定」で確認できます。'); }
+      try { showLocalSave('saving','未保存：このPCに保存しています…');await localState.writeLocalSave(pending.libraryId, pending.id, pending.data);if(!pendingSave)showLocalSave('saved','このPCに保存済み'); }
       catch (error) {
         if (!pendingSave) pendingSave = pending;showLocalSave('failed','未保存：このPCへの保存に失敗しました。画面を閉じず、空き容量を確認して再試行してください。');
         $('#playerStatus').textContent = 'このPCへセーブできません。画面を閉じずに保存先の空き容量を確認し、「← ゲーム一覧」を再試行してください：' + error.message;
@@ -807,7 +807,7 @@ function reloadPlayer(){
 }
 async function playGame(game,{refreshFirst=false}={}){
   if(!await flushSave())return;
-  const wasOpen=$('#player').open;stopPlayer();const task={game,folder:root,controller:new AbortController(),cancelled:false,presented:false};gameLoading=task;loadingStage(task,'フォルダー確認中');
+  const wasOpen=$('#player').open;stopPlayer();const task={game,folder:root,controller:new AbortController(),cancelled:false,presented:false};gameLoading=task;loadingStage(task,'フォルダーを確認中');
   openedGame=game;$('#frame').hidden=true;$('#playerStatus').textContent='読み込んでいます…';updatePlayerInfo();
   if(!$('#player').open)$('#player').showModal();updateGameLoadControls();
   try{if(refreshFirst){await readTasks.readWithSignal(()=>refresh({signal:task.controller.signal}),task.controller.signal);task.controller.signal.throwIfAborted();const latest=games.find(item=>item.id===game.id&&item.path===game.path);if(!latest)throw new Error('作品が移動・削除されています。ゲーム一覧を確認してください。');game=latest;task.game=latest;}await loadGame(game,task);}
@@ -817,7 +817,7 @@ async function playGame(game,{refreshFirst=false}={}){
 async function loadGame(game,task) {
   $("#playerMoreTools").open=false;
   const read=operation=>readTasks.readWithSignal(operation,task.controller.signal);
-  const requested=playRevision;await read(()=>requireLibraryConnection(false,task.controller.signal));if(playRevision!==requested)return;loadingStage(task,'フォルダー確認中',false);loadingStage(task,'ゲーム準備中');
+  const requested=playRevision;await read(()=>requireLibraryConnection(false,task.controller.signal));if(playRevision!==requested)return;loadingStage(task,'フォルダーを確認中',false);loadingStage(task,'ゲームを準備中');
   $('#retryPlaying').hidden=true;
   $('#player').scrollTop=0;
   if(!localLibrary&&!game.settingsError){
@@ -864,10 +864,10 @@ async function loadGame(game,task) {
       const [files,saved]=await readTasks.prepareTogether([
         signal=>game.kind==='zip'?readTasks.readWithSignal(async()=>preview.unpackPrivateZip(await readTasks.readWithSignal(()=>file.arrayBuffer(),signal),()=>{},{signal}),signal):readTasks.readWithSignal(()=>library.readTree(game.folder,new Map([[game.entry,htmlBytes]]),{fileBacked:true,signal}),signal),
         async signal=>{
-          loadingStage(task,'セーブ確認中');
+          loadingStage(task,'セーブを確認中');
           const shared=root.nativeReadOnly?{state:'local'}:await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal});
           if(shared.state==='conflict'){sharedSaveIssues.set(game.id,{game,result:shared});saveSyncRows();throw Error('セーブが別々のPCで進んでいます。ホームに戻り「設定」→「セーブの共有」で使うセーブを選んでください。');}
-          const saved=await readTasks.readWithSignal(()=>localState.loadLocalSave(session.libraryId,game.id),signal);loadingStage(task,'セーブ確認中',false);if(activePlay===session&&!task.cancelled)showLocalSave('ready','セーブ確認済み。変更するとこのPCに自動保存します。共有先への同期状況は「設定」で確認できます。');return saved;
+          const saved=await readTasks.readWithSignal(()=>localState.loadLocalSave(session.libraryId,game.id),signal);loadingStage(task,'セーブを確認中',false);if(activePlay===session&&!task.cancelled)showLocalSave('ready','自動保存できます');return saved;
         }
       ],loadController.signal);
       if (game.kind === 'html') files.set('index.html', files.get(game.entry));
@@ -894,7 +894,8 @@ $('#retryPlaying').onclick=reloadPlayer;
 $('#reloadPlaying').onclick=reloadPlayer;
 $('#nativeLaunch').onclick=()=>action(async()=>{
   await requireLibraryConnection();if(openedGame?.kind!=='exe'||openedGame.settingsError)throw new Error('ゲームの設定を確認してください。');
-  try{await nativeTools.launchNative(nativeBridge,localLibrary,openedGame,compatibilityTools.LAUNCHER_VERSION);$('#playerStatus').textContent='Windowsの別ウィンドウで起動しました。';void changeGameView(openedGame,{played:true}).catch(error=>status(error.message));}
+  const launchedGame=openedGame,launchedLibrary=localLibrary;
+  try{await nativeTools.launchNative(nativeBridge,launchedLibrary,launchedGame,compatibilityTools.LAUNCHER_VERSION);$('#playerStatus').textContent='Windowsの別ウィンドウで起動しました。';void changeGameView(launchedGame,{played:true},launchedLibrary).catch(error=>status(error.message));}
   catch(error){$('#playerStatus').textContent='EXEを起動できませんでした。起動補助とWindowsのアクセス許可を確認してください：'+error.message;throw new Error($('#playerStatus').textContent);}
 },false,true);
 const helpTopics=[...document.querySelectorAll('.help-index [data-help-topic]')];
