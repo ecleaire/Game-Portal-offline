@@ -170,7 +170,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 
 .filter-context{align-self:center;font-size:.9rem;color:var(--muted);padding:4px 8px}html[data-edition="player"] .player-secondary-actions{display:none!important}
 #exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}.desktop-path{margin-top:8px}.desktop-path input{flex:1 1 240px;min-width:0;width:100%}</style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.16</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.17</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -1204,7 +1204,7 @@ function legacyScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.24.16';
+const LAUNCHER_VERSION = '0.24.17';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -2967,7 +2967,7 @@ setInterval(()=>{void recoverFolderConnection();},5000);
 window.addEventListener('hashchange',()=>{if(nativeBridge&&(!root||root.nativeReadOnly)&&['','#main','#libraryTitle'].includes(location.hash))try{rememberNativePageConnection(location.href);}catch{}});
 let openedGame = null, stopGame = null, pendingSave = null, saveTimer, flushing = null, activePlay = null, closingPlayer = false;
 let actionCompletion=null,playerRequest=null,playerReloadWorker=null,playerCloseOperation=null;
-let saveImportRead=null;
+let saveFileRead=null;
 let editingEnabled = false, starting = true;
 let informationState=null,informationController=null,importedInformationThumbnail=undefined,informationImageRevision=0;
 let inspectionRoot = null, inspectionReport = null, selectedHistory = null, capturedImage = null;
@@ -3659,7 +3659,7 @@ function updateGameLoadControls(){
   $('#player').setAttribute('aria-busy',String(!!gameLoading||!!playerRequest));
 }
 function interruptPlayerReads(){
-  saveImportRead?.abort();
+  saveFileRead?.abort();
   folderRecoveryAbort?.abort();folderWatchAbort?.abort();syncController?.abort();idleSyncController?.abort();
   const folder=gameLoading?.folder;
   if(gameLoading){gameLoading.cancelled=true;gameLoading.controller.abort();if((gameLoading.folder?.nativeReadOnly||gameLoading.folder?.nativeDesktop))gameLoading.folder.cancelReads?.();}
@@ -4141,20 +4141,26 @@ writeControls();
 
 $('#exportSave').onclick = () => action(async () => {
   const session = activePlay; if (!session) throw new Error('ゲームを起動してから操作してください。');
-  const data = session.latest || await localState.loadLocalSave(session.libraryId, session.game.id);
-  const blob = new Blob([JSON.stringify({ schema: 1, gameId: session.game.id, data }, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = 'game-save-' + session.game.id + '.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const controller=new AbortController();saveFileRead=controller;
+  try{
+    const stored=session.latest||await readTasks.readWithSignal(()=>localState.loadLocalSave(session.libraryId,session.game.id),controller.signal);
+    controller.signal.throwIfAborted();if(activePlay!==session||playerRequest)return;
+    // Gameplay may have produced a newer snapshot while the saved copy was read.
+    const data=session.latest||stored;
+    const blob = new Blob([JSON.stringify({ schema: 1, gameId: session.game.id, data }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = 'game-save-' + session.game.id + '.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }finally{if(saveFileRead===controller)saveFileRead=null;}
 });
 $('#importSaveButton').onclick = () => $('#importSave').click();
 $('#importSave').onchange = event => action(async () => {
   const session = activePlay, file = event.target.files[0]; event.target.value = '';
   if (!session || !file) return;
   if (file.size > 600000) throw new Error('セーブは600KB以内のJSONを選択してください。');
-  const controller=new AbortController();saveImportRead=controller;
+  const controller=new AbortController();saveFileRead=controller;
   let parsed;
   try{parsed=JSON.parse(await readTasks.readWithSignal(()=>file.text(),controller.signal));}
   catch(error){if(controller.signal.aborted)throw controller.signal.reason;throw new Error('セーブJSONを読み取れません。正常な書き出しファイルを選び直してください。',{cause:error});}
-  finally{if(saveImportRead===controller)saveImportRead=null;}
+  finally{if(saveFileRead===controller)saveFileRead=null;}
   if(activePlay!==session||playerRequest)return;
   let data=parsed;
   if (parsed?.schema === 1) {
