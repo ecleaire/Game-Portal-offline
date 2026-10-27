@@ -360,7 +360,10 @@ async function refresh({signal}={}) {
   if(await library.loadLibraryId(folder)!==nextLibrary)throw new Error('読み込み中に保管フォルダーのIDが変わりました。再接続してください。');
   signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw new DOMException('保存先が変わりました。','AbortError');
   localLibrary=nextLibrary;syncPaused=false;folderRecovery=null;$('#reconnect').hidden=true;syncStatus('共有フォルダーの自動確認：有効（ホームで3分操作がないとき）');
-  metadata=nextMetadata;games=nextGames;resetCards();
+  metadata=nextMetadata;games=nextGames;renderLimit=60;
+  // Keep unchanged cards after edits or manual refresh, as background sync does.
+  // Legacy file-backed images can change independently of their settings.
+  for(const [path,cached] of cardCache)if(cached.game.thumbnail===true)cardCache.delete(path);
   $('#folderName').textContent = root.name; $('#settingFolder').textContent = root.name;
   selectedTags = new Set([...selectedTags].filter(t => games.some(g => g.tags.includes(t))));
   await render();updatePlayerInfo();

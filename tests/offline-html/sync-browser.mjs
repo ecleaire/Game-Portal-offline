@@ -29,6 +29,9 @@ try{
  assert.equal(await page.evaluate(async()=>await(await(await root.getFileHandle('second.html.gameportal.json')).getFile()).text()),await peer.evaluate(()=>window.secondSettings));
  const unchanged=await page.locator('.card').first().elementHandle();
  for(let cycle=0;cycle<3;cycle++){await page.evaluate(()=>syncLibrary());assert.equal(await unchanged.evaluate(el=>el.isConnected),true,'repeated unchanged sync must retain the displayed card');}
+ // Manual refresh and post-edit refresh should retain unchanged cards and images too.
+ const retainedImage=await page.locator('.card').first().locator('img').elementHandle();
+ for(let cycle=0;cycle<3;cycle++){await page.evaluate(()=>refresh());assert.equal(await unchanged.evaluate(el=>el.isConnected),true,'refresh must retain unchanged cards');assert.equal(await retainedImage.evaluate(el=>el.isConnected),true,'refresh must retain unchanged images');}
  // Routine folder checks must not briefly expose connection-progress controls.
  assert.equal(await page.evaluate(async()=>{const button=document.getElementById('cancelConnection'),descriptor=Object.getOwnPropertyDescriptor(HTMLElement.prototype,'hidden');let shown=0;Object.defineProperty(button,'hidden',{configurable:true,get(){return descriptor.get.call(this);},set(value){if(value===false)shown++;descriptor.set.call(this,value);}});try{for(let cycle=0;cycle<20;cycle++)await checkSharedFolder();return shown;}finally{delete button.hidden;}}),0);
  // Changing one game retains every other card, image and keyboard focus.
@@ -36,6 +39,9 @@ try{
  await page.locator('.card').filter({has:page.getByRole('heading',{name:'Renamed',exact:true})}).locator('.game-title-link').focus();
  await peer.evaluate(async()=>{await refresh();const game=games.find(game=>game.path==='second.html');await library.saveGameSettings(root,game,{...game,description:'Updated quietly'});window.secondSettings=await(await(await root.getFileHandle('second.html.gameportal.json')).getFile()).text();});
  await page.evaluate(()=>syncLibrary());assert.equal(await unchanged.evaluate(node=>node.isConnected),true);assert.equal(await unchanged.evaluate(node=>node.contains(document.activeElement)),true);assert.equal(await secondCard.evaluate(node=>node.isConnected),false);await expect(page.locator('.card').filter({has:page.getByRole('heading',{name:'Second info',exact:true})})).toContainText('Updated quietly');
+ const manuallyChanged=await page.locator('.card').filter({has:page.getByRole('heading',{name:'Second info',exact:true})}).elementHandle();
+ await peer.evaluate(async()=>{await refresh();const game=games.find(g=>g.path==='second.html');await library.saveGameSettings(root,game,{...game,description:'Updated manually'});});
+ await page.evaluate(()=>refresh());assert.equal(await unchanged.evaluate(node=>node.isConnected),true);assert.equal(await retainedImage.evaluate(node=>node.isConnected),true);assert.equal(await manuallyChanged.evaluate(node=>node.isConnected),false);await expect(page.locator('.card').filter({has:page.getByRole('heading',{name:'Second info',exact:true})})).toContainText('Updated manually');
  // No background reads while settings, work, saves or confirmation receipts exist.
  await page.evaluate(()=>{window.guardedOriginalScan=library.scan;window.guardedScans=0;library.scan=async(...args)=>{window.guardedScans++;return window.guardedOriginalScan(...args);};});
  await page.locator('#settingsButton').click();await page.clock.fastForward(200000);assert.equal(await page.evaluate(()=>window.guardedScans),0);await page.locator('#settings [data-close]').click();
