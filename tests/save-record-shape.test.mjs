@@ -16,3 +16,11 @@ test('settings receipts reject coerced identifiers before opening storage',async
   for(const value of [[text],new String(text)])await assert.rejects(trackSettingsReceipt({...receipt,[field]:value}),/保存確認記録の形式/);
  }
 });
+
+test('backup history rejects missing array entries',async()=>{
+ const {validSaveBackups}=await import('../offline-html/local-state.js');
+ const backup={schema:1,id:'a'.repeat(36),createdAt:'2026-10-27T00:00:00Z',reason:'manual',contentRevision:'original',data:{score:'42'}};
+ assert.equal(validSaveBackups([backup]),true);
+ assert.equal(validSaveBackups(new Array(1)),false);
+ assert.equal(validSaveBackups([backup,,]),false);
+});

@@ -70,12 +70,14 @@ async function scopedFolder(scope,record=null,forget=false){
   });
 }
 function validReceipt(v){return v&&v.schema===1&&(typeof v.libraryId==='string'&&/^[0-9a-f]{32}$/.test(v.libraryId))&&(typeof v.id==='string'&&/^[0-9a-f]{32}$/.test(v.id))&&typeof v.gamePath==='string'&&v.gamePath.length>0&&v.gamePath.length<=1000&&(typeof v.historyName==='string'&&/^[0-9a-f-]+\.json$/.test(v.historyName))&&(typeof v.expectedHash==='string'&&/^[0-9a-f]{64}$/.test(v.expectedHash))&&(v.beforeHash===null||(typeof v.beforeHash==='string'&&/^[0-9a-f]{64}$/.test(v.beforeHash)))&&['edit','capture','restore','post'].includes(v.kind)&&(v.uploadFolder===null||(typeof v.uploadFolder==='string'&&/^game-[0-9a-f-]+$/.test(v.uploadFolder)));}
-export async function loadSettingsReceipts(){const value=await access('settings','readonly',s=>s.get('save-receipts'));if(value===undefined)return [];if(!Array.isArray(value)||value.length>1000||!value.every(validReceipt))throw new Error('このPCの保存確認記録を確認してください。');return value;}
+// Missing storage is distinct from corruption; holes are not valid receipts.
+function validReceipts(value){return Array.isArray(value)&&value.length<=1000&&Array.from(value).every(validReceipt);}
+export async function loadSettingsReceipts(){const value=await access('settings','readonly',s=>s.get('save-receipts'));if(value===undefined)return [];if(!validReceipts(value))throw new Error('このPCの保存確認記録を確認してください。');return value;}
 export async function trackSettingsReceipt(attempt,remove=false,replaces=null){
   if(!validReceipt(attempt))throw new Error('保存確認記録の形式を確認してください。');
   if(replaces&&(remove||!validReceipt(replaces)||['libraryId','gamePath','id'].some(key=>attempt[key]!==replaces[key])))throw new Error('置き換える保存確認記録が一致しません。');
   const db=await openDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),store=tx.objectStore('settings'),request=store.get('save-receipts');
-    request.onsuccess=()=>{const existing=request.result||[];if(!Array.isArray(existing)||existing.length>1000||!existing.every(validReceipt)){tx.abort();return;}
+    request.onsuccess=()=>{const existing=request.result===undefined?[]:request.result;if(!validReceipts(existing)){tx.abort();return;}
       const sameReplacement=a=>replaces&&['schema','libraryId','gamePath','id','historyName','expectedHash','beforeHash','kind','uploadFolder'].every(key=>a[key]===replaces[key]);
       if(replaces&&!existing.some(sameReplacement)){tx.abort();return;}
       const next=existing.filter(a=>!sameReplacement(a)&&!(a.libraryId===attempt.libraryId&&a.historyName===attempt.historyName));if(!remove){if(next.length>=1000||next.some(a=>a.libraryId===attempt.libraryId&&a.gamePath===attempt.gamePath)){tx.abort();return;}next.push(attempt);}store.put(next,'save-receipts');};tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error||new Error('保存確認記録を作成できません。保存結果未確認の操作や、このPCの保存領域を確認してください。'));tx.onerror=()=>{};
@@ -102,7 +104,7 @@ function backupKey(libraryId, gameId) {
   return ['save-backups', libraryId, gameId];
 }
 export function validSaveBackups(value) {
-  return Array.isArray(value) && value.length <= BACKUP_LIMIT && new Set(value.map(v => v?.id)).size === value.length && value.every(v =>
+  return Array.isArray(value) && value.length <= BACKUP_LIMIT && new Set(value.map(v => v?.id)).size === value.length && Array.from(value).every(v =>
     v && v.schema === 1 && typeof v.id === 'string' && /^[a-f0-9-]{36}$/.test(v.id) &&
     typeof v.createdAt === 'string' && Number.isFinite(Date.parse(v.createdAt)) && backupReasons.includes(v.reason) &&
     typeof v.contentRevision === 'string' && v.contentRevision.length <= 100 && validSave(v.data));
