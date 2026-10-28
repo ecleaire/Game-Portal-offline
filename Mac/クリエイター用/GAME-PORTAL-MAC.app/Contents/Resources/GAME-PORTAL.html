@@ -170,7 +170,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 
 .filter-context{align-self:center;font-size:.9rem;color:var(--muted);padding:4px 8px}html[data-edition="player"] .player-secondary-actions{display:none!important}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.18</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.19</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -589,7 +589,7 @@ function legacyScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.24.18';
+const LAUNCHER_VERSION = '0.24.19';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -1656,13 +1656,15 @@ async function scopedFolder(scope,record=null,forget=false){
     tx.onabort=()=>{clearTimeout(timeout);reject(error||tx.error||new Error('保存先の記憶を更新できませんでした。'));};tx.onerror=()=>{};
   });
 }
-function validReceipt(v){return v&&v.schema===1&&/^[0-9a-f]{32}$/.test(v.libraryId)&&/^[0-9a-f]{32}$/.test(v.id)&&typeof v.gamePath==='string'&&v.gamePath.length>0&&v.gamePath.length<=1000&&/^[0-9a-f-]+\.json$/.test(v.historyName)&&/^[0-9a-f]{64}$/.test(v.expectedHash)&&(v.beforeHash===null||/^[0-9a-f]{64}$/.test(v.beforeHash))&&['edit','capture','restore','post'].includes(v.kind)&&(v.uploadFolder===null||/^game-[0-9a-f-]+$/.test(v.uploadFolder));}
-async function loadSettingsReceipts(){const value=await access('settings','readonly',s=>s.get('save-receipts'));if(value===undefined)return [];if(!Array.isArray(value)||value.length>1000||!value.every(validReceipt))throw new Error('このPCの保存確認記録を確認してください。');return value;}
+function validReceipt(v){return v&&v.schema===1&&(typeof v.libraryId==='string'&&/^[0-9a-f]{32}$/.test(v.libraryId))&&(typeof v.id==='string'&&/^[0-9a-f]{32}$/.test(v.id))&&typeof v.gamePath==='string'&&v.gamePath.length>0&&v.gamePath.length<=1000&&(typeof v.historyName==='string'&&/^[0-9a-f-]+\.json$/.test(v.historyName))&&(typeof v.expectedHash==='string'&&/^[0-9a-f]{64}$/.test(v.expectedHash))&&(v.beforeHash===null||(typeof v.beforeHash==='string'&&/^[0-9a-f]{64}$/.test(v.beforeHash)))&&['edit','capture','restore','post'].includes(v.kind)&&(v.uploadFolder===null||(typeof v.uploadFolder==='string'&&/^game-[0-9a-f-]+$/.test(v.uploadFolder)));}
+// Missing storage is distinct from corruption; holes are not valid receipts.
+function validReceipts(value){return Array.isArray(value)&&value.length<=1000&&Array.from(value).every(validReceipt);}
+async function loadSettingsReceipts(){const value=await access('settings','readonly',s=>s.get('save-receipts'));if(value===undefined)return [];if(!validReceipts(value))throw new Error('このPCの保存確認記録を確認してください。');return value;}
 async function trackSettingsReceipt(attempt,remove=false,replaces=null){
   if(!validReceipt(attempt))throw new Error('保存確認記録の形式を確認してください。');
   if(replaces&&(remove||!validReceipt(replaces)||['libraryId','gamePath','id'].some(key=>attempt[key]!==replaces[key])))throw new Error('置き換える保存確認記録が一致しません。');
   const db=await openDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),store=tx.objectStore('settings'),request=store.get('save-receipts');
-    request.onsuccess=()=>{const existing=request.result||[];if(!Array.isArray(existing)||existing.length>1000||!existing.every(validReceipt)){tx.abort();return;}
+    request.onsuccess=()=>{const existing=request.result===undefined?[]:request.result;if(!validReceipts(existing)){tx.abort();return;}
       const sameReplacement=a=>replaces&&['schema','libraryId','gamePath','id','historyName','expectedHash','beforeHash','kind','uploadFolder'].every(key=>a[key]===replaces[key]);
       if(replaces&&!existing.some(sameReplacement)){tx.abort();return;}
       const next=existing.filter(a=>!sameReplacement(a)&&!(a.libraryId===attempt.libraryId&&a.historyName===attempt.historyName));if(!remove){if(next.length>=1000||next.some(a=>a.libraryId===attempt.libraryId&&a.gamePath===attempt.gamePath)){tx.abort();return;}next.push(attempt);}store.put(next,'save-receipts');};tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error||new Error('保存確認記録を作成できません。保存結果未確認の操作や、このPCの保存領域を確認してください。'));tx.onerror=()=>{};
@@ -1689,7 +1691,7 @@ function backupKey(libraryId, gameId) {
   return ['save-backups', libraryId, gameId];
 }
 function validSaveBackups(value) {
-  return Array.isArray(value) && value.length <= BACKUP_LIMIT && new Set(value.map(v => v?.id)).size === value.length && value.every(v =>
+  return Array.isArray(value) && value.length <= BACKUP_LIMIT && new Set(value.map(v => v?.id)).size === value.length && Array.from(value).every(v =>
     v && v.schema === 1 && typeof v.id === 'string' && /^[a-f0-9-]{36}$/.test(v.id) &&
     typeof v.createdAt === 'string' && Number.isFinite(Date.parse(v.createdAt)) && backupReasons.includes(v.reason) &&
     typeof v.contentRevision === 'string' && v.contentRevision.length <= 100 && validSave(v.data));
@@ -1750,7 +1752,7 @@ async function acquirePlaySession(libraryId, gameId) {
 }
 async function saveDeviceId(){
   const db=await openDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),store=tx.objectStore('settings'),request=store.get('save-sync-device');let value;
-    request.onsuccess=()=>{value=request.result;if(value===undefined){value=crypto.randomUUID().replaceAll('-','');store.put(value,'save-sync-device');}else if(!/^[a-f0-9]{32}$/.test(value))tx.abort();};
+    request.onsuccess=()=>{value=request.result;if(value===undefined){value=crypto.randomUUID().replaceAll('-','');store.put(value,'save-sync-device');}else if(typeof value!=='string'||!/^[a-f0-9]{32}$/.test(value))tx.abort();};
     tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(tx.error||new Error('このPCの同期IDを確認してください。'));tx.onerror=()=>{};
   });
 }
@@ -2539,7 +2541,10 @@ async function refresh({signal}={}) {
   if(await library.loadLibraryId(folder)!==nextLibrary)throw new Error('読み込み中に保管フォルダーのIDが変わりました。再接続してください。');
   signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw new DOMException('保存先が変わりました。','AbortError');
   localLibrary=nextLibrary;syncPaused=false;folderRecovery=null;$('#reconnect').hidden=true;syncStatus('共有フォルダーの自動確認：有効（ホームで3分操作がないとき）');
-  metadata=nextMetadata;games=nextGames;resetCards();
+  metadata=nextMetadata;games=nextGames;renderLimit=60;
+  // Keep unchanged cards after edits or manual refresh, as background sync does.
+  // Legacy file-backed images can change independently of their settings.
+  for(const [path,cached] of cardCache)if(cached.game.thumbnail===true)cardCache.delete(path);
   $('#folderName').textContent = root.name; $('#settingFolder').textContent = root.name;
   selectedTags = new Set([...selectedTags].filter(t => games.some(g => g.tags.includes(t))));
   await render();updatePlayerInfo();
