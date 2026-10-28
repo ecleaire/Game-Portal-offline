@@ -1,3 +1,4 @@
+import {publishWithConfirmation} from './confirm-native-publish.mjs';
 // Publish only verified build outputs to an isolated branch. The source checkout
 // and its index stay unchanged; the cloud installer can fetch this Git tree.
 import {readFile,readdir,lstat,mkdtemp,rm} from 'node:fs/promises';
@@ -26,5 +27,5 @@ try{
  const blob=git(['hash-object','-w','--stdin'],{input:JSON.stringify(provenance,null,2)+'\n'});git(['update-index','--add','--cacheinfo','100644,'+blob+',build-output.json'],{env});
  const tree=git(['write-tree'],{env}),commit=git(['-c','user.name=github-actions[bot]','-c','user.email=41898282+github-actions[bot]@users.noreply.github.com','commit-tree',tree],{input:'Verified Mac '+kind+' build for '+source+'\n'});
  const branch='codex/native-output-'+kind+'-'+process.env.GITHUB_RUN_ID+'-'+process.env.GITHUB_RUN_ATTEMPT;
- git(['push','origin',commit+':refs/heads/'+branch],{stdio:['ignore','pipe','inherit']});console.log('Verified native output branch: '+branch);
+ const recovered=publishWithConfirmation(()=>git(['push','origin',commit+':refs/heads/'+branch],{stdio:['ignore','pipe','inherit']}),()=>git(['ls-remote','--heads','origin','refs/heads/'+branch]).split(/\s+/)[0],commit);if(recovered)console.log('Remote native output commit verified after transport error.');console.log('Verified native output branch: '+branch);
 }finally{await rm(temporary,{recursive:true,force:true});}
