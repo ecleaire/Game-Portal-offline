@@ -67,7 +67,7 @@ import Darwin
    const conflict=launch(port);
    for(let attempt=0;attempt<100&&conflict.child.exitCode===null;attempt++)await delay(50);
    assert.equal(conflict.child.exitCode,2,'An occupied origin must fail instead of sharing/changing ports');
-   assert.match(conflict.errors(),/POSIX 48/);assert.match(conflict.errors(),/別のGAME PORTAL/);assert.equal(conflict.output(),'');children.delete(conflict.child);
+   assert.match(conflict.errors(),/POSIX 48/);assert.match(conflict.errors(),/同じ用途のGAME PORTAL/);assert.equal(conflict.output(),'');children.delete(conflict.child);
   }
   await stop(run);
  }
