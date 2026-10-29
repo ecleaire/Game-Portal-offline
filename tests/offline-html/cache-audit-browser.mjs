@@ -1,6 +1,8 @@
 import {chromium,expect} from '@playwright/test';
 import {readFile,mkdtemp,rm} from 'node:fs/promises';
 import {createServer} from 'node:http';
+import {gzipSync} from 'node:zlib';
+import {Readable,pipeline} from 'node:stream';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import assert from 'node:assert/strict';
@@ -10,8 +12,17 @@ nativeTools.nativePageConnection=(...args)=>sessionStorage.getItem('audit-helper
 const auditNativeFolder=nativeTools.nativeFolder;
 nativeTools.nativeFolder=(...args)=>{window.auditHelperCalls=(window.auditHelperCalls||0)+1;if(sessionStorage.getItem('audit-helper')==='fallback')return(async()=>{const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('Folder B');Object.defineProperty(folder,'nativeReadOnly',{value:true});return folder;})();if(sessionStorage.getItem('audit-helper'))throw Error('Unavailable test helper');return auditNativeFolder(...args);};
 let nativeBridge=null`);
-const html=instrument(await readFile('GAME-PORTAL.html','utf8')),playerHTML=instrument(await readFile('GAME-PORTAL-PLAY.html','utf8'));
-const exports=new Map(),server=createServer((q,r)=>r.end(exports.get(q.url)||(q.url==='/two'?playerHTML:html)));await new Promise(r=>server.listen(0,'127.0.0.1',r));
+// Repeated reloads should test the app, not exhaust Windows socket buffers
+// with whole 25 MB string writes or document-sized replies to favicon requests.
+const encode=source=>gzipSync(source,{level:1});
+const html=encode(instrument(await readFile('GAME-PORTAL.html','utf8'))),playerHTML=encode(instrument(await readFile('GAME-PORTAL-PLAY.html','utf8')));
+const exports=new Map(),server=createServer((q,r)=>{
+ const body=exports.get(q.url)||(q.url==='/two'?playerHTML:['/one','/export-source'].includes(q.url)?html:null);
+ if(q.method!=='GET'||!body){r.writeHead(404);r.end();return;}
+ r.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Content-Encoding':'gzip','Content-Length':body.length,'Cache-Control':'no-store'});
+ const chunks=function*(){for(let offset=0;offset<body.length;offset+=65536)yield body.subarray(offset,offset+65536);};
+ pipeline(Readable.from(chunks(),{objectMode:false}),r,()=>{});
+});await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const profile=await mkdtemp(join(tmpdir(),'portal-cache-audit-'));
 const context=await chromium.launchPersistentContext(profile,{headless:true,executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined}),issues=[],errors=[];
 try{
@@ -51,7 +62,7 @@ try{
  // Without a browser read grant, keep the helper's read-only fallback and never prompt automatically.
  await visit('/two');await page.evaluate(()=>sessionStorage.setItem('audit-helper','fallback'));await page.reload();await waitReady();await expect(page.locator('#folderName')).toHaveText('Folder B');assert.equal(await page.evaluate(()=>!!root.nativeReadOnly),true);assert.equal(await page.evaluate(()=>window.auditHelperCalls),1);assert.equal(await page.evaluate(()=>window.auditPermissionRequests||0),0);await page.evaluate(()=>sessionStorage.removeItem('audit-helper'));
  await visit('/export-source');
- for(let generation=1;generation<=2;generation++){const path='/export-'+generation;exports.set(path,await page.evaluate(()=>launcherSource()));await visit(path);const count=await page.locator('#homeLink .app-edition').count();if(count!==1)issues.push('Export generation '+generation+' duplicated the edition label: '+count);}
+ for(let generation=1;generation<=2;generation++){const path='/export-'+generation;exports.set(path,encode(await page.evaluate(()=>launcherSource())));await visit(path);const count=await page.locator('#homeLink .app-edition').count();if(count!==1)issues.push('Export generation '+generation+' duplicated the edition label: '+count);}
  assert.deepEqual(errors,[]);assert.deepEqual(issues,[]);
  console.log('Cache audit passed: slow seven-second startup within recovery budget, independent HTML folder restoration, permitted browser handle survives unavailable helper, two export generations keep one edition label.');
 }finally{await context.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:200});}
