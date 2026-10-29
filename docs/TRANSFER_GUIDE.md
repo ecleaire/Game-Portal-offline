@@ -2,7 +2,7 @@
 
 ## ランチャーを渡す
 
-[最新版ZIP](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.19.zip)を展開し、フォルダー一式を渡します。相手は **Windows／Mac／HTML → プレイ用／クリエイター用** から選んで起動します。[起動ファイルの一覧](../README.md#ダウンロードして使う)を確認してください。
+[最新版ZIP](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.20.zip)を展開し、フォルダー一式を渡します。相手は **Windows／Mac／HTML → プレイ用／クリエイター用** から選んで起動します。[起動ファイルの一覧](../README.md#ダウンロードして使う)を確認してください。
 
 インストール・ビルド・アカウント登録は不要です。Macアプリはエンジン同梱、HTML版はGoogle Chromeを使います。`_内部ファイル`・`_runtime`・`.app` 内のファイルはそのまま残します。配布ZIPにはゲーム・個人のセーブ・保存先の接続設定は含みません。
 

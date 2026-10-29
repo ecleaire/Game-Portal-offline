@@ -61,6 +61,7 @@ jobs:
         if: inputs.use_prebuilt
       - run: node --import ./scripts/ci-failure-diagnostics.mjs scripts/verify-distribution.mjs
         if: inputs.use_prebuilt
+      - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/mac-loopback.mjs
       - run: node --import ./scripts/ci-failure-diagnostics.mjs tests/mac-files.mjs
       - uses: actions/cache@v4
         if: ${{ !inputs.use_prebuilt }}

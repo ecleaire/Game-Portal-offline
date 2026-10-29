@@ -28,7 +28,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let testScript: URL?, resultFile: URL?, readyFile: URL?
     var view: NSView!, window: NSWindow!, listener: NWListener!, page: Data
     var appURL: URL!, closing = false, closePending = false, testStarted = false, engineReady = false, browserClosed = false
-    var closeTimer: DispatchWorkItem?, connections = 0, droppedFolder: (String, Date)?
+    var closeTimer: DispatchWorkItem?, listenerWait: DispatchWorkItem?, connections = 0, droppedFolder: (String, Date)?
     var contextReady = false, browserOpening = false
     var hasBundledFramework: Bool { FileManager.default.fileExists(atPath: Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework/Chromium Embedded Framework").path) }
     var pendingWrites = 0
@@ -52,17 +52,29 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let data = try desktopObject(files.regularRead(portFile, limit: 1024))
                 guard let port = data["port"] as? Int, port >= 1024, port <= 65535 else { throw DesktopError("アプリの接続設定を確認してください。") }; savedPort = UInt16(port)
             }
-            let parameters = NWParameters.tcp
-            parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: savedPort.flatMap { NWEndpoint.Port(rawValue: $0) } ?? .any)
+            let parameters = desktopLoopbackParameters(port: savedPort)
             listener = try NWListener(using: parameters); listener.newConnectionHandler = { [weak self] in self?.receive($0) }
             listener.stateUpdateHandler = { [weak self] state in
                 guard let self = self else { return }
                 if self.testMode { fputs("GAME PORTAL lifecycle: listener \(state)\n", stderr) }
                 switch state {
                 case .ready:
+                    self.listenerWait?.cancel(); self.listenerWait = nil
+                    guard self.appURL == nil else { return }
                     guard let port = self.listener.port?.rawValue else { return }; self.appURL = URL(string: "http://127.0.0.1:\(port)/index.html")!
                     do { if savedPort == nil { try self.files.atomic(desktopJSON(["port": Int(port)]), portFile) }; desktopMainRunLoop { self.show() } } catch { DispatchQueue.main.async { self.fail(error) } }
-                case .failed(let error), .waiting(let error): DispatchQueue.main.async { self.fail(DesktopError("アプリの接続を開始できません。別のGAME PORTALを閉じてから開き直してください。\n" + error.localizedDescription)) }
+                case .waiting(let error):
+                    // Network.framework can briefly wait while interfaces change.
+                    // Keep the same origin: replacing its port loses browser saves.
+                    guard self.listenerWait == nil else { return }
+                    let wait = DispatchWorkItem { self.fail(DesktopError(desktopListenerMessage(error))) }
+                    self.listenerWait = wait
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: wait)
+                case .failed(let error):
+                    self.listenerWait?.cancel(); self.listenerWait = nil
+                    DispatchQueue.main.async { self.fail(DesktopError(desktopListenerMessage(error))) }
+                case .cancelled:
+                    self.listenerWait?.cancel(); self.listenerWait = nil
                 default: break
                 }
             }; listener.start(queue: network)
