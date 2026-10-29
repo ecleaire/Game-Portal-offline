@@ -52,7 +52,7 @@ try{
  // than two tabs of the same creator HTML.
  const creator=await context.newPage(),player=await context.newPage();
  const creatorURL=origin+'/paired/HTML/'+encodeURIComponent('クリエイター用')+'/GAME-PORTAL.html';
- const playerURL=origin+'/paired/HTML/'+encodeURIComponent('プレイ用')+'/GAME-PORTAL-PLAY.html';
+ const playerURL=origin+'/paired/HTML/'+encodeURIComponent('プレイ用'.normalize('NFD'))+'/GAME-PORTAL-PLAY.html';
  for(const [page,url]of [[creator,creatorURL],[player,playerURL]]){page.on('pageerror',e=>errors.push(e.message));await page.goto(url);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});}
  assert.equal(await player.evaluate(()=>root),null);
  await creator.evaluate(async()=>{const storage=await navigator.storage.getDirectory();window.pick=await storage.getDirectoryHandle('Alpha');window.showDirectoryPicker=async()=>pick;});

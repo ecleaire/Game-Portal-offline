@@ -32,7 +32,7 @@ internal static class PortalNative {
     internal static string ConfigurationDirectory(string directory) {
         directory=Path.GetFullPath(directory);if(directory.Length>Path.GetPathRoot(directory).Length)directory=directory.TrimEnd(Path.DirectorySeparatorChar);
         var role=new DirectoryInfo(directory);var platform=role.Parent;
-        if(platform==null||!(role.Name=="プレイ用"||role.Name=="クリエイター用")||!new[]{"Windows","Mac","HTML"}.Contains(platform.Name)||platform.Parent==null)return directory;
+        if(platform==null||!(role.Name.Normalize()=="プレイ用"||role.Name.Normalize()=="クリエイター用")||!new[]{"Windows","Mac","HTML"}.Contains(platform.Name)||platform.Parent==null)return directory;
         string root=platform.Parent.FullName,internalDirectory=Path.Combine(root,"_内部ファイル"),marker=Path.Combine(internalDirectory,"GAME-PORTAL-DISTRIBUTION.json");
         if(Directory.Exists(internalDirectory)&&(File.GetAttributes(internalDirectory)&FileAttributes.ReparsePoint)!=0)throw new IOException("配布フォルダーのリンクを確認してください。");
         if(!File.Exists(marker))marker=Path.Combine(root,"GAME-PORTAL-DISTRIBUTION.json");

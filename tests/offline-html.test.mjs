@@ -700,3 +700,9 @@ test('only matching Creator and Player distribution paths follow the Creator sel
  assert.notEqual(creatorScope('/Else/GAME-PORTAL-PLAY.html'),'/Portal/GAME-PORTAL.html');
  for(const path of ['/Portal/HTML/プレイ用/GAME-PORTAL.html','/Portal/HTML/クリエイター用/GAME-PORTAL-PLAY.html','/Portal/custom.html','/Portal/HTML/%ZZ/GAME-PORTAL-PLAY.html'])assert.equal(creatorScope(path),null);
 });
+
+test('decomposed macOS role names still pair without rewriting actual paths',()=>{
+ const role='プレイ用'.normalize('NFD'),path='/保存先/HTML/'+encodeURIComponent(role)+'/GAME-PORTAL-PLAY.html';
+ assert.equal(creatorScope(path),'/保存先/HTML/'+encodeURIComponent('クリエイター用')+'/GAME-PORTAL.html');
+ assert.equal(legacyScope(path),'/保存先/GAME-PORTAL-PLAY.html');
+});

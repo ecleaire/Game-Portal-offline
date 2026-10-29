@@ -19,7 +19,7 @@ export function portableLauncher(source,info) {
 
 // One bounded, known relocation; never borrow another launcher's folder scope.
 export function legacyScope(path){
- const parts=path.split('/');let role;try{role=decodeURIComponent(parts.at(-2));}catch{return null;}
+ const parts=path.split('/');let role;try{role=decodeURIComponent(parts.at(-2)).normalize('NFC');}catch{return null;}
  if(parts.at(-3)!=='HTML'||!['プレイ用','クリエイター用'].includes(role)||!['GAME-PORTAL.html','GAME-PORTAL-PLAY.html'].includes(parts.at(-1)))return null;
  return [...parts.slice(0,-3),parts.at(-1)].join('/');
 }
@@ -29,7 +29,7 @@ export function legacyScope(path){
 export function creatorScope(path){
  const parts=path.split('/'),name=parts.at(-1);
  if(parts.at(-3)==='HTML'){
-  let role;try{role=decodeURIComponent(parts.at(-2));}catch{return null;}
+  let role;try{role=decodeURIComponent(parts.at(-2)).normalize('NFC');}catch{return null;}
   if(!((role==='プレイ用'&&name==='GAME-PORTAL-PLAY.html')||(role==='クリエイター用'&&name==='GAME-PORTAL.html')))return null;
   return [...parts.slice(0,-2),parts.at(-2).includes('%')?encodeURIComponent('クリエイター用'):'クリエイター用','GAME-PORTAL.html'].join('/');
  }
