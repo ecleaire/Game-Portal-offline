@@ -170,7 +170,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 
 .filter-context{align-self:center;font-size:.9rem;color:var(--muted);padding:4px 8px}html[data-edition="player"] .player-secondary-actions{display:none!important}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.20</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.21</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -522,9 +522,22 @@ function legacyScope(path){
  return [...parts.slice(0,-3),parts.at(-1)].join('/');
 }
 
-return {connectionInfo,portableLauncher,legacyScope};})();
+// Only the known distribution pair shares a selection. Other HTML copies keep
+// their own scope, and another distribution directory cannot borrow a handle.
+function creatorScope(path){
+ const parts=path.split('/'),name=parts.at(-1);
+ if(parts.at(-3)==='HTML'){
+  let role;try{role=decodeURIComponent(parts.at(-2));}catch{return null;}
+  if(!((role==='プレイ用'&&name==='GAME-PORTAL-PLAY.html')||(role==='クリエイター用'&&name==='GAME-PORTAL.html')))return null;
+  return [...parts.slice(0,-2),parts.at(-2).includes('%')?encodeURIComponent('クリエイター用'):'クリエイター用','GAME-PORTAL.html'].join('/');
+ }
+ if(['GAME-PORTAL.html','GAME-PORTAL-PLAY.html'].includes(name))return [...parts.slice(0,-1),'GAME-PORTAL.html'].join('/');
+ return null;
+}
+
+return {connectionInfo,portableLauncher,legacyScope,creatorScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.24.20';
+const LAUNCHER_VERSION = '0.24.21';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -1548,9 +1561,9 @@ async function access(name, mode, operation) {
     tx.oncomplete = () => {clearTimeout(timeout);resolve(result);}; tx.onabort = () => {clearTimeout(timeout);reject(tx.error || new Error('このPCへ保存できませんでした。'));}; tx.onerror = () => {};
   });
 }
-async function cacheHandle(value, remember = true, scope = null) {
+async function cacheHandle(value, remember = true, scope = null, sourceRevision = null) {
   if(!value)return scope===null?access('settings','readonly',store=>store.get('folder')):scopedFolder(scope);
-  const record={name:value.name,revision:crypto.randomUUID(),scope,...(remember?{handle:value}:{})};
+  const record={name:value.name,revision:crypto.randomUUID(),scope,...(sourceRevision?{sourceRevision}:{}),...(remember?{handle:value}:{})};
   if(scope===null)await access('settings','readwrite',store=>store.put(record,'folder'));
   else await scopedFolder(scope,record);
   return record;
@@ -2159,7 +2172,7 @@ window.addEventListener('storage',event=>{if(event.key==='game-portal.offline-th
 const folderScope=location.pathname;
 let portableConnection=null,connectionError='',lastFolderRevision='',folderWatchPromise=null,folderChannel=null,folderWatchAbort=null;
 try{portableConnection=folderSharing.connectionInfo(JSON.parse($('#folderConnection').textContent));}catch(error){connectionError=error.message;}
-try{folderChannel=new BroadcastChannel('game-portal-folder:'+folderScope);folderChannel.onmessage=()=>{void checkSharedFolder();};}catch{}
+try{folderChannel=new BroadcastChannel('game-portal-folder:'+(folderSharing.creatorScope(folderScope)||folderScope));folderChannel.onmessage=()=>{void checkSharedFolder();};}catch{}
 
 let root = null, remembered = null, metadata = null, games = [], editing = null, busy = false, localLibrary = null;
 let folderRecovery=null,folderRecoveryPromise=null,folderRecoveryAbort=null;
@@ -2334,13 +2347,22 @@ const status = message => {
     for(const node of document.querySelectorAll('#status,[data-dialog-status],#playerStatus'))if(node.textContent===message)node.textContent='';
   },message==='一覧を更新しました。'?10000:20000);
 };
-async function cacheHandle(value,remember=true){
-  let record=await localState.cacheHandle(value,remember,folderScope);
-  const legacy=folderSharing.legacyScope(folderScope);
-  if(value===undefined&&!record&&legacy){const old=await localState.cacheHandle(null,true,legacy);if(old?.scope===legacy)record={...old,scope:folderScope};}
-  if(value){lastFolderRevision=record.revision;folderChannel?.postMessage('changed');}
+async function rememberedScope(scope){
+  let record=await localState.cacheHandle(null,true,scope);
+  const legacy=folderSharing.legacyScope(scope);
+  if(!record&&legacy){const old=await localState.cacheHandle(null,true,legacy);if(old?.scope===legacy)record={...old,scope};}
   return record;
 }
+async function cacheHandle(value,remember=true){
+  const creatorScope=folderSharing.creatorScope(folderScope);
+  const creator=creatorScope&&creatorScope!==folderScope?await rememberedScope(creatorScope):null;
+  const sourceRevision=creator?.handle?(creator.revision||'legacy'):null;
+  let record=value?await localState.cacheHandle(value,remember,folderScope,sourceRevision):await rememberedScope(folderScope);
+  if(value){lastFolderRevision=record.revision;folderChannel?.postMessage('changed');}
+  else if(creator?.handle&&record?.sourceRevision!==sourceRevision)record={...creator,scope:folderScope};
+  return record;
+}
+
 function folderSharingControls(){
   $('#exportSharedLauncher').disabled=!root||!localLibrary||syncPaused;
   const hint=portableConnection?(portableConnection.path||portableConnection.name):'';
@@ -3359,7 +3381,7 @@ Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previ
 }
 
 
-$('#forgetFolder').onclick=()=>action(async()=>{if(folderSharing.legacyScope(folderScope))await cacheHandle({name:''},false);else await localState.forgetHandle(folderScope);return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
+$('#forgetFolder').onclick=()=>action(async()=>{if(folderSharing.legacyScope(folderScope)||folderSharing.creatorScope(folderScope))await cacheHandle({name:''},false);else await localState.forgetHandle(folderScope);return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
 
 document.addEventListener('visibilitychange',noteHomeActivity);
 
