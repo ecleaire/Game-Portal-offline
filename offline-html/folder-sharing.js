@@ -23,3 +23,16 @@ export function legacyScope(path){
  if(parts.at(-3)!=='HTML'||!['プレイ用','クリエイター用'].includes(role)||!['GAME-PORTAL.html','GAME-PORTAL-PLAY.html'].includes(parts.at(-1)))return null;
  return [...parts.slice(0,-3),parts.at(-1)].join('/');
 }
+
+// Only the known distribution pair shares a selection. Other HTML copies keep
+// their own scope, and another distribution directory cannot borrow a handle.
+export function creatorScope(path){
+ const parts=path.split('/'),name=parts.at(-1);
+ if(parts.at(-3)==='HTML'){
+  let role;try{role=decodeURIComponent(parts.at(-2));}catch{return null;}
+  if(!((role==='プレイ用'&&name==='GAME-PORTAL-PLAY.html')||(role==='クリエイター用'&&name==='GAME-PORTAL.html')))return null;
+  return [...parts.slice(0,-2),parts.at(-2).includes('%')?encodeURIComponent('クリエイター用'):'クリエイター用','GAME-PORTAL.html'].join('/');
+ }
+ if(['GAME-PORTAL.html','GAME-PORTAL-PLAY.html'].includes(name))return [...parts.slice(0,-1),'GAME-PORTAL.html'].join('/');
+ return null;
+}

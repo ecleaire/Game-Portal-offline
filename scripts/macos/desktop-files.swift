@@ -56,6 +56,7 @@ final class DesktopFiles {
         deinit { Darwin.close(descriptor); Darwin.close(lock); try? FileManager.default.removeItem(at: temporary) }
     }
     let fm = FileManager.default, profile: URL, application: URL, player: Bool
+    let selectionDirectory: URL?
     private var roots = [String: Root](), writers = [String: Writer](), readers = [String: Reader]()
     private let stateGate = NSRecursiveLock()
     private var hint = ""
@@ -65,8 +66,8 @@ final class DesktopFiles {
     func work(for token: String) -> DispatchQueue? { return state { roots[token]?.work } }
     func removeReader(_ token: String) { let removed = state { readers.removeValue(forKey: token) }; withExtendedLifetime(removed) {} }
     func removeWriter(_ token: String) { let removed = state { writers.removeValue(forKey: token) }; withExtendedLifetime(removed) {} }
-    init(profile: URL, application: URL, player: Bool) throws {
-        self.profile = profile; self.application = application.standardizedFileURL; self.player = player
+    init(profile: URL, application: URL, player: Bool, selectionDirectory: URL? = nil) throws {
+        self.profile = profile; self.application = application.standardizedFileURL; self.player = player; self.selectionDirectory = selectionDirectory
         try fm.createDirectory(at: profile, withIntermediateDirectories: true)
     }
     func regularRead(_ url: URL, limit: Int) throws -> Data {
@@ -146,14 +147,19 @@ final class DesktopFiles {
     }
     func restore() throws -> Root? {
         let file = profile.appendingPathComponent("folder.json")
+        let creator = try (player ? creatorSelection() : nil)
         if fm.fileExists(atPath: file.path) {
             let value = try desktopObject(regularRead(file, limit: 8192))
             guard desktopSchema(value["schema"]) else { throw DesktopError("保存先の記憶を確認してください。") }
+            if let creator = creator, value["sourceRevision"] as? String != creator["revision"] as? String {
+                return try register(creator["path"] as! String, expected: creator["id"] as? String)
+            }
             // Forget only on this profile; preserve shared settings for peers.
             if let forgotten = value["forgotten"] as? NSNumber, CFGetTypeID(forgotten) == CFBooleanGetTypeID(), forgotten.boolValue, value["path"] == nil, value["id"] == nil { return nil }
             guard let path = value["path"] as? String else { throw DesktopError("保存先の記憶を確認してください。") }
             return try register(path, expected: value["id"] as? String)
         }
+        if let creator = creator { return try register(creator["path"] as! String, expected: creator["id"] as? String) }
         let shared = application.appendingPathComponent("GAME-PORTAL-CONNECTION.json")
         if fm.fileExists(atPath: shared.path) {
             let value = try desktopObject(regularRead(shared, limit: 8192))
@@ -182,11 +188,35 @@ final class DesktopFiles {
             while offset < raw.count { let n = Darwin.write(fd, raw.baseAddress!.advanced(by: offset), raw.count - offset); if n < 0 && errno == EINTR { continue }; guard n > 0 else { throw posixError() }; offset += n }
         }
     }
+    func creatorSelection() throws -> [String: Any]? {
+        guard let directory = selectionDirectory else { return nil }
+        let file = directory.appendingPathComponent(desktopHash(application.path) + ".json")
+        try checkAncestors(file)
+        guard fm.fileExists(atPath: file.path) else { return nil }
+        let value = try desktopObject(regularRead(file, limit: 8192))
+        guard desktopSchema(value["schema"]), value["application"] as? String == application.path,
+              let revision = value["revision"] as? String, desktopID(revision),
+              let path = value["path"] as? String, path.hasPrefix("/"), path.utf8.count <= 4000,
+              let id = value["id"] as? String, desktopID(id) else { throw DesktopError("クリエイター用の保存先の記憶を確認してください。") }
+        return value
+    }
     func remember(_ root: Root) throws {
         var value: [String: Any] = ["schema": 1, "path": root.url.path]
         if let id = root.id { value["id"] = id }
+        if player, let selection = try creatorSelection() { value["sourceRevision"] = selection["revision"] }
         try atomic(desktopJSON(value), profile.appendingPathComponent("folder.json"))
         try rememberShared(root)
+        if !player, let directory = selectionDirectory, let id = root.id {
+            do {
+                try checkAncestors(directory); try fm.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+                try atomic(desktopJSON(["schema": 1, "application": application.path, "revision": String(desktopSecret().prefix(32)), "path": root.url.path, "id": id]), directory.appendingPathComponent(desktopHash(application.path) + ".json"))
+            } catch { connectionHint = "このMacには記憶しましたが、プレイ用への保存先の反映を確認できません：" + ((error as? DesktopError)?.message ?? error.localizedDescription) }
+        }
+    }
+    func forget() throws {
+        var value: [String: Any] = ["schema": 1, "forgotten": true]
+        if player, let selection = try creatorSelection() { value["sourceRevision"] = selection["revision"] }
+        try atomic(desktopJSON(value), profile.appendingPathComponent("folder.json"))
     }
     func sharedPath(_ root: Root) throws -> String? {
         let descendant = root.url.path == application.path || root.url.path.hasPrefix(application.path + "/")
@@ -274,7 +304,7 @@ final class DesktopFiles {
         let op = data["op"] as? String ?? "", path = data["path"] as? String ?? ""
         if op == "restore" { return record(try restore()) }
         if op == "selectPath" { return record(try register(path)) }
-        if op == "forget" { try atomic(desktopJSON(["schema": 1, "forgotten": true]), profile.appendingPathComponent("folder.json")); return true }
+        if op == "forget" { try forget(); return true }
         if op == "cancelReads" { let removed = state { let values = Array(readers.values); readers.removeAll(); return values }; withExtendedLifetime(removed) {}; return true }
         guard let token = data["root"] as? String else { throw DesktopError("保存先を選んでください。") }
         if ["readChunk", "endRead", "abortRead"].contains(op) {

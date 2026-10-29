@@ -36,9 +36,12 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var instanceLease: DesktopInstanceLease?
     init(profile: URL, application: URL, testMode: Bool, library: String?, testScript: URL?, resultFile: URL?, readyFile: URL?) throws {
         self.profile = profile; self.application = application; self.testMode = testMode; self.testScript = testScript; self.resultFile = resultFile; self.readyFile = readyFile
-        files = try DesktopFiles(profile: profile, application: application, player: desktopEdition == "player")
+        files = try DesktopFiles(profile: profile, application: application, player: desktopEdition == "player", selectionDirectory: profile.deletingLastPathComponent().appendingPathComponent("folder-selections"))
         guard let resource = Bundle.main.url(forResource: "GAME-PORTAL-DESKTOP", withExtension: "html") else { throw DesktopError("アプリ内の画面がありません。ZIPを展開し直してください。") }
-        page = try Data(contentsOf: resource); super.init(); desktopInstance = self
+        // The preparation process never serves HTML. Avoid retaining a second
+        // full copy of the bundled page while the actual browser is running.
+        let runtime = FileManager.default.fileExists(atPath: Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework/Chromium Embedded Framework").path)
+        page = try (runtime ? Data(contentsOf: resource) : Data()); super.init(); desktopInstance = self
         if let library = library { let root = try files.register(library); try files.remember(root) }
     }
     func applicationDidFinishLaunching(_ notification: Notification) {

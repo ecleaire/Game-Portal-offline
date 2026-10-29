@@ -26,9 +26,9 @@ async function access(name, mode, operation) {
     tx.oncomplete = () => {clearTimeout(timeout);resolve(result);}; tx.onabort = () => {clearTimeout(timeout);reject(tx.error || new Error('このPCへ保存できませんでした。'));}; tx.onerror = () => {};
   });
 }
-export async function cacheHandle(value, remember = true, scope = null) {
+export async function cacheHandle(value, remember = true, scope = null, sourceRevision = null) {
   if(!value)return scope===null?access('settings','readonly',store=>store.get('folder')):scopedFolder(scope);
-  const record={name:value.name,revision:crypto.randomUUID(),scope,...(remember?{handle:value}:{})};
+  const record={name:value.name,revision:crypto.randomUUID(),scope,...(sourceRevision?{sourceRevision}:{}),...(remember?{handle:value}:{})};
   if(scope===null)await access('settings','readwrite',store=>store.put(record,'folder'));
   else await scopedFolder(scope,record);
   return record;

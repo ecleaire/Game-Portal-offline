@@ -13,6 +13,7 @@ internal static class DesktopSelfTest {
         foreach(string invalid in new[]{"relative","",@"\\NAS",@"\\?\C:\folder",@"\\.\C:\folder"})Fails(()=>DesktopFiles.NormalizeRoot(invalid),"reject root "+invalid,results);
         service.Entry(root,".gameportal",true,true);service.Entry(root,".gameportal/library-id.json",false,true);
         string id=new String('a',32);service.Write(root,".gameportal/library-id.json",new MemoryStream(Encoding.UTF8.GetBytes("{\"schema\":1,\"id\":\""+id+"\"}")));service.Remember(root);
+        var samePCPlayer=new DesktopFiles(Path.Combine(directory,"profile"));Assert(samePCPlayer.Restore().Id==id,"Player restores Creator selection using the common local profile");
         Assert(service.Restore().Id==id,"persistent identity");results.Add("initialize and reconnect");
         string leftover="index.html.gameportal.json~RFb5be5.TMP",leftoverPath=Path.Combine(disk,leftover);File.WriteAllText(leftoverPath,"do not read or delete");File.WriteAllText(Path.Combine(disk,"level.tmp"),"game resource");
         using(var locked=new FileStream(leftoverPath,FileMode.Open,FileAccess.ReadWrite,FileShare.None)){string listing=service.Serialize(service.List(root,""));Assert(!listing.Contains(leftover)&&listing.Contains("level.tmp"),"metadata leftovers excluded before game reads");}

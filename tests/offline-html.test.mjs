@@ -1,4 +1,4 @@
-import {connectionInfo,portableLauncher,legacyScope} from '../offline-html/folder-sharing.js';
+import {connectionInfo,portableLauncher,legacyScope,creatorScope} from '../offline-html/folder-sharing.js';
 import {measureLibraryUsage} from '../offline-html/usage.js';
 import * as contentStorage from '../offline-html/updates.js';
 import {checkCompatibility,ensureCompatibility,LAUNCHER_VERSION} from '../offline-html/compatibility.js';
@@ -690,4 +690,13 @@ test('ZIP cancellation interrupts stalled inflaters and prevents queued entries'
  const original=globalThis.DecompressionStream;let started=0,canceled=0;globalThis.DecompressionStream=class{constructor(){started++;this.readable=new ReadableStream({pull(){return new Promise(()=>{});},cancel(){canceled++;}});this.writable=new WritableStream();}};
  try{const controller=new AbortController(),work=unpackPrivateZip(bytes,()=>{},{signal:controller.signal});while(started<4)await new Promise(resolve=>setImmediate(resolve));controller.abort();await assert.rejects(work,{name:'AbortError'});assert.equal(started,4);assert.equal(canceled,4);}
  finally{globalThis.DecompressionStream=original;}
+});
+
+test('only matching Creator and Player distribution paths follow the Creator selection',()=>{
+ const creator='/Portal/HTML/'+encodeURIComponent('クリエイター用')+'/GAME-PORTAL.html';
+ assert.equal(creatorScope(creator),creator);
+ assert.equal(creatorScope('/Portal/HTML/'+encodeURIComponent('プレイ用')+'/GAME-PORTAL-PLAY.html'),creator);
+ assert.equal(creatorScope('/Portal/GAME-PORTAL-PLAY.html'),'/Portal/GAME-PORTAL.html');
+ assert.notEqual(creatorScope('/Else/GAME-PORTAL-PLAY.html'),'/Portal/GAME-PORTAL.html');
+ for(const path of ['/Portal/HTML/プレイ用/GAME-PORTAL.html','/Portal/HTML/クリエイター用/GAME-PORTAL-PLAY.html','/Portal/custom.html','/Portal/HTML/%ZZ/GAME-PORTAL-PLAY.html'])assert.equal(creatorScope(path),null);
 });

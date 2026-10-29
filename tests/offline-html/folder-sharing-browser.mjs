@@ -4,8 +4,8 @@ import {tmpdir} from 'node:os';
 import {join,relative} from 'node:path';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
-const html=await readFile('offline-release/GAME-PORTAL.html');let sharedHTML=null;
-const server=createServer((q,r)=>{r.setHeader('Content-Type','text/html');r.end(q.url==='/shared.html'?sharedHTML:html);});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const html=await readFile('offline-release/GAME-PORTAL.html'),playerHTML=await readFile('offline-release/GAME-PORTAL-PLAY.html');let sharedHTML=null;
+const server=createServer((q,r)=>{r.setHeader('Content-Type','text/html');r.end(q.url==='/shared.html'?sharedHTML:q.url.endsWith('GAME-PORTAL-PLAY.html')?playerHTML:html);});await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const options={executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true},profiles=[await mkdtemp(join(tmpdir(),'portal-folder-sender-')),await mkdtemp(join(tmpdir(),'portal-folder-receiver-'))];let context,fresh;
 const init=()=>{if(!window.FileSystemDirectoryHandle)return;try{window.denyFolder=localStorage.getItem('denyFolder')==='true';}catch{}FileSystemDirectoryHandle.prototype.queryPermission=async()=>window.denyFolder?'prompt':'granted';FileSystemDirectoryHandle.prototype.requestPermission=async options=>{window.requestedMode=options.mode;window.requestedFromClick=navigator.userActivation.isActive;window.permissionRequests=(window.permissionRequests||0)+1;window.denyFolder=false;return 'granted';};};
 try{
@@ -48,5 +48,25 @@ try{
  await receiver.evaluate(()=>{status('サムネイルを保存しました。');$('#playerStatus').textContent='ゲームの読み込みに失敗しました。';});await receiver.clock.fastForward(21000);await expect(receiver.locator('#playerStatus')).toHaveText('ゲームの読み込みに失敗しました。');
  await receiver.evaluate(()=>status('作品情報を保存しました。 一覧更新だけ失敗しました。再保存せず確認してください。'));await receiver.clock.fastForward(21000);await expect(receiver.locator('#status')).toContainText('失敗');
  await receiver.evaluate(()=>{status('作品情報を保存しました。');status('保存結果未確認です。');});await receiver.clock.fastForward(21000);await expect(receiver.locator('#status')).toHaveText('保存結果未確認です。');
+ // Exercise the actual distribution paths and both built editions, rather
+ // than two tabs of the same creator HTML.
+ const creator=await context.newPage(),player=await context.newPage();
+ const creatorURL=origin+'/paired/HTML/'+encodeURIComponent('クリエイター用')+'/GAME-PORTAL.html';
+ const playerURL=origin+'/paired/HTML/'+encodeURIComponent('プレイ用')+'/GAME-PORTAL-PLAY.html';
+ for(const [page,url]of [[creator,creatorURL],[player,playerURL]]){page.on('pageerror',e=>errors.push(e.message));await page.goto(url);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});}
+ assert.equal(await player.evaluate(()=>root),null);
+ await creator.evaluate(async()=>{const storage=await navigator.storage.getDirectory();window.pick=await storage.getDirectoryHandle('Alpha');window.showDirectoryPicker=async()=>pick;});
+ const chooseCreator=async name=>{await creator.bringToFront();await creator.evaluate(async name=>{pick=await(await navigator.storage.getDirectory()).getDirectoryHandle(name);},name);await creator.locator('#settingsButton').click();await creator.locator('#chooseFolder').click();await creator.waitForFunction(()=>!busy);};
+ await chooseCreator('Alpha');await player.bringToFront();await player.evaluate(()=>checkSharedFolder());await expect(player.locator('#folderName')).toHaveText('Alpha');
+ assert.equal(await player.evaluate(()=>launcherEdition),'player');assert.equal(await player.evaluate(()=>editingEnabled),false);
+ const firstStart=await context.newPage();await firstStart.goto(playerURL);await expect(firstStart.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await expect(firstStart.locator('#folderName')).toHaveText('Alpha');await firstStart.close();
+ await player.locator('.game-title-link').click();await player.waitForFunction(()=>!busy);await chooseCreator('Beta');await player.bringToFront();await player.evaluate(()=>checkSharedFolder());await expect(player.locator('#folderName')).toHaveText('Alpha');await expect(player.frameLocator('#frame').locator('h1')).toHaveText('Alpha');
+ await player.locator('#closePlayer').click();await player.evaluate(()=>checkSharedFolder());await expect(player.locator('#folderName')).toHaveText('Beta');
+ await player.evaluate(()=>window.denyFolder=true);await chooseCreator('Alpha');await player.bringToFront();await player.evaluate(()=>checkSharedFolder());assert.equal(await player.locator('#reconnect').evaluate(node=>node.hidden),false);assert.equal(await player.evaluate(()=>window.permissionRequests||0),0);await expect(player.locator('#homeReconnect')).toBeVisible();await player.locator('#homeReconnect').click();await player.waitForFunction(()=>!busy);await expect(player.locator('#folderName')).toHaveText('Alpha');
+ await player.locator('#settingsButton').click();await player.locator('#folderMemoryDetails summary').click();await player.locator('#forgetFolder').click();await player.waitForFunction(()=>!busy);await player.reload();await expect(player.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});assert.equal(await player.evaluate(()=>root),null);
+ await creator.reload();await expect(creator.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await expect(creator.locator('#folderName')).toHaveText('Alpha');
+ await creator.evaluate(()=>window.showDirectoryPicker=async()=>await(await navigator.storage.getDirectory()).getDirectoryHandle('Beta'));await chooseCreator('Beta');await player.bringToFront();await player.evaluate(()=>checkSharedFolder());await expect(player.locator('#folderName')).toHaveText('Beta');
+ const unrelated=await context.newPage();await unrelated.goto(origin+'/different/HTML/'+encodeURIComponent('プレイ用')+'/GAME-PORTAL-PLAY.html');await expect(unrelated.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});assert.equal(await unrelated.evaluate(()=>root),null);await unrelated.close();
+ assert.deepEqual(errors,[]);
  console.log('Folder sharing passed: already-open tabs adopt selection and changes, player/editor deferral, permission denial with explicit reconnect, always-on remembering, portable HTML path/identity and no private data, fresh-profile selection/reload/play and wrong-folder rejection. Physical NAS/second PC untested.');
 }finally{await fresh?.close();await context?.close();await new Promise(r=>server.close(r));for(const profile of profiles){const p=relative(tmpdir(),profile);if(!p||p.startsWith('..'))throw Error('Unexpected test profile path');await rm(profile,{recursive:true,force:true});}}

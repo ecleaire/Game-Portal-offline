@@ -38,7 +38,7 @@ const script = [
   "const launcherEdition=document.documentElement.dataset.edition==='player'?'player':'creator';",
   wrap('preview', offlinePreview, 'unpackPrivateZip,webArchiveLayout,privatePreviewDocument'),
   wrap('readTasks', await source('offline-html/read-task.js'), 'readWithSignal,prepareTogether'),
-  wrap('folderSharing', await source('offline-html/folder-sharing.js'), 'connectionInfo,portableLauncher,legacyScope'),
+  wrap('folderSharing', await source('offline-html/folder-sharing.js'), 'connectionInfo,portableLauncher,legacyScope,creatorScope'),
   wrap('compatibilityTools', await source('offline-html/compatibility.js'), 'LAUNCHER_VERSION,checkCompatibility,ensureCompatibility'),
   wrap('updateTools', await source('offline-html/updates.js'), 'canUpdateGame,resolveGameContent,replaceGameContent,restoreGameContent,verifyContentUpdate,inspectGameContent,describeContentStorage'),
   wrap('nativeTools', await source('offline-html/native-tools.js'), 'nativeLayout,validateExe,nativeConnection,nativePageConnection,launchNative,nativeFolder'),

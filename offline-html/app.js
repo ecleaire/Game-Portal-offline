@@ -43,7 +43,7 @@ window.addEventListener('storage',event=>{if(event.key==='game-portal.offline-th
 const folderScope=location.pathname;
 let portableConnection=null,connectionError='',lastFolderRevision='',folderWatchPromise=null,folderChannel=null,folderWatchAbort=null;
 try{portableConnection=folderSharing.connectionInfo(JSON.parse($('#folderConnection').textContent));}catch(error){connectionError=error.message;}
-try{folderChannel=new BroadcastChannel('game-portal-folder:'+folderScope);folderChannel.onmessage=()=>{void checkSharedFolder();};}catch{}
+try{folderChannel=new BroadcastChannel('game-portal-folder:'+(folderSharing.creatorScope(folderScope)||folderScope));folderChannel.onmessage=()=>{void checkSharedFolder();};}catch{}
 
 let root = null, remembered = null, metadata = null, games = [], editing = null, busy = false, localLibrary = null;
 let folderRecovery=null,folderRecoveryPromise=null,folderRecoveryAbort=null;
@@ -218,13 +218,22 @@ const status = message => {
     for(const node of document.querySelectorAll('#status,[data-dialog-status],#playerStatus'))if(node.textContent===message)node.textContent='';
   },message==='一覧を更新しました。'?10000:20000);
 };
-async function cacheHandle(value,remember=true){
-  let record=await localState.cacheHandle(value,remember,folderScope);
-  const legacy=folderSharing.legacyScope(folderScope);
-  if(value===undefined&&!record&&legacy){const old=await localState.cacheHandle(null,true,legacy);if(old?.scope===legacy)record={...old,scope:folderScope};}
-  if(value){lastFolderRevision=record.revision;folderChannel?.postMessage('changed');}
+async function rememberedScope(scope){
+  let record=await localState.cacheHandle(null,true,scope);
+  const legacy=folderSharing.legacyScope(scope);
+  if(!record&&legacy){const old=await localState.cacheHandle(null,true,legacy);if(old?.scope===legacy)record={...old,scope};}
   return record;
 }
+async function cacheHandle(value,remember=true){
+  const creatorScope=folderSharing.creatorScope(folderScope);
+  const creator=creatorScope&&creatorScope!==folderScope?await rememberedScope(creatorScope):null;
+  const sourceRevision=creator?.handle?(creator.revision||'legacy'):null;
+  let record=value?await localState.cacheHandle(value,remember,folderScope,sourceRevision):await rememberedScope(folderScope);
+  if(value){lastFolderRevision=record.revision;folderChannel?.postMessage('changed');}
+  else if(creator?.handle&&record?.sourceRevision!==sourceRevision)record={...creator,scope:folderScope};
+  return record;
+}
+
 function folderSharingControls(){
   $('#exportSharedLauncher').disabled=!root||!localLibrary||syncPaused;
   const hint=portableConnection?(portableConnection.path||portableConnection.name):'';
@@ -1243,7 +1252,7 @@ Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previ
 }
 
 
-$('#forgetFolder').onclick=()=>action(async()=>{if(folderSharing.legacyScope(folderScope))await cacheHandle({name:''},false);else await localState.forgetHandle(folderScope);return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
+$('#forgetFolder').onclick=()=>action(async()=>{if(folderSharing.legacyScope(folderScope)||folderSharing.creatorScope(folderScope))await cacheHandle({name:''},false);else await localState.forgetHandle(folderScope);return 'このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。';});
 
 document.addEventListener('visibilitychange',noteHomeActivity);
 
