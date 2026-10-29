@@ -7,7 +7,7 @@ import {prepareCEF} from './prepare-cef.mjs';
 import {MAC_MINIMUM,MAC_TARGETS,verifyMacMinimum} from './mac-system.mjs';
 import {publishDistribution} from './distribution.mjs';
 
-export const macDesktopSources=['scripts/macos/desktop-files.swift','scripts/macos/desktop-network.swift','scripts/macos/cef-desktop-host.swift','scripts/macos/desktop-engine.swift','scripts/macos/desktop-self-test.swift','scripts/macos/desktop-page.mjs','scripts/macos/cef-bridge.mm','scripts/macos/cef/CMakeLists.txt','scripts/macos/cef-lock.json','scripts/build-mac-apps.mjs','scripts/prepare-cef.mjs','desktop/bootstrap.js','desktop/page.mjs'];
+export const macDesktopSources=['scripts/macos/desktop-files.swift','scripts/macos/desktop-network.swift','scripts/macos/desktop-instance.swift','scripts/macos/cef-desktop-host.swift','scripts/macos/desktop-engine.swift','scripts/macos/desktop-self-test.swift','scripts/macos/desktop-page.mjs','scripts/macos/cef-bridge.mm','scripts/macos/cef/CMakeLists.txt','scripts/macos/cef-lock.json','scripts/build-mac-apps.mjs','scripts/prepare-cef.mjs','desktop/bootstrap.js','desktop/page.mjs'];
 export async function macDesktopManifest(root,version,edition){
  const files={};for(const path of macDesktopSources)files[path]=createHash('sha256').update((await readFile(join(root,path),'utf8')).replaceAll('\r\n','\n')).digest('hex');
  return {schema:1,version,edition,kind:'mac-cef-standalone-v1',htmlSHA256:createHash('sha256').update(await readFile(join(root,edition==='player'?'GAME-PORTAL-PLAY.html':'GAME-PORTAL.html'))).digest('hex'),files};
@@ -50,7 +50,7 @@ export async function buildMacApps(suffix){
   const cef=await compileCEF(root,build,arch),output=join(build,arch);outputs.push(output);
   if(!cefLicense)cefLicense=await readFile(join(cef.sdk,'LICENSE.txt'),'utf8');
   const wrapper=join(cef.directory,'libcef_dll_wrapper/libcef_dll_wrapper.a');
-  execFileSync('xcrun',['swiftc','-parse-as-library','-swift-version','5','-O','-target',arch+'-apple-macosx'+minimum,host,...['desktop-files.swift','desktop-network.swift','desktop-engine.swift','desktop-self-test.swift'].map(file=>join(root,'scripts/macos',file)),join(cef.directory,'libportal_cef.a'),wrapper,join(cef.sdk,'Release/cef_sandbox.a'),'-lc++','-lsandbox','-framework','Cocoa','-framework','Security','-o',output],{stdio:'inherit'});
+  execFileSync('xcrun',['swiftc','-parse-as-library','-swift-version','5','-O','-target',arch+'-apple-macosx'+minimum,host,...['desktop-files.swift','desktop-network.swift','desktop-instance.swift','desktop-engine.swift','desktop-self-test.swift'].map(file=>join(root,'scripts/macos',file)),join(cef.directory,'libportal_cef.a'),wrapper,join(cef.sdk,'Release/cef_sandbox.a'),'-lc++','-lsandbox','-framework','Cocoa','-framework','Security','-o',output],{stdio:'inherit'});
   targets[arch]=await packageEngine(root,build,arch,cef);
  }
  const binary=join(build,'GAME-PORTAL-'+suffix);

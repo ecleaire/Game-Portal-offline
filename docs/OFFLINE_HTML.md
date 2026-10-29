@@ -1,10 +1,10 @@
 # 完全オフライン HTML版 GAME PORTAL
 
-現在のバージョンは **0.24.20**。画面上部のロゴ横に表示します。
+現在のバージョンは **0.24.21**。画面上部のロゴ横に表示します。
 
 PC版Google Chrome（Windows / macOS）推奨です。配布ZIPを展開し、`GAME-PORTAL.html` をChromeで開きます。画面・Pyxel・Pyodide・Python標準ライブラリーをHTMLに同梱しています。使用中のCDN・Supabase・Google Drive接続、アカウント登録は不要です。
 
-[ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.20.zip)するか、GitHubでタグ `v0.24.20` を選び「Code → Download ZIP」を使います。展開後、**HTML → プレイ用／クリエイター用** を開き、用途に合うHTMLを起動してください。インストール・ビルド・Actionsの操作は不要です。補助ツールは「起動補助」、ライセンスは「_内部ファイル」にまとめています。Windows・Macアプリを使う場合は[READMEの表](../README.md#ダウンロードして使う)を確認してください。
+[ZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.21.zip)するか、GitHubでタグ `v0.24.21` を選び「Code → Download ZIP」を使います。展開後、**HTML → プレイ用／クリエイター用** を開き、用途に合うHTMLを起動してください。インストール・ビルド・Actionsの操作は不要です。補助ツールは「起動補助」、ライセンスは「_内部ファイル」にまとめています。Windows・Macアプリを使う場合は[READMEの表](../README.md#ダウンロードして使う)を確認してください。
 
 保管先のフォルダー名を決められた名前へ変更する必要はありません。日本語・空白・記号など、OSとChromeで選択できる名前をそのまま使えます。名前は案内表示にだけ使い、ライブラリIDで保存先を識別します。ブラウザーがアクセスを許可しない場所や、読み取り・保存の権限がない場所は、名前を変えても利用できません。
 

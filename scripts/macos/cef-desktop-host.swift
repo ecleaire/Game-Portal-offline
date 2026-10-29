@@ -1,7 +1,6 @@
 import Foundation
 import CoreFoundation
 import AppKit
-import Network
 import Darwin
 
 @_silgen_name("portal_cef_application") func portal_cef_application()
@@ -23,17 +22,18 @@ func desktopMainRunLoop(_ operation: @escaping () -> Void) {
     if Thread.isMainThread { desktopInstance?.message(value) } else { DispatchQueue.main.async { desktopInstance?.message(value) } }
 }
 final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    let io = DispatchQueue(label: "gameportal.desktop.files"), network = DispatchQueue(label: "gameportal.desktop.http")
+    let io = DispatchQueue(label: "gameportal.desktop.files")
     let profile: URL, application: URL, files: DesktopFiles, testMode: Bool
     let testScript: URL?, resultFile: URL?, readyFile: URL?
-    var view: NSView!, window: NSWindow!, listener: NWListener!, page: Data
+    var view: NSView!, window: NSWindow!, listener: DesktopHTTPServer!, page: Data
     var appURL: URL!, closing = false, closePending = false, testStarted = false, engineReady = false, browserClosed = false
-    var closeTimer: DispatchWorkItem?, listenerWait: DispatchWorkItem?, connections = 0, droppedFolder: (String, Date)?
+    var closeTimer: DispatchWorkItem?, droppedFolder: (String, Date)?
     var contextReady = false, browserOpening = false
     var hasBundledFramework: Bool { FileManager.default.fileExists(atPath: Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework/Chromium Embedded Framework").path) }
     var pendingWrites = 0
     var fullscreenFromGame = false
     var installedProcess: Process?
+    var instanceLease: DesktopInstanceLease?
     init(profile: URL, application: URL, testMode: Bool, library: String?, testScript: URL?, resultFile: URL?, readyFile: URL?) throws {
         self.profile = profile; self.application = application; self.testMode = testMode; self.testScript = testScript; self.resultFile = resultFile; self.readyFile = readyFile
         files = try DesktopFiles(profile: profile, application: application, player: desktopEdition == "player")
@@ -52,32 +52,11 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let data = try desktopObject(files.regularRead(portFile, limit: 1024))
                 guard let port = data["port"] as? Int, port >= 1024, port <= 65535 else { throw DesktopError("アプリの接続設定を確認してください。") }; savedPort = UInt16(port)
             }
-            let parameters = desktopLoopbackParameters(port: savedPort)
-            listener = try NWListener(using: parameters); listener.newConnectionHandler = { [weak self] in self?.receive($0) }
-            listener.stateUpdateHandler = { [weak self] state in
-                guard let self = self else { return }
-                if self.testMode { fputs("GAME PORTAL lifecycle: listener \(state)\n", stderr) }
-                switch state {
-                case .ready:
-                    self.listenerWait?.cancel(); self.listenerWait = nil
-                    guard self.appURL == nil else { return }
-                    guard let port = self.listener.port?.rawValue else { return }; self.appURL = URL(string: "http://127.0.0.1:\(port)/index.html")!
-                    do { if savedPort == nil { try self.files.atomic(desktopJSON(["port": Int(port)]), portFile) }; desktopMainRunLoop { self.show() } } catch { DispatchQueue.main.async { self.fail(error) } }
-                case .waiting(let error):
-                    // Network.framework can briefly wait while interfaces change.
-                    // Keep the same origin: replacing its port loses browser saves.
-                    guard self.listenerWait == nil else { return }
-                    let wait = DispatchWorkItem { self.fail(DesktopError(desktopListenerMessage(error))) }
-                    self.listenerWait = wait
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: wait)
-                case .failed(let error):
-                    self.listenerWait?.cancel(); self.listenerWait = nil
-                    DispatchQueue.main.async { self.fail(DesktopError(desktopListenerMessage(error))) }
-                case .cancelled:
-                    self.listenerWait?.cancel(); self.listenerWait = nil
-                default: break
-                }
-            }; listener.start(queue: network)
+            listener = DesktopHTTPServer(page: page)
+            let port = try listener.start(port: savedPort)
+            appURL = URL(string: "http://127.0.0.1:\(port)/index.html")!
+            if savedPort == nil { try files.atomic(desktopJSON(["port": Int(port)]), portFile) }
+            desktopMainRunLoop { self.show() }
         } catch { fail(error) }
     }
     func show() {
@@ -106,6 +85,8 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func initializeBundledEngine() throws {
         let bundledFramework = Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework")
         guard FileManager.default.fileExists(atPath: bundledFramework.appendingPathComponent("Chromium Embedded Framework").path) else { return }
+        try files.checkAncestors(profile)
+        instanceLease = try DesktopInstanceLease(profile.appendingPathComponent("runtime-instance.lock"))
         // Chromium installs CFRunLoop entry/exit observers during initialization.
         // Register them before AppKit enters its loop so the initial entry is seen.
         try FileManager.default.createDirectory(at: profile.appendingPathComponent("Chromium"), withIntermediateDirectories: true)
@@ -131,7 +112,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self.installedProcess = nil; self.closing = true
             let status = child.terminationReason == .uncaughtSignal ? 128 + child.terminationStatus : child.terminationStatus
             if self.testMode { exit(status) }
-            if status != 0 { self.notice("アプリを終了しました", "画面の処理が停止しました。GAME PORTALをもう一度開いてください。保存済みのゲームや作品情報はそのまま残っています。") }
+            if status != 0 && status != 78 { self.notice("アプリを終了しました", "画面の処理が停止しました。GAME PORTALをもう一度開いてください。保存済みのゲームや作品情報はそのまま残っています。") }
             NSApplication.shared.terminate(nil)
         } }
         installedProcess = process; try process.run(); window.orderOut(nil); NSApplication.shared.setActivationPolicy(.accessory)
@@ -241,37 +222,9 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func fail(_ error: Error) {
         let message = (error as? DesktopError)?.message ?? error.localizedDescription
         if testMode { if let result = resultFile { try? desktopJSON(["ok": false, "error": message]).write(to: result) }; fputs(message + "\n", stderr); exit(1) }
-        notice("GAME PORTALを開けませんでした", message); exit(1)
+        notice("GAME PORTAL " + desktopVersion + "を開けませんでした", message); exit(78)
     }
-    // Only the trusted document is served. There is no file-system HTTP API.
-    func receive(_ connection: NWConnection) {
-        if testMode { fputs("GAME PORTAL HTTP: connection\n", stderr) }
-        guard connections < 8 else { connection.cancel(); return }; connections += 1
-        let deadline = DispatchWorkItem { connection.cancel() }
-        connection.stateUpdateHandler = { state in if case .cancelled = state { deadline.cancel(); self.connections -= 1 } }
-        connection.start(queue: network); network.asyncAfter(deadline: .now() + 15, execute: deadline)
-        var buffer = Data()
-        func next() {
-            connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { bytes, _, complete, error in
-                if let bytes = bytes { buffer.append(bytes) }
-                guard buffer.count <= 16384 else { connection.cancel(); return }
-                if buffer.range(of: Data("\r\n\r\n".utf8)) != nil {
-                    let text = String(data: buffer, encoding: .utf8) ?? "", lines = text.components(separatedBy: "\r\n")
-                    let host = lines.filter { $0.lowercased().hasPrefix("host:") }
-                    if self.testMode { fputs("GAME PORTAL HTTP: \(lines.first ?? "")\n", stderr) }
-                    guard lines.first == "GET /index.html HTTP/1.1", host.count == 1, host[0].dropFirst(5).trimmingCharacters(in: .whitespaces) == "127.0.0.1:\(self.listener.port!.rawValue)" else { connection.cancel(); return }
-                    deadline.cancel()
-                    let header = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(self.page.count)\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nContent-Security-Policy: frame-ancestors 'none'\r\nConnection: close\r\n\r\n"
-                    connection.send(content: Data(header.utf8), completion: .contentProcessed { error in
-                        if error != nil { connection.cancel(); return }
-                        connection.send(content: self.page, contentContext: .finalMessage, isComplete: true, completion: .contentProcessed { error in if error != nil { connection.cancel() } })
-                    }); return
-                }
-                if complete || error != nil { connection.cancel() } else { next() }
-            }
-        }
-        next()
-    }
+
 }
 
 @main struct MacDesktopMain {
@@ -315,9 +268,9 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
             fputs("GAME PORTAL: \(message)\n", stderr)
             if !CommandLine.arguments.contains("--test-mode") && !CommandLine.arguments.contains("--self-test") {
                 portal_cef_application(); NSApplication.shared.setActivationPolicy(.regular); NSApplication.shared.activate(ignoringOtherApps: true)
-                let alert = NSAlert(); alert.messageText = "GAME PORTALを開けませんでした"; alert.informativeText = message; alert.runModal()
+                let alert = NSAlert(); alert.messageText = "GAME PORTAL " + desktopVersion + "を開けませんでした"; alert.informativeText = message; alert.runModal()
             }
-            exit(1)
+            exit(CommandLine.arguments.contains("--test-mode") || CommandLine.arguments.contains("--self-test") ? 1 : 78)
         }
     }
 }

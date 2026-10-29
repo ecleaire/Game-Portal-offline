@@ -19,6 +19,7 @@ try{
   const families=suffix==='MAC'&&process.arch==='x64'?['MAC','MOJAVE','MAC']:[suffix,suffix];
   for(const family of new Set(families)){const name=prefix+family,app=join(root,'Mac',role,name+'.app');await cp(resolve(name+'.app'),app,{recursive:true});execFileSync('codesign',['--verify','--deep','--strict',app],{stdio:'pipe'});}
   const primary=join(root,'Mac',role,prefix+suffix+'.app/Contents/MacOS/GAME-PORTAL-'+suffix);
+  assert(!execFileSync('otool',['-L',primary],{encoding:'utf8'}).includes('/Network.framework/'),'Startup host must not depend on Network.framework path evaluation');
   const selftest=join(root,'self-test-'+edition);execFileSync(primary,['--self-test',selftest],{timeout:30000,stdio:'pipe'});assert.equal(JSON.parse(await readFile(join(selftest,'result.json'))).ok,true);
   for(let cycle=0;cycle<families.length;cycle++){
    const family=families[cycle],executable=join(root,'Mac',role,prefix+family+'.app/Contents/MacOS/GAME-PORTAL-'+family);
