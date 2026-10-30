@@ -1,6 +1,6 @@
 # 開発・配布の手順
 
-使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.25.2.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。配布ZIPから開発コード・テスト・Git用設定を除外しています。開発するときは `git clone https://github.com/ecleaire/Game-Portal-offline.git` で取得してください。以下はソースを変更する人向けの手順です。
+使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.25.3.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。配布ZIPから開発コード・テスト・Git用設定を除外しています。開発するときは `git clone https://github.com/ecleaire/Game-Portal-offline.git` で取得してください。以下はソースを変更する人向けの手順です。
 
 ## 準備・検証
 
@@ -9,6 +9,7 @@ Node.js 22以上を使用します。Windows / macOSの自動検証ではNode.js
 ```sh
 npm ci
 npm run prepare:runtime
+npm run prepare:test-games
 npm test
 npm run build
 npx playwright install chromium
@@ -16,6 +17,8 @@ npm run test:browser
 ```
 
 `prepare:runtime` は初回のみ公式配布物を取得し、`offline-html/runtime-lock.json` のSHA-256と照合します。キャッシュは `.tools/offline-runtime`、変更先は `OFFLINE_RUNTIME_CACHE` で指定できます。Node.js 24で環境変数のプロキシを利用する場合は `NODE_USE_ENV_PROXY=1` を設定してください。通常の `build` は取得済みキャッシュを使い、ネット取得しません。
+
+Godotの実書き出しテストにはPython 3を使用します。`prepare:test-games` は公式Godot 4.3テンプレートの必要部分を取得し、SHA-256を照合して `.tools/godot` にキャッシュします。テスト後のゲーム実行中に外部から取得する処理はありません。新規作成した最小シーンのソースは `tests/fixtures/godot43/` にあります。
 
 WindowsのEXEゲーム用補助はWindows上でビルド・検証します。
 

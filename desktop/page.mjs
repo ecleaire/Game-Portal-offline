@@ -12,9 +12,6 @@ export function desktopPage(html,bootstrap,licenses=''){
   const playerEdition=html.includes('<html lang="ja" data-edition="player">');
   replace(playerEdition?'<title>GAME PORTAL プレイ専用</title>':'<title>GAME PORTAL</title>',playerEdition?'<title>GAME PORTAL プレイ専用</title>':'<title>GAME PORTAL クリエイター</title>');
   replace('connect-src blob: data: http://127.0.0.1:*',"connect-src 'self' blob: data:");
-  // WebView2 exposes this property in opaque frames, but reading it throws.
-  // Keep the sandbox and let exports detect that service workers are unavailable.
-  replace('function webBootstrap(nonce) {',"function webBootstrap(nonce) {\n  try { void navigator.serviceWorker; } catch { delete Object.getPrototypeOf(navigator).serviceWorker; }");
   replace('<div id="folderDrop" class="notice" role="group" aria-label="保存先フォルダーをドラッグして接続">保存先フォルダーをここへドラッグ</div>','<div id="folderDrop" class="notice" role="group" aria-label="保存先フォルダーをドラッグして接続">保存先フォルダーをここへドラッグ</div><label for="desktopFolderPath">保存先のパス</label><div class="buttons desktop-path"><input id="desktopFolderPath" type="text" autocomplete="off" spellcheck="false" placeholder="例：&#92;&#92;NAS&#92;共有&#92;ゲーム" aria-label="保存先フォルダーのパス"><button id="desktopConnectPath" class="secondary">このパスに接続</button></div><p class="hint">エクスプローラーのアドレス欄からコピーして貼り付けられます。</p>');
   replace('<p class="hint">エクスプローラーのアドレス欄からコピーして貼り付けられます。</p>','<p class="hint">エクスプローラーのアドレス欄からコピーして貼り付けられます。</p><p id="desktopSharedConnection" class="hint" hidden></p>');
   if(!playerEdition)replace('<p id="desktopSharedConnection" class="hint" hidden></p>','<p id="desktopSharedConnection" class="hint" hidden></p><section class="settings-option"><div><strong>ほかのPCの初回接続</strong><p class="hint">ランチャー一式とゲームを同じNASの共有フォルダー内に置きます。この保存先を共有すると、同じランチャーを開く未設定のPCが自動で接続します。個別に設定済みのPCは変更しません。</p><button id="desktopShareConnection" class="secondary">この保存先を共有</button><p class="hint">NASへのログインとOSのアクセス許可は、各PCで必要です。</p></div></section>');

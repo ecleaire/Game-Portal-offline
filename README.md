@@ -1,22 +1,22 @@
 # GAME PORTAL
 
-バージョン：**0.25.2**
+バージョン：**0.25.3**
 
 フォルダーに保存したゲームを、オフラインで探して遊ぶランチャーです。ゲームの追加、名前・サムネイル・タグなどの編集にも対応しています。アカウント登録は不要で、保存先にはPC内のフォルダーやNASを指定できます。
 
-v0.25.2では、Intel Macの対応OSを **macOS 10.14以降**へ広げました。10.14.4でも開けるよう、アプリの起動条件を見直しています。Appleシリコンは引き続きmacOS 11以降です。
+v0.25.3では、HTML版で一部のGodot Webゲームが初期化中に止まる不具合を修正しました。Windows・Mac版と共通の起動処理に揃えています。
 
-Mac版のプレイ用・クリエイター用と起動補助を更新しています。アプリや起動補助の内部ファイルは取り出さず、一式で使用してください。
+Intel Macは **macOS 10.14以降**、AppleシリコンはmacOS 11以降に対応します。アプリや起動補助の内部ファイルは取り出さず、一式で使用してください。
 
 詳しくは[変更履歴](docs/CHANGELOG.md)をご覧ください。
 
 ## ダウンロードして使う
 
-**[v0.25.2のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.25.2.zip)**
+**[v0.25.3のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.25.3.zip)**
 
-展開すると **`Game-Portal-offline-0.25.2`** フォルダーになります。
+展開すると **`Game-Portal-offline-0.25.3`** フォルダーになります。
 
-GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.25.2`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
+GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.25.3`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
 
 **ゲーム本体はZIPに含まれていません。** 遊ぶゲームを保存したフォルダーを用意してください。
 

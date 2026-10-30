@@ -27,6 +27,8 @@ try{
      document.querySelector('#player').showModal();window.resourceTestStop=player.startPlayer(document.querySelector('#frame'),{kind:'html',files,saved:{}},preview,()=>{});
    },expectBug);
    const body=page.frameLocator('#frame').locator('body');
+   assert.equal(await body.evaluate(()=> 'serviceWorker' in navigator),false,'opaque game capability probes must not expose unavailable service workers');
+   assert.equal(await body.evaluate(()=>{try{void parent.document;return false;}catch{return true;}}),true,'game stays isolated from launcher');
    if(expectBug&&path.includes('日本語')){await expect(body).toHaveAttribute('data-failure','Game resource unavailable');console.log('Reproduced resource failure under a URL with Japanese/space directory names.');}
    else{
      await expect(body).toHaveAttribute('data-loaded','yes');

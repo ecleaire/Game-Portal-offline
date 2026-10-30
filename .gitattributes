@@ -35,3 +35,6 @@ HTML/**/*.cmd -text
 /package.json export-ignore
 /package-lock.json export-ignore
 /docs/DEVELOPMENT.md export-ignore
+
+# Authored Godot regression fixture; preserve compiled pack bytes.
+tests/fixtures/godot43/index.pck binary

@@ -53,6 +53,7 @@ jobs:
       - run: node tests/helper-entrypoints.mjs
       - run: npm test
       - run: npx playwright install chromium
+      - run: npm run prepare:test-games
       - run: npm run test:browser
         env:
           NODE_OPTIONS: --import ./scripts/ci-failure-diagnostics.mjs

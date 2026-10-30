@@ -30,6 +30,13 @@ async function captureGameCanvas() {
   }));
 }
 function webBootstrap(nonce) {
+  // Opaque game frames cannot use service workers. Hide the unsupported
+  // capability without invoking its throwing getter (Godot probes it at boot).
+  try {
+    for(let owner=navigator;owner;owner=Object.getPrototypeOf(owner)){
+      if(Object.hasOwn(owner,'serviceWorker')){delete owner.serviceWorker;break;}
+    }
+  } catch { /* Some engines expose a non-configurable navigator property. */ }
   addEventListener('message', event => {
     if (event.source !== parent || event.data?.type !== 'offline-game' || !event.ports[0]) return;
     const port = event.ports[0];

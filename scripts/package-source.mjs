@@ -38,4 +38,4 @@ await mkdir(output, { recursive: true });
 await writeFile(join(output, 'GAME-PORTAL-SOURCE.zip'), zip);
 await writeFile(join(output, 'source-manifest.json'), manifest);
 await writeFile(join(output, 'SHA256SUMS.txt'), hash(zip) + '  GAME-PORTAL-SOURCE.zip\n');
-console.log(`Source package v${pkg.version}: ${entries.length} source files, ${zip.length} bytes. No games, caches or credentials included.`);
+console.log(`Source package v${pkg.version}: ${entries.length} source files, ${zip.length} bytes. No user games, caches or credentials included.`);
