@@ -84,3 +84,10 @@ test('native bridge accepts only bounded file-page capabilities; absent helper c
   await assert.rejects(launchNative(null,'id',{},'0.19.0'),/GAME-PORTAL-WINDOWS/);
   assert.equal(canUpdateGame({kind:'exe',path:'game-abc/game.exe'}),false);
 });
+
+
+test('native entry selection excludes both launcher editions while retaining actual games',()=>{
+ assert.equal(nativeLayout(['GAME-PORTAL.exe','GAME-PORTAL-PLAY.exe','GAME-PORTAL-WINDOWS.exe']),null);
+ assert.equal(nativeLayout(['GAME-PORTAL.exe','game.exe']).entry,'game.exe');
+ assert.equal(nativeLayout(['GAME-PORTAL-PLAY.exe','GAME-PORTAL-ADVENTURE.exe']).entry,'GAME-PORTAL-ADVENTURE.exe');
+});

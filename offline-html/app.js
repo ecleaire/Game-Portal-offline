@@ -566,7 +566,9 @@ $('#retryGameViews').onclick=()=>{viewsLibrary=null;void render().catch(viewPref
 async function changeGameView(game,change,id=localLibrary){
  if(id!==localLibrary||!id||!game?.id)return;
  const noticeRevision=viewPreferenceNoticeRevision;
- const value=await localState.updateGameView(id,game.id,change);if(localLibrary!==id)return;
+ // A finished write (or its error) belongs to the folder that started it.
+ let value;try{value=await localState.updateGameView(id,game.id,change);}catch(error){if(localLibrary!==id)return;throw error;}
+ if(localLibrary!==id)return;
  gameViews.set(game.id,value);if(viewPreferencesReady&&noticeRevision===viewPreferenceNoticeRevision)$('#viewPreferenceNotice').hidden=true;await render();
 }
 function updateFavoriteButton(button,game){const selected=gameViews.get(game.id)?.favorite===true;button.textContent=selected?'★ お気に入り':'☆ お気に入り';button.setAttribute('aria-pressed',String(selected));button.setAttribute('aria-label',game.title+(selected?'のお気に入りを解除':'をお気に入りに追加'));button.disabled=busy||!viewPreferencesReady||!localLibrary||!game.id||button.dataset.saving==='true'||favoriteWrites.has(localLibrary+':'+game.id);}

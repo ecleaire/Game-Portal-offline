@@ -53,3 +53,11 @@ test('repeated folder scans reuse deterministic IDs and retry failed hashes',asy
  await assert.rejects(gameId('retry-hash.html'),/Temporary/);fail=false;assert.equal((await gameId('retry-hash.html')).length,32);assert.equal(calls,3);
  assert.notEqual(await gameId('ガ.html'),await gameId('カ\u3099.html'));
 });
+
+
+test('descending sorting preserves source order for distinct Unicode paths with equal collation',async()=>{
+ const games=['ガ.html','カ\u3099.html','Ｇ.html','G.html'].map(path=>({path,title:'同じタイトル',tags:[],updatedAt:''}));
+ for(const sort of ['name-asc','name-desc','updated']){
+  const options={sort};assert.deepEqual(searchGames(games,options),reference(games,options));assert.deepEqual(await searchGamesAsync(games,options),reference(games,options));
+ }
+});

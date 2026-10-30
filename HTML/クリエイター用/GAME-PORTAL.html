@@ -170,7 +170,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 
 .filter-context{align-self:center;font-size:.9rem;color:var(--muted);padding:4px 8px}html[data-edition="player"] .player-secondary-actions{display:none!important}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.25.0</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.25.1</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><details id="operationErrorDetail" class="settings-detail" hidden><summary>エラーの詳細</summary><p id="operationErrorText" class="hint game-text"></p></details><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -611,7 +611,7 @@ function creatorScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope,creatorScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.25.0';
+const LAUNCHER_VERSION = '0.25.1';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -779,8 +779,10 @@ async function describeContentStorage(root,ownerName,tools){
 
 return {canUpdateGame,resolveGameContent,replaceGameContent,restoreGameContent,verifyContentUpdate,inspectGameContent,describeContentStorage};})();
 const nativeTools=(()=>{function nativeError(message,name){const error=new DOMException(message,name);error.userMessage=message;return error;}
+// Reserve only distribution entry names; similarly named games remain visible.
+function isLauncherEntry(name){return /^GAME-PORTAL(?:(?:-PLAY)?\.(?:html|exe)|-WINDOWS\.exe|(?:-PLAY)?-(?:MAC|MOJAVE)\.app)$/i.test(name);}
 function nativeLayout(paths) {
-  const exes=paths.filter(path=>/\.exe$/i.test(path)&&!path.split('/').some(p=>p.startsWith('.')||p==='__MACOSX')&&!/(?:^|\/)GAME-PORTAL-WINDOWS\.exe$/i.test(path));
+  const exes=paths.filter(path=>/\.exe$/i.test(path)&&!path.split('/').some(p=>p.startsWith('.')||p==='__MACOSX')&&!isLauncherEntry(path.split('/').at(-1)));
   const main=exes.filter(path=>!(/\.console\.exe$/i.test(path)&&exes.some(other=>other.toLowerCase()===path.replace(/\.console\.exe$/i,'.exe').toLowerCase()))&&!(exes.length>1&&/(?:^|\/)UnityCrashHandler(?:32|64)?\.exe$/i.test(path)));
   if(!main.length)return null;
   if(main.length!==1)throw new Error('起動するEXEが複数あります。1つのゲームのEXEと素材をまとめたフォルダーを選んでください。');
@@ -863,10 +865,10 @@ async function nativeFolder(connection,version,signal,{onPendingChange}={}) {
   return root;
 }
 
-return {nativeLayout,validateExe,nativeConnection,nativePageConnection,launchNative,nativeFolder};})();
+return {isLauncherEntry,nativeLayout,validateExe,nativeConnection,nativePageConnection,launchNative,nativeFolder};})();
 const library=(()=>{const {checkCompatibility,ensureCompatibility}=compatibilityTools;
 const {resolveGameContent}=updateTools;
-const {nativeLayout,validateExe}=nativeTools;
+const {nativeLayout,validateExe,isLauncherEntry}=nativeTools;
 const {readWithSignal}=readTasks;
 const MAX_FILES = 500, MAX_BYTES = 200 * 1024 * 1024;
 // These belong to launcher metadata, not the game's resource tree. A failed
@@ -1102,14 +1104,14 @@ async function scan(root, metadata, {signal,onProgress} = {}) {
   async function walk(folder, prefix = '', depth = 0) {
     signal?.throwIfAborted();
     try { await read(()=>folder.getFileHandle('.gameportal-uploading')); return; } catch (error) { if (error.name !== 'NotFoundError') throw error; }
-    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX') entries.push(entry);progress(); }
+    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX' && !isLauncherEntry(entry.name)) entries.push(entry);progress(); }
     const html = entries.filter(e => e.kind === 'file' && /\.html?$/i.test(e.name));
     let native=null;try{native=nativeLayout(entries.filter(e=>e.kind==='file').map(e=>e.name));}catch{}
     const entry = native ? entries.find(e=>e.name===native.entry) : html.find(e => /^index\.html?$/i.test(e.name)) || (html.length === 1 ? html[0] : null);
     if (depth > 0 && entry) { candidates.push([prefix + entry.name, folder.name, native?'exe':'html', entry, folder, entry.name]); return; }
     for (const file of entries.filter(e => e.kind === 'file')) {
       const ext = file.name.split('.').at(-1).toLowerCase();
-      if (['html', 'htm', 'zip', 'pyxapp','exe'].includes(ext) && !/^GAME-PORTAL(?:-WINDOWS\.exe|\.html)$/i.test(file.name)) candidates.push([prefix + file.name, file.name.replace(/\.[^.]+$/, ''), ext === 'htm' ? 'html' : ext, file, folder, file.name]);
+      if (['html', 'htm', 'zip', 'pyxapp','exe'].includes(ext)) candidates.push([prefix + file.name, file.name.replace(/\.[^.]+$/, ''), ext === 'htm' ? 'html' : ext, file, folder, file.name]);
     }
     if (depth < 8) for (const dir of entries.filter(e => e.kind === 'directory')) await walk(dir, prefix + dir.name + '/', depth + 1);
   }
@@ -1317,6 +1319,7 @@ async function applyInformationImport(root,plan,indexes,library,{signal,onProgre
 
 return {INFORMATION_LIMIT,parseInformationArchive,createInformationArchive,informationFilename,planInformationImport,applyInformationImport};})();
 const maintenance=(()=>{const {canUpdateGame,inspectGameContent}=updateTools;
+const {isLauncherEntry}=nativeTools;
 // Read-only maintenance. No game code is executed and no external URLs fetched.
 function localResources(html, entry) {
   const refs = new Set();
@@ -1355,7 +1358,7 @@ async function inspectLibrary(root, library, preview) {
         add('upload', prefix + '.gameportal-uploading', '投稿途中のマーカーが残っています。この作品は一覧に表示されません。', '投稿中でないことと元のゲームを確認してから再投稿してください。'); return;
       }
       for (const entry of entries) {
-        if (entry.name.startsWith('.') || entry.name === '__MACOSX') continue;
+        if (entry.name.startsWith('.') || entry.name === '__MACOSX' || isLauncherEntry(entry.name) || isLauncherEntry(entry.name.replace(/\.gameportal\.json$/i,''))) continue;
         const path = prefix + entry.name;
         try { library.safePath(path); } catch(error) { add('unreadable', path, error.message, 'ファイル名を確認してください。'); continue; }
         if (entry.kind === 'directory') { await walk(entry, path + '/', depth + 1); if (visited > 10000) return; }
@@ -1370,6 +1373,7 @@ async function inspectLibrary(root, library, preview) {
   try { metadata = await library.loadMetadata(root); }
   catch(error) { add('config', '.gameportal/library.json', error.message, '旧管理情報のバックアップを確認してください。'); }
   for (const path of Object.keys(metadata.games)) {
+    if(isLauncherEntry(path.split('/').at(-1)))continue;
     try { library.safePath(path); if (!files.has(path)) add('missing', path, '旧管理情報にあるゲームファイルが見つかりません。', '移動・改名した作品やバックアップを確認してください。'); }
     catch(error) { add('config', '.gameportal/library.json', error.message, '旧管理情報の作品パスを確認してください。'); }
   }
@@ -1657,8 +1661,8 @@ function catalogueFor(games,records){
 const timeFor=record=>record.time??(record.time=Date.parse(record.updatedAt)||0);
 const byTitle=(a,b)=>collator.compare(a.title,b.title)||collator.compare(a.path,b.path);
 function ordered(index,sort){
- const key=sort==='updated'?'updated':'name';
- if(!index.orders.has(key)){const compare=key==='updated'?(a,b)=>timeFor(b)-timeFor(a)||byTitle(a,b):byTitle;const alreadySorted=index.records.every((record,i)=>!i||compare(index.records[i-1],record)<=0);index.orders.set(key,alreadySorted?index.records:[...index.records].sort(compare));}
+ const key=sort==='updated'?'updated':sort==='name-desc'?'name-desc':'name';
+ if(!index.orders.has(key)){const compare=key==='updated'?(a,b)=>timeFor(b)-timeFor(a)||byTitle(a,b):key==='name-desc'?(a,b)=>-byTitle(a,b):byTitle;const alreadySorted=index.records.every((record,i)=>!i||compare(index.records[i-1],record)<=0);index.orders.set(key,alreadySorted?index.records:[...index.records].sort(compare));}
  return index.orders.get(key);
 }
 function optionsFor(options){
@@ -1680,8 +1684,8 @@ function matches(record,options){
 }
 function searchGames(games,options={}){
  const query=optionsFor(options),index=catalogueFor(games,games.map(recordFor)),result=[];
- const records=ordered(index,query.sort),reverse=query.sort==='name-desc';
- for(let i=0;i<records.length;i++){const record=records[reverse?records.length-1-i:i];if(matches(record,query))result.push(record.game);}
+ const records=ordered(index,query.sort);
+ for(let i=0;i<records.length;i++){const record=records[i];if(matches(record,query))result.push(record.game);}
  return result;
 }
 // Yield during large/cold searches instead of blocking typing, List or Reload.
@@ -1695,8 +1699,8 @@ async function searchGamesAsync(games,options={}, {signal}={}){
   if((i&31)===31&&performance.now()>=deadline){await new Promise(resolve=>setTimeout(resolve,0));signal?.throwIfAborted();deadline=performance.now()+8;}
  }
  for(let i=0;i<games.length;i++){records.push(recordFor(games[i]));if((i&31)===31)await checkpoint(i);}
- const index=catalogueFor(games,records),sorted=ordered(index,query.sort),result=[],reverse=query.sort==='name-desc';
- for(let i=0;i<sorted.length;i++){const record=sorted[reverse?sorted.length-1-i:i];if(matches(record,query))result.push(record.game);if((i&31)===31)await checkpoint(i);}
+ const index=catalogueFor(games,records),sorted=ordered(index,query.sort),result=[];
+ for(let i=0;i<sorted.length;i++){const record=sorted[i];if(matches(record,query))result.push(record.game);if((i&31)===31)await checkpoint(i);}
  signal?.throwIfAborted();return result;
 }
 
@@ -2868,7 +2872,9 @@ $('#retryGameViews').onclick=()=>{viewsLibrary=null;void render().catch(viewPref
 async function changeGameView(game,change,id=localLibrary){
  if(id!==localLibrary||!id||!game?.id)return;
  const noticeRevision=viewPreferenceNoticeRevision;
- const value=await localState.updateGameView(id,game.id,change);if(localLibrary!==id)return;
+ // A finished write (or its error) belongs to the folder that started it.
+ let value;try{value=await localState.updateGameView(id,game.id,change);}catch(error){if(localLibrary!==id)return;throw error;}
+ if(localLibrary!==id)return;
  gameViews.set(game.id,value);if(viewPreferencesReady&&noticeRevision===viewPreferenceNoticeRevision)$('#viewPreferenceNotice').hidden=true;await render();
 }
 function updateFavoriteButton(button,game){const selected=gameViews.get(game.id)?.favorite===true;button.textContent=selected?'★ お気に入り':'☆ お気に入り';button.setAttribute('aria-pressed',String(selected));button.setAttribute('aria-label',game.title+(selected?'のお気に入りを解除':'をお気に入りに追加'));button.disabled=busy||!viewPreferencesReady||!localLibrary||!game.id||button.dataset.saving==='true'||favoriteWrites.has(localLibrary+':'+game.id);}

@@ -17,8 +17,8 @@ function catalogueFor(games,records){
 const timeFor=record=>record.time??(record.time=Date.parse(record.updatedAt)||0);
 const byTitle=(a,b)=>collator.compare(a.title,b.title)||collator.compare(a.path,b.path);
 function ordered(index,sort){
- const key=sort==='updated'?'updated':'name';
- if(!index.orders.has(key)){const compare=key==='updated'?(a,b)=>timeFor(b)-timeFor(a)||byTitle(a,b):byTitle;const alreadySorted=index.records.every((record,i)=>!i||compare(index.records[i-1],record)<=0);index.orders.set(key,alreadySorted?index.records:[...index.records].sort(compare));}
+ const key=sort==='updated'?'updated':sort==='name-desc'?'name-desc':'name';
+ if(!index.orders.has(key)){const compare=key==='updated'?(a,b)=>timeFor(b)-timeFor(a)||byTitle(a,b):key==='name-desc'?(a,b)=>-byTitle(a,b):byTitle;const alreadySorted=index.records.every((record,i)=>!i||compare(index.records[i-1],record)<=0);index.orders.set(key,alreadySorted?index.records:[...index.records].sort(compare));}
  return index.orders.get(key);
 }
 function optionsFor(options){
@@ -40,8 +40,8 @@ function matches(record,options){
 }
 export function searchGames(games,options={}){
  const query=optionsFor(options),index=catalogueFor(games,games.map(recordFor)),result=[];
- const records=ordered(index,query.sort),reverse=query.sort==='name-desc';
- for(let i=0;i<records.length;i++){const record=records[reverse?records.length-1-i:i];if(matches(record,query))result.push(record.game);}
+ const records=ordered(index,query.sort);
+ for(let i=0;i<records.length;i++){const record=records[i];if(matches(record,query))result.push(record.game);}
  return result;
 }
 // Yield during large/cold searches instead of blocking typing, List or Reload.
@@ -55,7 +55,7 @@ export async function searchGamesAsync(games,options={}, {signal}={}){
   if((i&31)===31&&performance.now()>=deadline){await new Promise(resolve=>setTimeout(resolve,0));signal?.throwIfAborted();deadline=performance.now()+8;}
  }
  for(let i=0;i<games.length;i++){records.push(recordFor(games[i]));if((i&31)===31)await checkpoint(i);}
- const index=catalogueFor(games,records),sorted=ordered(index,query.sort),result=[],reverse=query.sort==='name-desc';
- for(let i=0;i<sorted.length;i++){const record=sorted[reverse?sorted.length-1-i:i];if(matches(record,query))result.push(record.game);if((i&31)===31)await checkpoint(i);}
+ const index=catalogueFor(games,records),sorted=ordered(index,query.sort),result=[];
+ for(let i=0;i<sorted.length;i++){const record=sorted[i];if(matches(record,query))result.push(record.game);if((i&31)===31)await checkpoint(i);}
  signal?.throwIfAborted();return result;
 }

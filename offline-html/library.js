@@ -1,6 +1,6 @@
 import { checkCompatibility, ensureCompatibility } from './compatibility.js';
 import { resolveGameContent } from './updates.js';
-import {nativeLayout,validateExe} from './native-tools.js';
+import {nativeLayout,validateExe,isLauncherEntry} from './native-tools.js';
 import {readWithSignal} from './read-task.js';
 const MAX_FILES = 500, MAX_BYTES = 200 * 1024 * 1024;
 // These belong to launcher metadata, not the game's resource tree. A failed
@@ -236,14 +236,14 @@ export async function scan(root, metadata, {signal,onProgress} = {}) {
   async function walk(folder, prefix = '', depth = 0) {
     signal?.throwIfAborted();
     try { await read(()=>folder.getFileHandle('.gameportal-uploading')); return; } catch (error) { if (error.name !== 'NotFoundError') throw error; }
-    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX') entries.push(entry);progress(); }
+    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX' && !isLauncherEntry(entry.name)) entries.push(entry);progress(); }
     const html = entries.filter(e => e.kind === 'file' && /\.html?$/i.test(e.name));
     let native=null;try{native=nativeLayout(entries.filter(e=>e.kind==='file').map(e=>e.name));}catch{}
     const entry = native ? entries.find(e=>e.name===native.entry) : html.find(e => /^index\.html?$/i.test(e.name)) || (html.length === 1 ? html[0] : null);
     if (depth > 0 && entry) { candidates.push([prefix + entry.name, folder.name, native?'exe':'html', entry, folder, entry.name]); return; }
     for (const file of entries.filter(e => e.kind === 'file')) {
       const ext = file.name.split('.').at(-1).toLowerCase();
-      if (['html', 'htm', 'zip', 'pyxapp','exe'].includes(ext) && !/^GAME-PORTAL(?:-WINDOWS\.exe|\.html)$/i.test(file.name)) candidates.push([prefix + file.name, file.name.replace(/\.[^.]+$/, ''), ext === 'htm' ? 'html' : ext, file, folder, file.name]);
+      if (['html', 'htm', 'zip', 'pyxapp','exe'].includes(ext)) candidates.push([prefix + file.name, file.name.replace(/\.[^.]+$/, ''), ext === 'htm' ? 'html' : ext, file, folder, file.name]);
     }
     if (depth < 8) for (const dir of entries.filter(e => e.kind === 'directory')) await walk(dir, prefix + dir.name + '/', depth + 1);
   }

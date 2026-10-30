@@ -1,6 +1,8 @@
 function nativeError(message,name){const error=new DOMException(message,name);error.userMessage=message;return error;}
+// Reserve only distribution entry names; similarly named games remain visible.
+export function isLauncherEntry(name){return /^GAME-PORTAL(?:(?:-PLAY)?\.(?:html|exe)|-WINDOWS\.exe|(?:-PLAY)?-(?:MAC|MOJAVE)\.app)$/i.test(name);}
 export function nativeLayout(paths) {
-  const exes=paths.filter(path=>/\.exe$/i.test(path)&&!path.split('/').some(p=>p.startsWith('.')||p==='__MACOSX')&&!/(?:^|\/)GAME-PORTAL-WINDOWS\.exe$/i.test(path));
+  const exes=paths.filter(path=>/\.exe$/i.test(path)&&!path.split('/').some(p=>p.startsWith('.')||p==='__MACOSX')&&!isLauncherEntry(path.split('/').at(-1)));
   const main=exes.filter(path=>!(/\.console\.exe$/i.test(path)&&exes.some(other=>other.toLowerCase()===path.replace(/\.console\.exe$/i,'.exe').toLowerCase()))&&!(exes.length>1&&/(?:^|\/)UnityCrashHandler(?:32|64)?\.exe$/i.test(path)));
   if(!main.length)return null;
   if(main.length!==1)throw new Error('起動するEXEが複数あります。1つのゲームのEXEと素材をまとめたフォルダーを選んでください。');

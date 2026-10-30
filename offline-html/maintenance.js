@@ -1,4 +1,5 @@
 import { canUpdateGame,inspectGameContent } from './updates.js';
+import {isLauncherEntry} from './native-tools.js';
 // Read-only maintenance. No game code is executed and no external URLs fetched.
 export function localResources(html, entry) {
   const refs = new Set();
@@ -37,7 +38,7 @@ export async function inspectLibrary(root, library, preview) {
         add('upload', prefix + '.gameportal-uploading', '投稿途中のマーカーが残っています。この作品は一覧に表示されません。', '投稿中でないことと元のゲームを確認してから再投稿してください。'); return;
       }
       for (const entry of entries) {
-        if (entry.name.startsWith('.') || entry.name === '__MACOSX') continue;
+        if (entry.name.startsWith('.') || entry.name === '__MACOSX' || isLauncherEntry(entry.name) || isLauncherEntry(entry.name.replace(/\.gameportal\.json$/i,''))) continue;
         const path = prefix + entry.name;
         try { library.safePath(path); } catch(error) { add('unreadable', path, error.message, 'ファイル名を確認してください。'); continue; }
         if (entry.kind === 'directory') { await walk(entry, path + '/', depth + 1); if (visited > 10000) return; }
@@ -52,6 +53,7 @@ export async function inspectLibrary(root, library, preview) {
   try { metadata = await library.loadMetadata(root); }
   catch(error) { add('config', '.gameportal/library.json', error.message, '旧管理情報のバックアップを確認してください。'); }
   for (const path of Object.keys(metadata.games)) {
+    if(isLauncherEntry(path.split('/').at(-1)))continue;
     try { library.safePath(path); if (!files.has(path)) add('missing', path, '旧管理情報にあるゲームファイルが見つかりません。', '移動・改名した作品やバックアップを確認してください。'); }
     catch(error) { add('config', '.gameportal/library.json', error.message, '旧管理情報の作品パスを確認してください。'); }
   }

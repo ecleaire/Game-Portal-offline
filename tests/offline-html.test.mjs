@@ -727,3 +727,24 @@ test('decomposed macOS role names still pair without rewriting actual paths',()=
  assert.equal(creatorScope(path),'/保存先/HTML/'+encodeURIComponent('クリエイター用')+'/GAME-PORTAL.html');
  assert.equal(legacyScope(path),'/保存先/GAME-PORTAL-PLAY.html');
 });
+
+
+test('scans exclude exact launcher files and app bundles before choosing folder entrypoints',async()=>{
+ const m=memoryFolder();
+ for(const name of ['GAME-PORTAL.html','GAME-PORTAL-PLAY.html','GAME-PORTAL.exe','GAME-PORTAL-PLAY.exe','GAME-PORTAL-WINDOWS.exe','GAME-PORTAL-ADVENTURE.html'])m.files.set(name,'fixture');
+ const nested=await m.root.getDirectoryHandle('player',{create:true});await library.writeFile(nested,'GAME-PORTAL-PLAY.html','launcher');
+ const mixed=await m.root.getDirectoryHandle('mixed',{create:true});await library.writeFile(mixed,'GAME-PORTAL.exe','launcher');await library.writeFile(mixed,'game.exe','game');
+ const app=await m.root.getDirectoryHandle('GAME-PORTAL-PLAY-MOJAVE.app',{create:true});await library.writeFile(app,'index.html','bundled launcher');
+ const before=[...m.files];const games=await scan(m.root,{games:{}});
+ assert.deepEqual(games.map(game=>game.path).sort(),['GAME-PORTAL-ADVENTURE.html','mixed/game.exe']);assert.deepEqual([...m.files],before);
+});
+
+
+test('library inspection does not read launcher programs, their sidecars or app resources',async()=>{
+ const launchers=['GAME-PORTAL.html','GAME-PORTAL-PLAY.html','GAME-PORTAL.exe','GAME-PORTAL-PLAY.exe','GAME-PORTAL-WINDOWS.exe'];
+ const m=memoryFolder({read:async name=>{if(launchers.includes(name))throw Error('Launcher must not be inspected');}});
+ await library.ensureLibraryId(m.root);for(const name of launchers){m.files.set(name,'launcher');m.files.set(name+'.gameportal.json','not game metadata');}m.files.set('actual.html','<h1>Game</h1>');
+ const app=await m.root.getDirectoryHandle('GAME-PORTAL-MAC.app',{create:true});await library.writeFile(app,'index.html','<img src="not-a-game-resource.png">');
+ const before=[...m.files],report=await inspectLibrary(m.root,library,preview);
+ assert.equal(report.checked,1);assert.equal(report.complete,true);assert.deepEqual(report.issues,[]);assert.deepEqual([...m.files],before);
+});
