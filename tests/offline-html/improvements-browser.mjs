@@ -59,7 +59,7 @@ try{
  // Simulated NAS disconnect: failed writes keep input and committed metadata.
  await openEditor();await page.locator('#editTitle').fill('Disconnected draft');
  await page.evaluate(()=>{window.originalWritable=FileSystemFileHandle.prototype.createWritable;FileSystemFileHandle.prototype.createWritable=function(...args){if(this.name==='game000.html.gameportal.json')throw new DOMException('Simulated NAS disconnected','NetworkError');return window.originalWritable.apply(this,args);};});
- await page.getByRole('button',{name:'保存',exact:true}).click();await expect(page.locator('#edit [data-dialog-status]')).toContainText('disconnected');await expect(page.locator('#edit')).toBeVisible();await expect(page.locator('#editTitle')).toHaveValue('Disconnected draft');
+ await page.getByRole('button',{name:'保存',exact:true}).click();await expect(page.locator('#edit [data-dialog-status]')).toContainText('通信に失敗');await expect(page.locator('#operationErrorText')).toContainText('CONNECTION_FAILED');await expect(page.locator('#operationErrorText')).toContainText('Simulated NAS disconnected');await expect(page.locator('#edit')).toBeVisible();await expect(page.locator('#editTitle')).toHaveValue('Disconnected draft');
  assert.equal(await page.evaluate(async()=>JSON.parse(await(await(await window.testRoot.getFileHandle('game000.html.gameportal.json')).getFile()).text()).title),'Game 000');
  await page.evaluate(()=>{FileSystemFileHandle.prototype.createWritable=window.originalWritable;});await page.locator('#editTitle').fill('Game 000');
  // Save succeeds, following scan fails: report committed success separately.
