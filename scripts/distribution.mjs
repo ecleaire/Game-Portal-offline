@@ -10,7 +10,8 @@ export const distributionFiles=[
  ...['GAME-PORTAL-WINDOWS.exe','README-WINDOWS.txt'].map(source=>({group:'helper',source,targets:roles.map(role=>'HTML/'+role+'/起動補助/_runtime/'+source)})),
  ...['MAC','MOJAVE'].flatMap(suffix=>[
   ...roles.map((role,index)=>({group:suffix.toLowerCase(),source:(index?'GAME-PORTAL-':'GAME-PORTAL-PLAY-')+suffix+'.app',targets:['Mac/'+role+'/'+(index?'GAME-PORTAL-':'GAME-PORTAL-PLAY-')+suffix+'.app']})),
-  {group:suffix.toLowerCase(),source:'GAME-PORTAL-'+suffix,targets:roles.map(role=>'HTML/'+role+'/起動補助/_runtime/GAME-PORTAL-'+suffix)}
+  {group:suffix.toLowerCase(),source:'GAME-PORTAL-'+suffix,targets:roles.map(role=>'HTML/'+role+'/起動補助/_runtime/GAME-PORTAL-'+suffix)},
+  {group:suffix.toLowerCase(),source:'offline-release/Swift-'+suffix,targets:roles.map(role=>'HTML/'+role+'/起動補助/_runtime/Swift-'+suffix)}
  ]),
  {group:'html',source:'THIRD-PARTY-LICENSES.txt',targets:['Windows','Mac','HTML'].flatMap(platform=>roles.map(role=>platform+'/'+role+'/_内部ファイル/THIRD-PARTY-LICENSES.txt'))}
 ];

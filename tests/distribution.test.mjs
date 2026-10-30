@@ -9,7 +9,7 @@ test('platform packages preserve their roles, hydrate build inputs and detect st
  const root=await mkdtemp(join(tmpdir(),'portal-distribution-test-'));
  const owned=path=>{const full=resolve(root,path);assert(full.startsWith(resolve(root)+'/')||full.startsWith(resolve(root)+'\\'));return full;};
  try{
-  for(const file of distributionFiles){const path=owned(file.source);if(file.source.endsWith('.app')){await mkdir(join(path,'Contents/MacOS'),{recursive:true});await writeFile(join(path,'Contents/MacOS/test'),'signed fixture '+file.source);}else await writeFile(path,'fixture '+file.source);}
+  for(const file of distributionFiles){const path=owned(file.source);if(file.source.endsWith('.app')||file.source.startsWith('offline-release/Swift-')){await mkdir(join(path,'Contents/MacOS'),{recursive:true});await writeFile(join(path,'Contents/MacOS/test'),'signed fixture '+file.source);}else await writeFile(path,'fixture '+file.source);}
   await writeFile(join(root,'GAME-PORTAL-CONNECTION.json'),'private connection');
   for(const group of new Set(distributionFiles.map(file=>file.group)))await publishDistribution(group,root);
   await verifyPublishedDistribution(root);

@@ -1,3 +1,4 @@
+import {verifySwiftRuntimeFiles} from './macos/swift-runtime.mjs';
 import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {inflateRawSync} from 'node:zlib';
@@ -25,9 +26,11 @@ export function verifyCodeZip(bytes){
 }
 if(process.argv[1]?.endsWith('verify-code-zip.mjs')){
  const bytes=await readFile(process.argv[2]),files=verifyCodeZip(bytes);
- await verifyMacEngineFiles(async(name,max)=>{
+ const read=async(name,max)=>{
   const file=files.get(name);assert(file,'Missing Mac engine file: '+name);assert(file.size<=max,'Oversized Mac engine file');
   assert.equal(bytes.readUInt32LE(file.offset),0x04034b50);const start=file.offset+30+bytes.readUInt16LE(file.offset+26)+bytes.readUInt16LE(file.offset+28);assert(start+file.packed<=bytes.length);assert([0,8].includes(file.method));
   const data=bytes.subarray(start,start+file.packed),output=file.method===0?data:inflateRawSync(data,{maxOutputLength:max});assert.equal(output.length,file.size);return output;
- },async name=>files.has(name));
+ };
+ await verifyMacEngineFiles(read,async name=>files.has(name));
+ for(const [role,basename]of[['プレイ用','GAME-PORTAL-PLAY'],['クリエイター用','GAME-PORTAL']])for(const suffix of ['MAC','MOJAVE']){await verifySwiftRuntimeFiles(read,'Mac/'+role+'/'+basename+'-'+suffix+'.app/Contents/Frameworks');await verifySwiftRuntimeFiles(read,'HTML/'+role+'/起動補助/_runtime/Swift-'+suffix);}
 }

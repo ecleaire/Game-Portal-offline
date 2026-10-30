@@ -1,3 +1,4 @@
+import {MAC_TARGETS} from '../scripts/mac-system.mjs';
 // Exercise the actual Mac listener independently of CEF or an Internet service.
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
@@ -28,7 +29,7 @@ import Darwin
  }
 }
 `);
- execFileSync('xcrun',['swiftc','-parse-as-library','-swift-version','5','-O','-target',process.arch==='arm64'?'arm64-apple-macosx11.0':'x86_64-apple-macosx10.14.6',resolve('scripts/macos/desktop-network.swift'),resolve('scripts/macos/desktop-instance.swift'),entry,'-o',binary],{timeout:120000,stdio:'pipe'});
+ execFileSync('xcrun',['swiftc','-parse-as-library','-swift-version','5','-O','-target',(process.arch==='arm64'?'arm64':'x86_64')+'-apple-macosx'+MAC_TARGETS[process.arch==='arm64'?'arm64':'x86_64'],resolve('scripts/macos/desktop-network.swift'),resolve('scripts/macos/desktop-instance.swift'),entry,'-o',binary],{timeout:120000,stdio:'pipe'});
  function launch(port,lease){
   const child=spawn(binary,[String(port),...(lease?[lease]:[])],{stdio:['pipe','pipe','pipe']});children.add(child);
   let output='',errors='';child.stdout.on('data',data=>output+=data);child.stderr.on('data',data=>errors+=data);

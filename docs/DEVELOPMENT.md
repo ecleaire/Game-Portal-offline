@@ -1,6 +1,6 @@
 # 開発・配布の手順
 
-使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.25.1.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。配布ZIPから開発コード・テスト・Git用設定を除外しています。開発するときは `git clone https://github.com/ecleaire/Game-Portal-offline.git` で取得してください。以下はソースを変更する人向けの手順です。
+使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.25.2.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。配布ZIPから開発コード・テスト・Git用設定を除外しています。開発するときは `git clone https://github.com/ecleaire/Game-Portal-offline.git` で取得してください。以下はソースを変更する人向けの手順です。
 
 ## 準備・検証
 
@@ -36,7 +36,7 @@ node tests/mac-desktop.mjs
 npm run test:native-folder
 ```
 
-Intel・Appleシリコン共通のバイナリーを生成します。最低対応OSはIntelがmacOS 10.14.6、AppleシリコンがmacOS 11です。ビルド先とアプリ情報はscripts/mac-system.mjsでそろえ、Mach-OとInfo.plistの両方を検査します。Windowsでフォルダー自動接続を検証するときも `npm run test:native-folder` を実行してください。
+Intel・Appleシリコン共通のバイナリーを生成します。最低対応OSはIntelがmacOS 10.14、AppleシリコンがmacOS 11です。ビルド先とアプリ情報はscripts/mac-system.mjsでそろえ、Mach-OとInfo.plistの両方を検査します。Windowsでフォルダー自動接続を検証するときも `npm run test:native-folder` を実行してください。
 
 Intel Mac用 `.app` はIntel Mac上で `node scripts/build-mojave.mjs` を実行して生成します。`node scripts/verify-mojave.mjs` でIntel・macOS 10.14の最低条件、内蔵HTML・ライセンス・ソースのハッシュを照合します。macOS上のCIではアプリの署名検査、実Firefox ESR 115と公式Chrome for Testing 116でのゲーム起動・セーブ保持・再読み込み・接続復旧も検証します。テスト用ブラウザーの取得は `node scripts/prepare-mojave-test.mjs`、Firefox ESR検証は `node tests/mojave-esr-browser.mjs`、フォルダー接続検証は `node tests/native-folder-browser.mjs` です。Chrome for Testingは公式の署名なしテスト用ビルドを固定ハッシュで照合し、配布物には含めません。
 

@@ -6,4 +6,4 @@ for(const name of ['GAME-PORTAL-MAC','GAME-PORTAL-PLAY-MAC']){
  if(!info.includes('<key>LSMinimumSystemVersion</key><string>'+MAC_MINIMUM+'</string>'))throw Error('Mac app must allow macOS '+MAC_MINIMUM+': '+name);
  verifyMacMinimum(await readFile(base+'MacOS/GAME-PORTAL-MAC'));
 }
-console.log('Mac minimum OS verified: both apps Intel 10.14.6 / Apple silicon 11; actual Mach-O and Finder metadata.');
+console.log('Mac minimum OS verified: both apps Intel 10.14 / Apple silicon 11; actual Mach-O and Finder metadata.');

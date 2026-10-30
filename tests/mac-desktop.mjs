@@ -63,7 +63,7 @@ stopPlayer();
 const selectedRoot=root;await localState.forgetHandle();check(await desktopHost.current()===null,'forgotten folder suppresses shared default');check(root===selectedRoot,'forget preserves current connection');await localState.cacheHandle(selectedRoot);check(!!(await desktopHost.current()),'explicit selection resumes remembering');
 return {edition:launcherEdition,cycle:${cycle},library,version:document.getElementById('appVersion').textContent};`;
    // Tests execute the actual bundled Chromium application on macOS CI.
-   // This does not claim physical macOS 10.14.6 testing.
+   // This does not claim physical macOS 10.14 testing.
    await writeFile(script,body);let logs='';nativeOutput='';processHandle=spawn(executable,['--test-mode','--profile',join(root,'profile-'+edition),'--test-script',script,'--result-file',result],{detached:true,stdio:['ignore','pipe','pipe']});processHandle.stdout.on('data',data=>{logs+=data;nativeOutput+=data;});processHandle.stderr.on('data',data=>{logs+=data;nativeOutput+=data;});
    let value;for(let count=0;count<900;count++){value=await readFile(result,'utf8').then(JSON.parse).catch(()=>null);if(value)break;if(processHandle.exitCode!==null||processHandle.signalCode!==null)break;await delay(100);}
    if(!value){console.error('Native application exit:',processHandle.exitCode,processHandle.signalCode);await delay(1500);const reports=join(homedir(),'Library/Logs/DiagnosticReports');for(const name of (await readdir(reports).catch(()=>[])).filter(name=>/^GAME-PORTAL.*\.(ips|crash)$/.test(name))){const file=join(reports,name),info=await stat(file);if(Date.now()-info.mtimeMs<600000&&info.size<2*1024*1024)console.error('Native crash report:',name,(await readFile(file,'utf8')).slice(0,16000));}}

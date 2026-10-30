@@ -10,7 +10,7 @@ if(!((process.platform==='darwin'&&['modern','legacy'].includes(kind))||(process
 const root=resolve(import.meta.dirname,'..'),version=JSON.parse(await readFile(join(root,'package.json'),'utf8')).version;
 const git=(args,options={})=>execFileSync('git',args,{cwd:root,encoding:'utf8',...options}).trim();
 const source=git(['rev-parse','HEAD']);if(source!==process.env.GITHUB_SHA)throw Error('Build source differs from the workflow revision.');
-const roles=['プレイ用','クリエイター用'],paths=kind==='windows'?['Windows',...roles.flatMap(role=>['GAME-PORTAL-WINDOWS.exe','README-WINDOWS.txt'].map(name=>'HTML/'+role+'/起動補助/_runtime/'+name))]:kind==='modern'?['Mac',...roles.map(role=>'HTML/'+role+'/起動補助/_runtime/GAME-PORTAL-MAC')]:roles.map(role=>'HTML/'+role+'/起動補助/_runtime/GAME-PORTAL-MOJAVE');
+const roles=['プレイ用','クリエイター用'],paths=kind==='windows'?['Windows',...roles.flatMap(role=>['GAME-PORTAL-WINDOWS.exe','README-WINDOWS.txt'].map(name=>'HTML/'+role+'/起動補助/_runtime/'+name))]:kind==='modern'?['Mac',...roles.flatMap(role=>['GAME-PORTAL-MAC','Swift-MAC'].map(name=>'HTML/'+role+'/起動補助/_runtime/'+name))]:roles.flatMap(role=>['GAME-PORTAL-MOJAVE','Swift-MOJAVE'].map(name=>'HTML/'+role+'/起動補助/_runtime/'+name));
 if(kind==='modern')for(const role of roles)for(const family of ['MAC','MOJAVE']){
  const name=(role==='プレイ用'?'GAME-PORTAL-PLAY-':'GAME-PORTAL-')+family+'.app';
  const manifest=JSON.parse(await readFile(join(root,'Mac',role,name,'Contents/Resources/build.json'),'utf8'));

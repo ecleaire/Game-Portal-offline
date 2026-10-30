@@ -1,7 +1,8 @@
+import {verifySwiftRuntimeFiles} from './macos/swift-runtime.mjs';
 import {materializeDistribution} from './distribution.mjs';
 await materializeDistribution();
 import {readFile} from 'node:fs/promises';
-import {MAC_MINIMUM,verifyMacMinimum} from './mac-system.mjs';
+import {MAC_MINIMUM,verifyMacMinimum,verifyMacImageMinimum} from './mac-system.mjs';
 import {macDesktopPage} from './macos/desktop-page.mjs';
 import {macDesktopManifest} from './build-mac-apps.mjs';
 const version=JSON.parse(await readFile('package.json','utf8')).version;
@@ -20,8 +21,12 @@ for(const edition of ['creator','player']){
   if(await readFile(base+'Resources/build.json','utf8')!==JSON.stringify(await macDesktopManifest(process.cwd(),version,edition))+'\n')throw Error('Mac standalone source manifest differs: '+name);
   if(!(await readFile(base+'Resources/THIRD-PARTY-LICENSES.txt')).equals(await readFile('THIRD-PARTY-LICENSES.txt')))throw Error('Mac app license differs: '+name);
   const binary=await readFile(base+'MacOS/GAME-PORTAL-'+suffix);
-  if(suffix==='MAC'){if(!info.includes('<key>LSMinimumSystemVersion</key><string>'+MAC_MINIMUM+'</string>'))throw Error('Mac app minimum OS differs: '+name);verifyMacMinimum(binary);}
+  if(!info.includes('<key>LSMinimumSystemVersion</key><string>'+MAC_MINIMUM+'</string>'))throw Error('Mac app minimum OS differs: '+name);
+  if(suffix==='MAC')verifyMacMinimum(binary);else verifyMacImageMinimum(binary);
+  await verifySwiftRuntimeFiles(async(path,max)=>{const bytes=await readFile(path);if(bytes.length>max)throw Error('Oversized Swift runtime');return bytes;},base+'Frameworks');
   if(binary.length<32||!binary.includes(Buffer.from(version)))throw Error('Mac app executable/version missing: '+name);
  }
 }
 console.log('Both editions verified: matching tested HTML, four Mac app roles/resources/versions/licenses.');
+
+for(const suffix of ['MAC','MOJAVE'])await verifySwiftRuntimeFiles(async(path,max)=>{const bytes=await readFile(path);if(bytes.length>max)throw Error('Oversized Swift runtime');return bytes;},'offline-release/Swift-'+suffix);

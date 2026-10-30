@@ -1,24 +1,22 @@
 # GAME PORTAL
 
-バージョン：**0.25.1**
+バージョン：**0.25.2**
 
 フォルダーに保存したゲームを、オフラインで探して遊ぶランチャーです。ゲームの追加、名前・サムネイル・タグなどの編集にも対応しています。アカウント登録は不要で、保存先にはPC内のフォルダーやNASを指定できます。
 
-v0.25.1では、ゲーム一覧と保存先切り替え時の不具合を修正しました。
+v0.25.2では、Intel Macの対応OSを **macOS 10.14以降**へ広げました。10.14.4でも開けるよう、アプリの起動条件を見直しています。Appleシリコンは引き続きmacOS 11以降です。
 
-- GAME PORTALの起動ファイルをゲームとして表示・点検しないようにしました。似た名前の通常のゲームは表示します。
-- 保存先を切り替えた後、前の保存先のお気に入り保存エラーが新しい画面へ出る問題を修正しました。
-- 同じ読み順と判定される名前がある場合も、降順の並びを安定させました。
+Mac版のプレイ用・クリエイター用と起動補助を更新しています。アプリや起動補助の内部ファイルは取り出さず、一式で使用してください。
 
 詳しくは[変更履歴](docs/CHANGELOG.md)をご覧ください。
 
 ## ダウンロードして使う
 
-**[v0.25.1のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.25.1.zip)**
+**[v0.25.2のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.25.2.zip)**
 
-展開すると **`Game-Portal-offline-0.25.1`** フォルダーになります。
+展開すると **`Game-Portal-offline-0.25.2`** フォルダーになります。
 
-GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.25.1`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
+GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.25.2`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
 
 **ゲーム本体はZIPに含まれていません。** 遊ぶゲームを保存したフォルダーを用意してください。
 
@@ -30,7 +28,7 @@ GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.25.1
 | 環境 | プレイ用 | クリエイター用 |
 | --- | --- | --- |
 | Windows 10 / 11（64bit） | `GAME-PORTAL-PLAY.exe` | `GAME-PORTAL.exe` |
-| Mac（Intel：10.14.6以降／Appleシリコン：11以降） | `GAME-PORTAL-PLAY-MAC.app` | `GAME-PORTAL-MAC.app` |
+| Mac（Intel：10.14以降／Appleシリコン：11以降） | `GAME-PORTAL-PLAY-MAC.app` | `GAME-PORTAL-MAC.app` |
 | HTML（Windows・MacのGoogle Chrome） | `GAME-PORTAL-PLAY.html` | `GAME-PORTAL.html` |
 
 Windows・Macアプリはベータ版です。Mac版はエンジンを同梱し、Chromeの別インストールは不要です。初回は起動の準備に時間がかかります。2回目以降は準備済みのデータを利用します。Intel向け互換版の `*-MOJAVE.app` については[Macの案内](docs/MAC.md)を確認してください。HTML版はGoogle Chromeで開き、保存先へのアクセスを許可します。
