@@ -208,7 +208,7 @@ $('#editForm').addEventListener('input',updateEditDirty);
 $('#editForm').addEventListener('change',updateEditDirty);
 try { editingEnabled = localStorage.getItem('game-portal.offline-editing') === 'true'; } catch { /* A new session starts read-only. */ }
 if(launcherEdition==='player')editingEnabled=false;
-let imageURLs = [], selectedTags = new Set(), renderRevision = 0;
+let imageURLs = [], selectedTags = new Set(), renderRevision = 0, renderReadAbort = null;
 let statusTimer;
 const transientStatuses=new Set(["ゲーム本体の更新を確認しました。情報・ID・セーブは保持し、更新前のセーブを退避しました。「起動を再試行」で新版を開けます。","前のゲーム本体へ戻しました。ゲーム情報は保持し、変更前のセーブを退避しました。「起動を再試行」で開けます。","本体更新が保存済みであることを確認しました。再更新は不要です。","確認待ちの本体更新はありません。","一覧を更新しました。","作品情報を保存しました。","設定履歴から復元しました。","サムネイルを保存しました。","履歴の保存内容を保存しました。","保存済みを確認しました。再保存は不要です。","使うセーブを共有しました。","選択をキャンセルしました。","容量確認を中止しました。","使用容量を確認しました。","ゲームの追加が完了しました。作品情報を設定できます。","確認記録を閉じました。設定は変更していません。","セーブを読み込みました。ゲームは一覧から開けます。","セーブを復元しました。本体の版は変更していません。「起動を再試行」で再開できます。","共有用HTMLを保存しました。別PCでは初回だけ案内されたフォルダーを選んでください。","このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。"]);
 const status = message => {
@@ -568,6 +568,7 @@ function loadingStage(task,name,active=true){
 }
 async function render() {
   const revision = ++renderRevision, folder = root,viewLibrary=localLibrary;
+  renderReadAbort?.abort();const thumbnailRead=new AbortController();renderReadAbort=thumbnailRead;
   if(viewsLibrary!==localLibrary){
     let values=[],loadError=null;try{values=await localState.loadGameViews(localLibrary);}catch(error){loadError=error;}
     if(revision!==renderRevision||root!==folder||localLibrary!==viewLibrary)return;
@@ -617,15 +618,16 @@ async function render() {
   $('#emptyPost').hidden=!root||games.length>0||!editingEnabled;
   for (const game of matches.slice(0,renderLimit)) {
     const cached=cardCache.get(game.path);
-    if(cached&&(cached.game===game||cached.viewKey===syncTools.cardViewKey(game))){cached.game=game;const favorite=cached.node.querySelector('.favorite-button');if(favorite)updateFavoriteButton(favorite,game);visibleCards.push(cached.node);continue;}
+    if(cached&&!cached.thumbnailFailed&&(cached.game===game||cached.viewKey===syncTools.cardViewKey(game))){cached.game=game;const favorite=cached.node.querySelector('.favorite-button');if(favorite)updateFavoriteButton(favorite,game);visibleCards.push(cached.node);continue;}
     const article = document.createElement('article'); article.className = 'card';
-    const cover = document.createElement('div'); cover.className = 'cover'; cover.textContent = '▶\uFE0E';
+    const cover = document.createElement('div'); cover.className = 'cover'; cover.textContent = '▶\uFE0E';let thumbnailFailed=false;
     if (typeof game.thumbnail === 'string') { const img = document.createElement('img'); img.src = game.thumbnail; img.alt = ''; cover.replaceChildren(img); }
     else if (game.thumbnail) try {
-      const file = await library.getFile(folder, `.gameportal/thumbnails/${game.id}.webp`);
+      const timeout=setTimeout(()=>thumbnailRead.abort(new DOMException('サムネイルの読み込みが応答しません。','TimeoutError')),8000);
+      let file;try{file=await readTasks.readWithSignal(()=>library.getFile(folder, `.gameportal/thumbnails/${game.id}.webp`),thumbnailRead.signal);}finally{clearTimeout(timeout);}
       if (revision !== renderRevision) return;
       if (file.size <= 2 * 1024 * 1024) { const url = URL.createObjectURL(file); imageURLs.push(url); const img = document.createElement('img'); img.src = url; img.alt = ''; cover.replaceChildren(img); }
-    } catch { /* A missing image does not make the game unavailable. */ }
+    } catch { thumbnailFailed=true; /* Retry transient image failures on the next render. */ }
     if (revision !== renderRevision) return;
     const body = document.createElement('div'); body.className = 'cardbody';
     const title = document.createElement('h2'); title.textContent = game.title;
@@ -643,7 +645,7 @@ async function render() {
     if(game.settingsError){const warning=document.createElement('p');warning.className='hint';warning.textContent='設定の確認が必要です：'+game.settingsError;body.append(warning);}
     body.append(favorite);
     article.onclick=event=>{if(!event.target.closest('a,button,input,select,textarea'))open.onclick(event);};
-    article.append(thumb,body);cardCache.set(game.path,{game,viewKey:syncTools.cardViewKey(game),node:article});visibleCards.push(article);
+    article.append(thumb,body);cardCache.set(game.path,{game,viewKey:syncTools.cardViewKey(game),node:article,thumbnailFailed});visibleCards.push(article);
   }
   if(revision!==renderRevision)return;
   const wanted=new Set(visibleCards);for(const card of [...$('#games').children])if(!wanted.has(card))card.remove();

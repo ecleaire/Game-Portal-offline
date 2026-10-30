@@ -39,5 +39,22 @@ try{await context.addInitScript(()=>{if(top!==window)return;FileSystemDirectoryH
   if(!olderFails){await page.locator('#retryGameViews').click();await expect(page.locator('#viewPreferenceNotice')).toBeHidden();}
  }
  }
- assert.deepEqual(errors,[]);console.log('Library view UI passed: individual view reset, favorites persistence/removal, recent play, compact preference, priority controls, actual save status, keyboard focus recovery, no focus stealing across pending writes, duplicate-click suppression, 12 size/viewport cases, independent windows, no game-folder writes and obsolete read success/failure isolation in both editions.');
+ // NAS thumbnail failures must not poison the card cache or block newer searches.
+ for(const rolePath of ['/player','/']){
+  await page.goto(url+rolePath);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await connect();
+  await page.evaluate(async()=>{window.normalThumbnailRead=library.getFile;window.thumbnailCalls=0;library.getFile=async(...args)=>{if(args[1].startsWith('.gameportal/thumbnails/')){thumbnailCalls++;throw Error('Temporary NAS failure');}return normalThumbnailRead(...args);};games.find(g=>g.title==='Alpha').thumbnail=true;resetCards();await render();});
+  await expect(page.locator('.card').filter({hasText:'Alpha'}).locator('img')).toHaveCount(0);
+  await page.evaluate(async()=>{library.getFile=async(...args)=>args[1].startsWith('.gameportal/thumbnails/')?new File(['image'],'thumbnail.webp',{type:'image/webp'}):normalThumbnailRead(...args);await render();});
+  await expect(page.locator('.card').filter({hasText:'Alpha'}).locator('img')).toHaveCount(1);
+  await page.evaluate(()=>{resetCards();window.releaseThumbnail=null;library.getFile=async(...args)=>{if(args[1].startsWith('.gameportal/thumbnails/'))return new Promise(r=>window.releaseThumbnail=()=>r(new File(['old'],'thumbnail.webp')));return normalThumbnailRead(...args);};window.stalledRender=render();});
+  await page.waitForFunction(()=>!!releaseThumbnail);
+  await page.locator('#search').fill('Beta');await expect(page.locator('.game-title-link')).toHaveText(['Beta']);
+  await page.evaluate(async()=>{await stalledRender;releaseThumbnail();library.getFile=normalThumbnailRead;});
+  await expect(page.locator('.game-title-link')).toHaveText('Beta');
+  await page.clock.install();
+  await page.evaluate(()=>{document.querySelector('#search').value='';resetCards();library.getFile=async(...args)=>args[1].startsWith('.gameportal/thumbnails/')?new Promise(()=>{}):normalThumbnailRead(...args);window.timedRender=render();});
+  await page.clock.fastForward(8100);await page.evaluate(()=>timedRender);await expect(page.locator('.card')).toHaveCount(2);
+  await page.evaluate(async()=>{library.getFile=normalThumbnailRead;games.find(g=>g.title==='Alpha').thumbnail=false;await render();});await page.clock.resume();
+ }
+ assert.deepEqual(errors,[]);console.log('Library view UI passed: individual view reset, favorites persistence/removal, recent play, compact preference, priority controls, actual save status, keyboard focus recovery, no focus stealing across pending writes, duplicate-click suppression, 12 size/viewport cases, independent windows, no game-folder writes obsolete read success/failure isolation, thumbnail failure recovery, search cancellation of stalled thumbnails and bounded thumbnail waits in both editions.');
 }finally{await context.close();await new Promise(r=>server.close(r));await rm(dir,{recursive:true,force:true});}
