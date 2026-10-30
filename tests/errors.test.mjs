@@ -27,3 +27,10 @@ test('diagnostics handle nested and cyclic causes without looping',()=>{
  error.cause=error;assert.equal(describeError(error).code,'OPERATION_FAILED');
  let nested=new Error('End');for(let i=0;i<30;i++)nested=new Error('Layer',{cause:nested});assert.equal(describeError(nested).details.split('原因：').length,8);
 });
+
+
+test('native user-facing validation guidance survives generic storage error names',()=>{
+ const error=Object.assign(new Error('フォルダーのフルパスを入力してください。'),{name:'NotReadableError',userMessage:'フォルダーのフルパスを入力してください。'});
+ assert.equal(describeError(error).message,error.userMessage);assert.equal(describeError(error).code,'READ_FAILED');
+ const pending=Object.assign(new Error('保存結果未確認です。再保存せず確認してください。',{cause:error}),{code:'SETTINGS_SAVE_UNCONFIRMED'});assert.equal(describeError(pending).message,pending.message);
+});

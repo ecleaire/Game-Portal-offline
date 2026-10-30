@@ -3,7 +3,7 @@ const desktopHost=(()=>{
   if(window!==window.top||location.origin!=='https://gameportal.desktop.invalid'||!window.chrome?.webview)throw Error('デスクトップ版の起動元を確認してください。');
   let serial=0;const requests=new Map(),handles=new Map(),reads=new Set();
   const notify=()=>{if(typeof nativeReadControls==='function')nativeReadControls(reads.size);};
-  function error(info){const result=new Error(info.message||'保存先を確認してください。');result.name=info.name||'NotReadableError';return result;}
+  function error(info){const result=new Error(info.message||'保存先を確認してください。');result.name=info.name||'NotReadableError';result.userMessage=result.message;return result;}
   chrome.webview.addEventListener('message',event=>{const message=event.data,job=requests.get(message.id);if(!job)return;requests.delete(message.id);clearTimeout(job.timer);reads.delete(job);notify();message.ok?job.resolve(message.value):job.reject(error(message.error||{}));});
   function rpc(op,args={},objects=null){
     return new Promise((resolve,reject)=>{

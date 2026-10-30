@@ -1547,7 +1547,7 @@ function describeError(error){
  const known=!domain&&Object.hasOwn(definitions,selected?.name)&&definitions[selected.name];
  const code=domain?.code||known?.[0]||'OPERATION_FAILED';
  const original=typeof error?.message==='string'?error.message:typeof error==='string'?error:'';
- const message=known?known[1]+' '+known[2]:(domain?.message||original)||'操作を完了できませんでした。もう一度確認してください。';
+ const message=domain?.message||(typeof named?.userMessage==='string'&&named.userMessage?named.userMessage:null)||(known?known[1]+' '+known[2]:original)||'操作を完了できませんでした。もう一度確認してください。';
  const details=chain.map(e=>(typeof e.name==='string'?e.name:'Error')+(typeof e.code==='string'?' / '+e.code:'')+'\n'+(typeof e.message==='string'?e.message:'')).join('\n原因：\n');
  return {code,message,details};
 }
