@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "source_commit": "923ade39f2ce18366437816699ee02b420115b04",
+  "version": "0.25.3",
+  "kind": "legacy",
+  "files": [
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/GAME-PORTAL-MOJAVE",
+      "mode": "100755",
+      "blob": "ec259ee7b0c5383135d46b9e9ccfd11ef9b30792"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/SWIFT-RUNTIME-LICENSE.txt",
+      "mode": "100644",
+      "blob": "61b0c78195f2d00acaf658000eeca6ad406a3a29"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftCore.dylib",
+      "mode": "100755",
+      "blob": "6abab7399c61f815291b085c07602150a300c866"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftCoreFoundation.dylib",
+      "mode": "100755",
+      "blob": "51ba1fe5869856aede04c7d675197318c04d9d86"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftCoreGraphics.dylib",
+      "mode": "100755",
+      "blob": "5bc9b2604c93305b5c40ceabed0b3c6131f85f5c"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftCoreImage.dylib",
+      "mode": "100755",
+      "blob": "05dfc194ce0bc39ad098aedd5222de2a1f002a41"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftDarwin.dylib",
+      "mode": "100755",
+      "blob": "4a2187f570db64ff6405c5c4a90fbb61380c0c12"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftDispatch.dylib",
+      "mode": "100755",
+      "blob": "6bc94929645468c3be4b1540d12ef4a053d08b6a"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftFoundation.dylib",
+      "mode": "100755",
+      "blob": "d6b0df8756d5afa692338fc5898969239cba208c"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftIOKit.dylib",
+      "mode": "100755",
+      "blob": "ed1743f8953fc94df1060c29cfb61a8384cc215a"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftMetal.dylib",
+      "mode": "100755",
+      "blob": "6436feee1f7460bdd5f5bc6219178d82c658c4c3"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftNetwork.dylib",
+      "mode": "100755",
+      "blob": "ab4f69d55ec53d5f230a0ab7a9f3b6eef36fc9b4"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftObjectiveC.dylib",
+      "mode": "100755",
+      "blob": "3eebd61c146af918c3b35784714fce140216f1f8"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftQuartzCore.dylib",
+      "mode": "100755",
+      "blob": "3628fac60e87542e2ab43619d5a3c2a1ab4031f0"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftXPC.dylib",
+      "mode": "100755",
+      "blob": "4c30475da9eda0646c6a84b0b9f71fd36e1af6a7"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/libswiftos.dylib",
+      "mode": "100755",
+      "blob": "cbd3e9c630f71cba8aea80c558491a4141cd9e15"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MOJAVE/runtime.json",
+      "mode": "100644",
+      "blob": "780f2cf3310b5b0a20b0539efe5d450f9ac6231c"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/GAME-PORTAL-MOJAVE",
+      "mode": "100755",
+      "blob": "ec259ee7b0c5383135d46b9e9ccfd11ef9b30792"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/SWIFT-RUNTIME-LICENSE.txt",
+      "mode": "100644",
+      "blob": "61b0c78195f2d00acaf658000eeca6ad406a3a29"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftCore.dylib",
+      "mode": "100755",
+      "blob": "6abab7399c61f815291b085c07602150a300c866"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftCoreFoundation.dylib",
+      "mode": "100755",
+      "blob": "51ba1fe5869856aede04c7d675197318c04d9d86"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftCoreGraphics.dylib",
+      "mode": "100755",
+      "blob": "5bc9b2604c93305b5c40ceabed0b3c6131f85f5c"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftCoreImage.dylib",
+      "mode": "100755",
+      "blob": "05dfc194ce0bc39ad098aedd5222de2a1f002a41"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftDarwin.dylib",
+      "mode": "100755",
+      "blob": "4a2187f570db64ff6405c5c4a90fbb61380c0c12"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftDispatch.dylib",
+      "mode": "100755",
+      "blob": "6bc94929645468c3be4b1540d12ef4a053d08b6a"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftFoundation.dylib",
+      "mode": "100755",
+      "blob": "d6b0df8756d5afa692338fc5898969239cba208c"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftIOKit.dylib",
+      "mode": "100755",
+      "blob": "ed1743f8953fc94df1060c29cfb61a8384cc215a"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftMetal.dylib",
+      "mode": "100755",
+      "blob": "6436feee1f7460bdd5f5bc6219178d82c658c4c3"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftNetwork.dylib",
+      "mode": "100755",
+      "blob": "ab4f69d55ec53d5f230a0ab7a9f3b6eef36fc9b4"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftObjectiveC.dylib",
+      "mode": "100755",
+      "blob": "3eebd61c146af918c3b35784714fce140216f1f8"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftQuartzCore.dylib",
+      "mode": "100755",
+      "blob": "3628fac60e87542e2ab43619d5a3c2a1ab4031f0"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftXPC.dylib",
+      "mode": "100755",
+      "blob": "4c30475da9eda0646c6a84b0b9f71fd36e1af6a7"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/libswiftos.dylib",
+      "mode": "100755",
+      "blob": "cbd3e9c630f71cba8aea80c558491a4141cd9e15"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MOJAVE/runtime.json",
+      "mode": "100644",
+      "blob": "780f2cf3310b5b0a20b0539efe5d450f9ac6231c"
+    }
+  ]
+}
