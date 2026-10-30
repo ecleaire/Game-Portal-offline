@@ -12,7 +12,7 @@ const profile=await mkdtemp(join(tmpdir(),'portal-improvements-'));
 const browser=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,viewport:{width:1280,height:960}});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await mkdir('offline-release/ui-checks',{recursive:true});
+ await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});await page.goto('http://127.0.0.1:'+server.address().port);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});const batch=await page.evaluate(()=>cardBatch);assert([24,60].includes(batch));await mkdir('offline-release/ui-checks',{recursive:true});
  await page.evaluate(async()=>{
   const opfs=await navigator.storage.getDirectory(),root=await opfs.getDirectoryHandle('improvements',{create:true});window.testRoot=root;window.showDirectoryPicker=async()=>root;
   window.writeTest=async(name,value)=>{const w=await(await root.getFileHandle(name,{create:true})).createWritable();await w.write(value);await w.close();};
@@ -22,11 +22,11 @@ try{
   }
  });
  await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();
- await expect(page.locator('.card')).toHaveCount(60);await expect(page.locator('#searchSummary')).toContainText('130件');
+ await expect(page.locator('.card')).toHaveCount(batch);await expect(page.locator('#searchSummary')).toContainText('130件');
  await expect(page.locator('#searchSummary')).toBeHidden();await expect(page.locator('.search-help')).toBeHidden();await expect(page.locator('#postReason')).toBeHidden();await expect(page.locator('#libraryInfo')).toBeHidden();await expect(page.locator('#storageNotice')).toBeHidden();await page.screenshot({path:'offline-release/ui-checks/simple-library.png'});
- await page.locator('#search').fill('no-match-please');await expect(page.locator('.card')).toHaveCount(0);await expect(page.locator('#searchSummary')).toBeHidden();await page.locator('#filterDetails summary').click();await expect(page.locator('#searchSummary')).toBeVisible();await expect(page.locator('#searchSummary')).toContainText('0件を表示');await expect(page.locator('.search-help')).toBeVisible();await page.screenshot({path:'offline-release/ui-checks/search-options-open.png'});await page.locator('#filterDetails summary').click();await expect(page.locator('#searchSummary')).toBeHidden();await expect(page.locator('.search-help')).toBeHidden();await page.locator('#search').fill('');await expect(page.locator('.card')).toHaveCount(60);
+ await page.locator('#search').fill('no-match-please');await expect(page.locator('.card')).toHaveCount(0);await expect(page.locator('#searchSummary')).toBeHidden();await page.locator('#filterDetails summary').click();await expect(page.locator('#searchSummary')).toBeVisible();await expect(page.locator('#searchSummary')).toContainText('0件を表示');await expect(page.locator('.search-help')).toBeVisible();await page.screenshot({path:'offline-release/ui-checks/search-options-open.png'});await page.locator('#filterDetails summary').click();await expect(page.locator('#searchSummary')).toBeHidden();await expect(page.locator('.search-help')).toBeHidden();await page.locator('#search').fill('');await expect(page.locator('.card')).toHaveCount(batch);
 
- await page.locator('#loadMore').click();await expect(page.locator('.card')).toHaveCount(120);await page.locator('#loadMore').click();await expect(page.locator('.card')).toHaveCount(130);await expect(page.locator('#loadMore')).toBeHidden();
+ for(let visible=batch;visible<130;){await page.locator('#loadMore').click();visible=Math.min(130,visible+batch);await expect(page.locator('.card')).toHaveCount(visible);}await expect(page.locator('#loadMore')).toBeHidden();
  await page.evaluate(()=>{window.retainedCard=document.querySelector('.card');window.originalScan=library.scan;window.scanCalls=0;library.scan=(...args)=>{window.scanCalls++;return window.originalScan(...args);};});
  await page.locator('#search').fill('Game 000');await expect(page.locator('.card')).toHaveCount(1);assert(await page.evaluate(()=>document.querySelector('.card')===window.retainedCard));
  await page.locator('#search').fill('Game 00');await expect(page.locator('.card')).toHaveCount(11);assert.equal(await page.evaluate(()=>window.scanCalls),0);
