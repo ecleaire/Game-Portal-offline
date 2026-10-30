@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 let html=await readFile('offline-release/GAME-PORTAL.html','utf8');
 html=html.replace('function initialized() {',`const originalStartupCompatibility=compatibilityTools.checkCompatibility;compatibilityTools.checkCompatibility=(...args)=>sessionStorage.getItem('startup-test')==='compatibility'?new Promise((resolve,reject)=>{window.releaseStartupCompatibility=()=>{const error=new Error('Late incompatible old folder');error.code='LIBRARY_INCOMPATIBLE';reject(error);};}):originalStartupCompatibility(...args);
 const originalStartupScan=library.scan;
-library.scan=(...args)=>sessionStorage.getItem('startup-test')==='scan'?new Promise(resolve=>{window.releaseStartupScan=async()=>resolve(await originalStartupScan(...args));}):originalStartupScan(...args);
+library.scan=(...args)=>sessionStorage.getItem('startup-test')==='scan'?new Promise((resolve,reject)=>{window.releaseStartupScan=()=>Promise.resolve(originalStartupScan(...args)).then(resolve,reject);}):originalStartupScan(...args);
 function initialized() {`);
 const server=createServer((q,r)=>r.end(html));await new Promise(r=>server.listen(0,'127.0.0.1',r));
 // Match a normal Chrome profile: Chromium 153 can crash when restoring OPFS handles in an incognito context.

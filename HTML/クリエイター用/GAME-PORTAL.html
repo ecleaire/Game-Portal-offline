@@ -2281,6 +2281,7 @@ $('#colorTheme').onchange=()=>{applyTheme($('#colorTheme').value);try{localStora
 window.addEventListener('storage',event=>{if(event.key==='game-portal.offline-theme')applyTheme(event.newValue);});
 const folderScope=location.pathname;
 let portableConnection=null,connectionError='',lastFolderRevision='',folderWatchPromise=null,folderChannel=null,folderWatchAbort=null;
+let folderWatchRetryAt=0,folderWatchRetryDelay=5000,folderWatchErrorMessage='';
 try{portableConnection=folderSharing.connectionInfo(JSON.parse($('#folderConnection').textContent));}catch(error){connectionError=error.message;}
 try{folderChannel=new BroadcastChannel('game-portal-folder:'+(folderSharing.creatorScope(folderScope)||folderScope));folderChannel.onmessage=()=>{void checkSharedFolder();};}catch{}
 
@@ -2486,12 +2487,13 @@ function folderSharingControls(){
   $('#sharedConnectionHint').textContent=hint?'このHTMLの保存先：'+hint:'';
 }
 async function checkSharedFolder(){
-  const available=()=>!automaticConnectionPaused&&!folderRecovery&&!root?.nativeReadOnly&&!folderRecoveryPromise&&!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!contentTarget?.contentPending&&!games.some(game=>game.contentPending)&&!document.hidden;
+  const available=()=>performance.now()>=folderWatchRetryAt&&!automaticConnectionPaused&&!folderRecovery&&!root?.nativeReadOnly&&!folderRecoveryPromise&&!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!contentTarget?.contentPending&&!games.some(game=>game.contentPending)&&!document.hidden;
   if(folderWatchPromise||!available())return;
   const controller=new AbortController(),watchRoot=root;folderWatchAbort=controller;folderWatchStarted=performance.now();nativeReadControls();
   const progress=setTimeout(()=>nativeReadControls(),1500);
   const timer=setTimeout(()=>controller.abort(new DOMException('保存先の確認が応答しません。再接続するか、保存先を選び直してください。','TimeoutError')),12000);
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
+  let watchFailed=false;
   folderWatchPromise=(async()=>{
     try{
       const record=await read(()=>cacheHandle());if(!available()||!record?.handle||record.scope&&record.scope!==folderScope)return;
@@ -2509,9 +2511,9 @@ async function checkSharedFolder(){
         controller.signal.throwIfAborted();if(root!==watchRoot)return '';
         lastFolderRevision=record.revision;await connectRememberedRead(record.handle,true,{signal:controller.signal});return '';
       })();
-    }catch(error){if(root!==watchRoot||controller.signal.aborted&&controller.signal.reason?.name!=='TimeoutError')return;failedAutomaticConnection();lastFolderRevision='';status('保存先の共有を確認できません。設定から選び直せます：'+error.message);}
+    }catch(error){if(root!==watchRoot||controller.signal.aborted&&controller.signal.reason?.name!=='TimeoutError')return;watchFailed=true;folderWatchRetryAt=performance.now()+folderWatchRetryDelay;folderWatchRetryDelay=Math.min(folderWatchRetryDelay*2,60000);lastFolderRevision='';folderWatchErrorMessage='保存先の共有を確認できません。ホームで間隔をあけて再確認します。設定から選び直すこともできます：'+error.message;status(folderWatchErrorMessage);}
   })();
-  try{await folderWatchPromise;}finally{clearTimeout(timer);clearTimeout(progress);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();}
+  try{await folderWatchPromise;}finally{if(!watchFailed){folderWatchRetryAt=0;folderWatchRetryDelay=5000;if(folderWatchErrorMessage&&$('#status').textContent===folderWatchErrorMessage)status('');folderWatchErrorMessage='';}clearTimeout(timer);clearTimeout(progress);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();}
 }
 setInterval(()=>{void checkSharedFolder();},5000);
 window.addEventListener('focus',()=>{void checkSharedFolder();});

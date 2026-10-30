@@ -56,7 +56,7 @@ try{
  for(const [page,url]of [[creator,creatorURL],[player,playerURL]]){page.on('pageerror',e=>errors.push(e.message));await page.goto(url);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});}
  assert.equal(await player.evaluate(()=>root),null);
  await creator.evaluate(async()=>{const storage=await navigator.storage.getDirectory();window.pick=await storage.getDirectoryHandle('Alpha');window.showDirectoryPicker=async()=>pick;});
- const chooseCreator=async name=>{await creator.bringToFront();await creator.evaluate(async name=>{pick=await(await navigator.storage.getDirectory()).getDirectoryHandle(name);},name);await creator.locator('#settingsButton').click();await creator.locator('#chooseFolder').click();await creator.waitForFunction(()=>!busy);};
+ const chooseCreator=async name=>{await creator.bringToFront();await creator.evaluate(async name=>{pick=await(await navigator.storage.getDirectory()).getDirectoryHandle(name);window.showDirectoryPicker=async()=>pick;},name);await creator.locator('#settingsButton').click();await creator.locator('#chooseFolder').click();await creator.waitForFunction(()=>!busy);};
  await chooseCreator('Alpha');await player.bringToFront();await player.evaluate(()=>checkSharedFolder());await expect(player.locator('#folderName')).toHaveText('Alpha');
  assert.equal(await player.evaluate(()=>launcherEdition),'player');assert.equal(await player.evaluate(()=>editingEnabled),false);
  const firstStart=await context.newPage();await firstStart.goto(playerURL);await expect(firstStart.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await expect(firstStart.locator('#folderName')).toHaveText('Alpha');await firstStart.close();
@@ -67,6 +67,16 @@ try{
  await creator.reload();await expect(creator.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await expect(creator.locator('#folderName')).toHaveText('Alpha');
  await creator.evaluate(()=>window.showDirectoryPicker=async()=>await(await navigator.storage.getDirectory()).getDirectoryHandle('Beta'));await chooseCreator('Beta');await player.bringToFront();await player.evaluate(()=>checkSharedFolder());await expect(player.locator('#folderName')).toHaveText('Beta');
  const unrelated=await context.newPage();await unrelated.goto(origin+'/different/HTML/'+encodeURIComponent('プレイ用')+'/GAME-PORTAL-PLAY.html');await expect(unrelated.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});assert.equal(await unrelated.evaluate(()=>root),null);await unrelated.close();
+ // Temporary shared-selection failures retry with a bounded backoff rather
+ // than permanently disabling Creator/Player synchronization after three polls.
+ await player.bringToFront();await player.clock.install();
+ await player.evaluate(()=>{window.normalSharedCache=localState.cacheHandle;window.failedSharedReads=0;localState.cacheHandle=async(...args)=>{if(!args[0]){failedSharedReads++;throw new DOMException('Shared selection temporarily unavailable','NetworkError');}return normalSharedCache(...args);};});
+ for(let attempt=0;attempt<4;attempt++){await player.clock.fastForward(61000);await player.evaluate(()=>checkSharedFolder());}
+ assert((await player.evaluate(()=>failedSharedReads))>=4);assert.equal(await player.evaluate(()=>automaticConnectionPaused),false);await expect(player.locator('#folderName')).toHaveText('Beta');
+ await player.evaluate(()=>localState.cacheHandle=normalSharedCache);await chooseCreator('Alpha');await player.bringToFront();await player.evaluate(()=>folderWatchPromise);await player.clock.fastForward(61000);await player.evaluate(async()=>{await folderWatchPromise;await checkSharedFolder();});await expect(player.locator('#folderName')).toHaveText('Alpha');
+ assert.equal(await player.evaluate(()=>folderWatchRetryDelay),5000);await expect(player.locator('#status')).toBeEmpty();
+ // Explicit cancellation still prevents automatic reconnection.
+ await player.evaluate(()=>cancelFolderConnection());await chooseCreator('Beta');await player.bringToFront();await player.clock.fastForward(61000);await player.evaluate(()=>checkSharedFolder());await expect(player.locator('#folderName')).toHaveText('Alpha');await player.clock.resume();
  assert.deepEqual(errors,[]);
- console.log('Folder sharing passed: already-open tabs adopt selection and changes, player/editor deferral, permission denial with explicit reconnect, always-on remembering, portable HTML path/identity and no private data, fresh-profile selection/reload/play and wrong-folder rejection. Physical NAS/second PC untested.');
+ console.log('Folder sharing passed: already-open tabs adopt selection and changes, player/editor deferral, permission denial with explicit reconnect, always-on remembering, portable HTML path/identity and no private data, fresh-profile selection/reload/play and wrong-folder rejection, bounded retry after repeated transient failures, recovery notice clearing and explicit cancellation. Physical NAS/second PC untested.');
 }finally{await fresh?.close();await context?.close();await new Promise(r=>server.close(r));for(const profile of profiles){const p=relative(tmpdir(),profile);if(!p||p.startsWith('..'))throw Error('Unexpected test profile path');await rm(profile,{recursive:true,force:true});}}

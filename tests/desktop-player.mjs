@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,readFile,rm,readdir,copyFile} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,rm,readdir,copyFile,rename} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {spawn} from 'node:child_process';
@@ -21,8 +21,18 @@ try{
   await expect(page.locator('#postButton')).toBeHidden();assert.equal(await page.evaluate(()=>editingEnabled),false);
   assert.equal(await page.locator('#desktopShareConnection').count(),0);assert.match(await page.evaluate(async()=>{try{await desktopHost.share(root,(await desktopHost.sharedInfo(root)).revision);return 'unexpected';}catch(error){return error.message;}}),/クリエイター/);
   if(cycle===0){
-   await page.evaluate(()=>localState.cacheHandle(root));const originalSelection=JSON.parse(await readFile(join(profile,'folder.json'),'utf8'));
    const other=join(app,'OtherLibrary');await mkdir(join(other,'.gameportal'),{recursive:true});await writeFile(join(other,'.gameportal/library-id.json'),JSON.stringify({schema:1,id:'b'.repeat(32)}));await writeFile(join(other,'Other.html'),'<h1>Creator selected another library</h1>');
+   // Simulate another PC atomically changing the shared default while this
+   // unconfigured Player stays open. No local folder selection is required.
+   const sharedFile=join(app,'GAME-PORTAL-CONNECTION.json');
+   const setShared=async(path,id)=>{const temp=sharedFile+'.test.tmp';await writeFile(temp,JSON.stringify({schema:1,kind:'relative',path,libraryId:id}));await rename(temp,sharedFile);};
+   await setShared('OtherLibrary','b'.repeat(32));await page.bringToFront();await page.evaluate(()=>checkSharedFolder());await expect(page.locator('#folderName')).toHaveText('OtherLibrary');
+   await setShared('Library','a'.repeat(32));await page.evaluate(()=>checkSharedFolder());await expect(page.locator('#folderName')).toHaveText('Library');
+   await page.locator('.game-title-link').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#player')).toBeVisible();
+   await setShared('OtherLibrary','b'.repeat(32));await page.evaluate(()=>checkSharedFolder());await expect(page.locator('#folderName')).toHaveText('Library');
+   await page.locator('#closePlayer').click();await page.waitForFunction(()=>!closingPlayer);await page.evaluate(()=>checkSharedFolder());await expect(page.locator('#folderName')).toHaveText('OtherLibrary');
+   await setShared('Library','a'.repeat(32));await page.evaluate(()=>checkSharedFolder());await expect(page.locator('#folderName')).toHaveText('Library');
+   await page.evaluate(()=>localState.cacheHandle(root));const originalSelection=JSON.parse(await readFile(join(profile,'folder.json'),'utf8'));
    // Creator and Player use the same local selection file. Simulate the
    // atomic Creator update while the actual Player window is already open.
    await writeFile(join(profile,'folder.json'),JSON.stringify({...originalSelection,path:other,id:'b'.repeat(32)}));await page.bringToFront();const folderDiagnostic=await page.evaluate(async()=>({hidden:document.hidden,paused:automaticConnectionPaused,busy,starting,dialogs:[...document.querySelectorAll('dialog[open]')].map(node=>node.id),native:(await desktopHost.current())?.name,status:document.getElementById('status').textContent}));await page.evaluate(()=>checkSharedFolder());await expect(page.locator('#folderName'),JSON.stringify(folderDiagnostic)).toHaveText('OtherLibrary',{timeout:10000});assert.equal(await page.evaluate(()=>localLibrary),'b'.repeat(32));
