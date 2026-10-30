@@ -203,11 +203,18 @@ export function embeddedPyxel(html) {
   const match = html.match(/base64\s*[:=]\s*(["'])([A-Za-z0-9+/=]+)\1/);
   return match ? match[2] : null;
 }
+// Bounded, session-only cache: unchanged paths need no repeated WebCrypto
+// work on periodic NAS scans. IDs and the on-disk format remain identical.
+const pathIds=new Map(),libraryCollator=new Intl.Collator('ja');
 export async function gameId(path) {
-  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(path)))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+  if(pathIds.has(path)){const cached=pathIds.get(path);pathIds.delete(path);pathIds.set(path,cached);return cached;}
+  const pending=crypto.subtle.digest('SHA-256',new TextEncoder().encode(path)).then(bytes=>[...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32));
+  pathIds.set(path,pending);if(pathIds.size>1024)pathIds.delete(pathIds.keys().next().value);
+  try{return await pending;}catch(error){if(pathIds.get(path)===pending)pathIds.delete(path);throw error;}
 }
-export async function scan(root, metadata, {signal} = {}) {
-  const games = [], candidates = []; let visited = 0;
+export async function scan(root, metadata, {signal,onProgress} = {}) {
+  const games = [], candidates = []; let visited = 0,prepared=0;
+  const progress=()=>{signal?.throwIfAborted();onProgress?.({visited,prepared,total:candidates.length});};
   const read=operation=>readWithSignal(operation,signal);
   async function add(path, title, kind, handle, folder, entry) {
     let settings, settingsError = '';
@@ -229,7 +236,7 @@ export async function scan(root, metadata, {signal} = {}) {
   async function walk(folder, prefix = '', depth = 0) {
     signal?.throwIfAborted();
     try { await read(()=>folder.getFileHandle('.gameportal-uploading')); return; } catch (error) { if (error.name !== 'NotFoundError') throw error; }
-    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX') entries.push(entry); }
+    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX') entries.push(entry);progress(); }
     const html = entries.filter(e => e.kind === 'file' && /\.html?$/i.test(e.name));
     let native=null;try{native=nativeLayout(entries.filter(e=>e.kind==='file').map(e=>e.name));}catch{}
     const entry = native ? entries.find(e=>e.name===native.entry) : html.find(e => /^index\.html?$/i.test(e.name)) || (html.length === 1 ? html[0] : null);
@@ -246,14 +253,14 @@ export async function scan(root, metadata, {signal} = {}) {
   await Promise.all(Array.from({length: Math.min(4,candidates.length)},async()=>{
     while(!failure&&next<candidates.length){
       const index=next++;
-      try{signal?.throwIfAborted();games[index]=await add(...candidates[index]);signal?.throwIfAborted();}catch(error){failure ||= error;}
+      try{signal?.throwIfAborted();games[index]=await add(...candidates[index]);signal?.throwIfAborted();prepared++;progress();}catch(error){failure ||= error;}
     }
   }));
   if(failure)throw failure;
   signal?.throwIfAborted();
   const ids = new Map(); for (const game of games) ids.set(game.id, (ids.get(game.id) || 0) + 1);
   for (const game of games) if (ids.get(game.id) > 1) { game.identityConflict = true; game.settingsError = '同じ作品IDのゲームが複数あります。別作品として追加する場合は「投稿」を使用してください。'; }
-  return games.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
+  return games.sort((a,b)=>libraryCollator.compare(a.title,b.title));
 }
 export async function readTree(folder, preloaded = new Map(), {fileBacked = false,signal} = {}) {
   signal?.throwIfAborted();

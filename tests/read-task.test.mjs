@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readWithSignal,prepareTogether} from '../offline-html/read-task.js';
+import {readWithSignal,prepareTogether,readIdleDeadline} from '../offline-html/read-task.js';
 import {readTree,scan} from '../offline-html/library.js';
 
 test('cancelled reads reject immediately and consume late success or failure',async()=>{
@@ -50,4 +50,23 @@ test('cancelled library scans release all metadata workers without starting queu
   while(reads<4)await new Promise(resolve=>setImmediate(resolve));controller.abort();await assert.rejects(pending,{name:'AbortError'});assert.equal(reads,4);
   releases.forEach(release=>release());await new Promise(resolve=>setImmediate(resolve));assert.equal(reads,4);
  }
+});
+
+
+test('read deadline follows activity, expires once, and cannot restart after stopping',t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ let expired=0;const guard=readIdleDeadline(12000,()=>expired++);
+ for(let n=0;n<4;n++){t.mock.timers.tick(10000);guard.pulse();assert.equal(expired,0);}
+ t.mock.timers.tick(11999);assert.equal(expired,0);t.mock.timers.tick(1);assert.equal(expired,1);
+ guard.pulse();t.mock.timers.tick(20000);assert.equal(expired,1);
+ const stopped=readIdleDeadline(12000,()=>expired++);stopped.stop();stopped.pulse();t.mock.timers.tick(30000);assert.equal(expired,1);
+});
+
+test('scan reports enumeration and completed metadata without progress after cancellation',async()=>{
+ const events=[],controller=new AbortController();
+ const root={getFileHandle:async()=>{throw new DOMException('Missing','NotFoundError');},async *values(){for(let n=0;n<6;n++)yield {kind:'file',name:'game'+n+'.html'};}};
+ const games=await scan(root,{games:{}},{onProgress:event=>events.push(event)});
+ assert.equal(games.length,6);assert.equal(events.at(-1).prepared,6);assert.equal(events.at(-1).total,6);
+ for(let n=1;n<events.length;n++){assert(events[n].visited>=events[n-1].visited);assert(events[n].prepared>=events[n-1].prepared);}
+ let calls=0;await assert.rejects(scan(root,{games:{}},{signal:controller.signal,onProgress:()=>{calls++;controller.abort();}}),{name:'AbortError'});assert.equal(calls,1);
 });

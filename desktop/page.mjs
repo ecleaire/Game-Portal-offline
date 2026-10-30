@@ -8,7 +8,7 @@ export function desktopPage(html,bootstrap,licenses=''){
   html=html.replace(/function rememberNativePageConnection\([^\n]+\n/,'function rememberNativePageConnection(){}\n');
   replace('if(root?.nativeReadOnly||nativeReadAbort)','if(root?.nativeReadOnly||root?.nativeDesktop||nativeReadAbort)');
   html=html.replaceAll('gameLoading.folder?.nativeReadOnly','(gameLoading.folder?.nativeReadOnly||gameLoading.folder?.nativeDesktop)');
-  replace("if(handle){editingEnabled=false;$('#enableEditing').checked=false;await connect(handle,false,true,false,startupAbort.signal);return;}","if(handle){await connect(handle,false,true,false,startupAbort.signal);return;}");
+  replace("if(handle){editingEnabled=false;$('#enableEditing').checked=false;await connect(handle,false,true,false,startupAbort.signal,{onActivity:startupIdle.pulse,finishReading:startupIdle.stop});return;}","if(handle){await connect(handle,false,true,false,startupAbort.signal,{onActivity:startupIdle.pulse,finishReading:startupIdle.stop});return;}");
   const playerEdition=html.includes('<html lang="ja" data-edition="player">');
   replace(playerEdition?'<title>GAME PORTAL プレイ専用</title>':'<title>GAME PORTAL</title>',playerEdition?'<title>GAME PORTAL プレイ専用</title>':'<title>GAME PORTAL クリエイター</title>');
   replace('connect-src blob: data: http://127.0.0.1:*',"connect-src 'self' blob: data:");

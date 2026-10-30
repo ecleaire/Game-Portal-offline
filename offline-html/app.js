@@ -1,4 +1,5 @@
 function uiError(message,name){const error=new DOMException(message,name);error.userMessage=message;return error;}
+const appCollator=new Intl.Collator('ja');
 const $ = selector => document.querySelector(selector);
 // A completed write may restore focus only if no newer interaction superseded it.
 let favoriteFocusRevision=0;
@@ -253,7 +254,7 @@ async function checkSharedFolder(){
   if(folderWatchPromise||!available())return;
   const controller=new AbortController(),watchRoot=root;folderWatchAbort=controller;folderWatchStarted=performance.now();nativeReadControls();
   const progress=setTimeout(()=>nativeReadControls(),1500);
-  const timer=setTimeout(()=>controller.abort(uiError('保存先の確認が応答しません。再接続するか、保存先を選び直してください。','TimeoutError')),12000);
+  const idle=readTasks.readIdleDeadline(12000,()=>controller.abort(uiError('保存先の確認が応答しません。再接続するか、保存先を選び直してください。','TimeoutError')));
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
   let watchFailed=false;
   folderWatchPromise=(async()=>{
@@ -261,7 +262,7 @@ async function checkSharedFolder(){
       const record=await read(()=>cacheHandle());if(!available()||!record?.handle||record.scope&&record.scope!==folderScope)return;
       if(record.revision&&record.revision===lastFolderRevision){
         // Another tab may have granted permission since the initial restore.
-        if(!folderRecovery&&!syncPaused&&!compatibilityProblem&&remembered&&!$('#reconnect').hidden&&await read(()=>remembered.isSameEntry(record.handle))&&await read(()=>remembered.queryPermission({mode:'read'}))==='granted'&&available())await connectRememberedRead(remembered,false,{signal:controller.signal});
+        if(!folderRecovery&&!syncPaused&&!compatibilityProblem&&remembered&&!$('#reconnect').hidden&&await read(()=>remembered.isSameEntry(record.handle))&&await read(()=>remembered.queryPermission({mode:'read'}))==='granted'&&available())await connectRememberedRead(remembered,false,{signal:controller.signal,onActivity:idle.pulse,finishReading:idle.stop});
         return;
       }
       if(root&&await read(()=>root.isSameEntry(record.handle))){lastFolderRevision=record.revision;return;}
@@ -271,11 +272,11 @@ async function checkSharedFolder(){
           remembered=record.handle;automaticPermissionAttempted=false;lastFolderRevision=record.revision;$('#reconnect').hidden=false;status('保存先へのアクセス許可が必要です。「保存先に再接続する」を押してください。');return;
         }
         controller.signal.throwIfAborted();if(root!==watchRoot)return '';
-        lastFolderRevision=record.revision;await connectRememberedRead(record.handle,true,{signal:controller.signal});return '';
+        lastFolderRevision=record.revision;await connectRememberedRead(record.handle,true,{signal:controller.signal,onActivity:idle.pulse,finishReading:idle.stop});return '';
       })();
     }catch(error){if(root!==watchRoot||controller.signal.aborted&&controller.signal.reason?.name!=='TimeoutError')return;watchFailed=true;folderWatchRetryAt=performance.now()+folderWatchRetryDelay;folderWatchRetryDelay=Math.min(folderWatchRetryDelay*2,60000);lastFolderRevision='';folderWatchErrorMessage='保存先の共有を確認できません。ホームで間隔をあけて再確認します。設定から選び直すこともできます：'+error.message;status(folderWatchErrorMessage);}
   })();
-  try{await folderWatchPromise;}finally{if(!watchFailed){folderWatchRetryAt=0;folderWatchRetryDelay=5000;if(folderWatchErrorMessage&&$('#status').textContent===folderWatchErrorMessage)status('');folderWatchErrorMessage='';}clearTimeout(timer);clearTimeout(progress);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();}
+  try{await folderWatchPromise;}finally{if(!watchFailed){folderWatchRetryAt=0;folderWatchRetryDelay=5000;if(folderWatchErrorMessage&&$('#status').textContent===folderWatchErrorMessage)status('');folderWatchErrorMessage='';}idle.stop();clearTimeout(progress);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();}
 }
 setInterval(()=>{void checkSharedFolder();},5000);
 window.addEventListener('focus',()=>{void checkSharedFolder();});
@@ -491,7 +492,7 @@ $('#enableCrop').onchange=()=>{$('#cropFields').disabled=!$('#enableCrop').check
 for(const id of ['cropZoom','cropX','cropY'])$('#'+id).oninput=renderCropPreview;
 $('#resetCrop').onclick=()=>{$('#cropZoom').value='1';$('#cropX').value='50';$('#cropY').value='50';renderCropPreview();};
 $('#edit').addEventListener('close',()=>{editImageRevision++;resetCropState();});
-async function connect(handle, request = false, restoring = false, shared = false, signal = null, {expectedLibrary=null,preserveSearch=false,readOnlySelection=false,manualSelection=false,finishReading=()=>{}}={}) {
+async function connect(handle, request = false, restoring = false, shared = false, signal = null, {expectedLibrary=null,preserveSearch=false,readOnlySelection=false,manualSelection=false,finishReading=()=>{},onActivity=()=>{}}={}) {
   if(!restoring||manualSelection)status('ゲームの一覧を確認しています…');
   signal?.throwIfAborted();
   const read=operation=>readTasks.readWithSignal(operation,signal);
@@ -507,7 +508,9 @@ async function connect(handle, request = false, restoring = false, shared = fals
   if(launcherEdition==='player'&&!scannedLibrary)throw new Error('この保存先は準備が必要です。クリエイター版で一度開いて初回設定を済ませてください。');
   if(expectedLibrary&&scannedLibrary!==expectedLibrary){const error=new Error('保存先のIDが変わりました。設定からフォルダーを確認してください。');error.code='LIBRARY_ID_CHANGED';throw error;}
   if(portableConnection&&scannedLibrary!==portableConnection.libraryId)throw new Error('このHTMLの保存先と違います。「'+portableConnection.name+'」のフォルダーを選んでください。');
-  const next = await read(()=>library.loadMetadata(handle)), nextGames = await read(()=>library.scan(handle, next,{signal}));
+  let lastProgress=0;
+  const scanProgress=progress=>{if(signal?.aborted)return;onActivity();if((!restoring||manualSelection)&&performance.now()-lastProgress>=200){lastProgress=performance.now();status(progress.total?'ゲーム情報を確認中：'+progress.prepared+' / '+progress.total+'件':'フォルダーを確認中：'+progress.visited+'項目');}};
+  const next = await read(()=>library.loadMetadata(handle)), nextGames = await read(()=>library.scan(handle, next,{signal,onProgress:scanProgress}));
   signal?.throwIfAborted();
   if(await read(()=>library.loadLibraryId(handle))!==scannedLibrary)throw new Error('読み込み中に保管フォルダーが変わりました。もう一度接続してください。');
   signal?.throwIfAborted();
@@ -594,35 +597,53 @@ function loadingStage(task,name,active=true){
  if(gameLoading!==task||task.cancelled)return;task.stages||=new Set();active?task.stages.add(name):task.stages.delete(name);
  $('#loadStage').hidden=!task.stages.size;$('#loadStage').textContent=[...task.stages].join('・')+(task.stages.size?'。少しお待ちください。':'');
 }
-let catalogueFilterGames=null,catalogueFilterKey='';
+let catalogueFilterGames=null,catalogueDataGames=null,catalogueFilterKey='',catalogueTags=[],catalogueTagCounts=new Map(),knownTagsGames=null,tagLimit=120;
 const tagCategoryByName=new Map(tagPresets.map(tag=>[tag.name,tag.category]));
-function renderCatalogueFilters(){
- const key=JSON.stringify([$('#tagSearch').value,$('#tagCategory').value,[...selectedTags]]);
- if(catalogueFilterGames===games&&catalogueFilterKey===key)return;
-  const allTags = [...new Set(games.flatMap(g => g.tags))].sort((a,b) => a.localeCompare(b,'ja'));
-  const tagCounts=new Map();for(const game of games)for(const tag of game.tags)tagCounts.set(tag,(tagCounts.get(tag)||0)+1);
-  const environment=$('#environmentFilter').value;$('#environmentFilter').replaceChildren(new Option('すべての開発環境',''));
-  for(const name of [...new Set(games.map(g=>g.developmentEnvironment).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja')))$('#environmentFilter').append(new Option(name,name));
-  $('#environmentFilter').value=[...$('#environmentFilter').options].some(o=>o.value===environment)?environment:'';
-  $('#tagFilterArea').hidden = !allTags.length;
-  const tagCategories=[...new Set(tagPresets.map(t=>t.category))].concat('マイタグ');
-  const category=$('#tagCategory').value;$('#tagCategory').replaceChildren(new Option('すべての分類',''));for(const name of tagCategories)$('#tagCategory').append(new Option(name,name));$('#tagCategory').value=category;
-  const tagQuery=$('#tagSearch').value.normalize('NFKC').toLocaleLowerCase();let shownTags=0;
-  const previousTags=new Map([...$('#tagFilters').children].map(button=>[button.getAttribute('aria-label'),button])),visibleTags=[];
-  $('#knownTags').replaceChildren();
-  for (const tag of allTags) {
-    const option = document.createElement('option'); option.value = tag; $('#knownTags').append(option);
-    if(!tag.normalize('NFKC').toLocaleLowerCase().includes(tagQuery)||category&&(tagCategoryByName.get(tag)||'マイタグ')!==category)continue;shownTags++;
-    const count=tagCounts.get(tag);
-    const button = previousTags.get(tag)||document.createElement('button'); button.type='button';button.className = 'tag' + (selectedTags.has(tag) ? ' active' : ''); button.textContent = tag+' '+count;button.setAttribute('aria-label',tag);button.setAttribute('aria-pressed', String(selectedTags.has(tag)));
-    button.onclick = () => { selectedTags.has(tag) ? selectedTags.delete(tag) : selectedTags.add(tag); render().catch(e => status(e.message)); }; visibleTags.push(button);
-  }
-  const wantedTags=new Set(visibleTags);for(const button of [...$('#tagFilters').children])if(!wantedTags.has(button))button.remove();
-  visibleTags.forEach((button,index)=>{const current=$('#tagFilters').children[index];if(current!==button)$('#tagFilters').insertBefore(button,current||null);});
-  $('#tagFilterSummary').textContent=`${allTags.length}タグ中 ${shownTags}件`;
-
- catalogueFilterGames=games;catalogueFilterKey=key;
+function renderKnownTags(){
+ if(knownTagsGames===games)return;
+ const fragment=document.createDocumentFragment();
+ for(const tag of [...new Set(games.flatMap(game=>game.tags))].sort((a,b)=>appCollator.compare(a,b))){const option=document.createElement('option');option.value=tag;fragment.append(option);}
+ $('#knownTags').replaceChildren(fragment);knownTagsGames=games;
 }
+function renderCatalogueFilters(){
+ if(catalogueFilterGames!==games){
+  catalogueFilterGames=games;catalogueDataGames=null;catalogueFilterKey='';
+  $('#tagFilterArea').hidden=!games.some(game=>game.tags.length);
+  if(!$('#filterDetails').open){$('#tagFilters').replaceChildren();$('#tagMore').hidden=true;}
+  const selectedEnvironment=$('#environmentFilter').value;if(selectedEnvironment&&!games.some(game=>game.developmentEnvironment===selectedEnvironment))$('#environmentFilter').value='';
+  knownTagsGames=null;$('#knownTags').replaceChildren();if($('#edit').open)renderKnownTags();
+ }
+ if(!$('#filterDetails').open)return;
+ if(catalogueDataGames!==games){
+  catalogueTags=[...new Set(games.flatMap(game=>game.tags))].sort((a,b)=>appCollator.compare(a,b));catalogueTagCounts=new Map();
+  for(const game of games)for(const tag of game.tags)catalogueTagCounts.set(tag,(catalogueTagCounts.get(tag)||0)+1);
+  const environment=$('#environmentFilter').value;$('#environmentFilter').replaceChildren(new Option('すべての開発環境',''));
+  for(const name of [...new Set(games.map(game=>game.developmentEnvironment).filter(Boolean))].sort((a,b)=>appCollator.compare(a,b)))$('#environmentFilter').append(new Option(name,name));
+  $('#environmentFilter').value=[...$('#environmentFilter').options].some(option=>option.value===environment)?environment:'';
+  $('#tagFilterArea').hidden=!catalogueTags.length;
+  const category=$('#tagCategory').value;$('#tagCategory').replaceChildren(new Option('すべての分類',''));
+  for(const name of [...new Set(tagPresets.map(tag=>tag.category)),'マイタグ'])$('#tagCategory').append(new Option(name,name));$('#tagCategory').value=category;
+  catalogueDataGames=games;
+ }
+ // Only open filters aggregate and construct candidates. Search itself still
+ // examines every game and tag, including candidates beyond the visible page.
+ const key=JSON.stringify([$('#tagSearch').value,$('#tagCategory').value,[...selectedTags],tagLimit]);
+ if(catalogueFilterKey===key)return;
+ const category=$('#tagCategory').value,query=$('#tagSearch').value.normalize('NFKC').toLocaleLowerCase();
+ const previousTags=new Map([...$('#tagFilters').children].map(button=>[button.getAttribute('aria-label'),button])),visibleTags=[];let matching=0;
+ for(const tag of catalogueTags){
+  if(query&&!tag.normalize('NFKC').toLocaleLowerCase().includes(query)||category&&(tagCategoryByName.get(tag)||'マイタグ')!==category)continue;
+  if(++matching>tagLimit)continue;
+  const button=previousTags.get(tag)||document.createElement('button');button.type='button';button.className='tag'+(selectedTags.has(tag)?' active':'');button.textContent=tag+' '+catalogueTagCounts.get(tag);button.setAttribute('aria-label',tag);button.setAttribute('aria-pressed',String(selectedTags.has(tag)));
+  button.onclick=()=>{selectedTags.has(tag)?selectedTags.delete(tag):selectedTags.add(tag);render().catch(error=>status(error.message));};visibleTags.push(button);
+ }
+ const wanted=new Set(visibleTags);for(const button of [...$('#tagFilters').children])if(!wanted.has(button))button.remove();
+ visibleTags.forEach((button,index)=>{const current=$('#tagFilters').children[index];if(current!==button)$('#tagFilters').insertBefore(button,current||null);});
+ $('#tagFilterSummary').textContent=`${catalogueTags.length}タグ中 ${matching}件`+(matching>tagLimit?`・先頭${tagLimit}件を表示`:'');$('#tagMore').hidden=matching<=tagLimit;
+ catalogueFilterKey=key;
+}
+$('#filterDetails').addEventListener('toggle',()=>{if($('#filterDetails').open)render().catch(error=>status(error.message));});
+$('#tagMore').onclick=()=>{tagLimit+=120;render().catch(error=>status(error.message));};
 async function render() {
   const revision = ++renderRevision, folder = root,viewLibrary=localLibrary;
   renderReadAbort?.abort();const thumbnailRead=new AbortController();renderReadAbort=thumbnailRead;
@@ -637,7 +658,10 @@ async function render() {
   if($('#libraryView').value!=='recent'&&$('#sortGames').value==='played')$('#sortGames').value='name-asc';
   renderCatalogueFilters();
   const keyword = $('#search').value.trim().toLocaleLowerCase();
-  let matches = searchTools.searchGames(games,{query:keyword,scope:$('#searchScope').value,kind:$('#kindFilter').value,environment:$('#environmentFilter').value,tags:selectedTags,tagMatch:$('#tagMatch').value,sort:$('#sortGames').value});
+  let matches;
+  try{matches=await searchTools.searchGamesAsync(games,{query:keyword,scope:$('#searchScope').value,kind:$('#kindFilter').value,environment:$('#environmentFilter').value,tags:selectedTags,tagMatch:$('#tagMatch').value,sort:$('#sortGames').value},{signal:thumbnailRead.signal});}
+  catch(error){if(thumbnailRead.signal.aborted)return;throw error;}
+  if(revision!==renderRevision||root!==folder||localLibrary!==viewLibrary)return;
   $('#libraryView').disabled=!viewPreferencesReady;const view=viewPreferencesReady?$('#libraryView').value:'all';$('#sortGames').disabled=view==='recent';$('#sortGames option[value=played]').hidden=view!=='recent';
   if(view==='favorites')matches=matches.filter(g=>gameViews.get(g.id)?.favorite);
   if(view==='recent')matches=matches.filter(g=>gameViews.get(g.id)?.lastPlayed>0).sort((a,b)=>gameViews.get(b.id).lastPlayed-gameViews.get(a.id).lastPlayed||a.title.localeCompare(b.title,'ja')).slice(0,30);
@@ -656,7 +680,7 @@ async function render() {
   $('#emptyPost').hidden=!root||games.length>0||!editingEnabled;
   for (const game of matches.slice(0,renderLimit)) {
     const cached=cardCache.get(game.path);
-    if(cached&&!cached.thumbnailFailed&&(cached.game===game||cached.viewKey===syncTools.cardViewKey(game))){cached.game=game;const favorite=cached.node.querySelector('.favorite-button');if(favorite)updateFavoriteButton(favorite,game);visibleCards.push(cached.node);continue;}
+    if(cached&&!cached.thumbnailFailed&&(cached.game===game||cached.viewKey===syncTools.cardViewKey(game))){cached.game=game;cardCache.delete(game.path);cardCache.set(game.path,cached);const favorite=cached.node.querySelector('.favorite-button');if(favorite)updateFavoriteButton(favorite,game);visibleCards.push(cached.node);continue;}
     const article = document.createElement('article'); article.className = 'card';
     const cover = document.createElement('div'); cover.className = 'cover'; cover.textContent = '▶\uFE0E';let thumbnailFailed=false;
     if (typeof game.thumbnail === 'string') { const img = document.createElement('img'); img.src = game.thumbnail; img.alt = ''; cover.replaceChildren(img); }
@@ -689,6 +713,8 @@ async function render() {
   const wanted=new Set(visibleCards);for(const card of [...$('#games').children])if(!wanted.has(card))card.remove();
   visibleCards.forEach((card,index)=>{const current=$('#games').children[index];if(current!==card)$('#games').insertBefore(card,current||null);});fitCardTags();
   const paths=new Set(games.map(game=>game.path));for(const path of cardCache.keys())if(!paths.has(path))cardCache.delete(path);
+  const offscreen=[...cardCache].filter(([,cached])=>!wanted.has(cached.node)&&!cached.node.contains(document.activeElement));
+  for(const [path]of offscreen.slice(0,Math.max(0,offscreen.length-cardBatch)))cardCache.delete(path);
   const retained=new Set([...cardCache.values()].flatMap(({node})=>[...node.querySelectorAll('img')].map(img=>img.src)));
   imageURLs=imageURLs.filter(url=>{if(retained.has(url))return true;URL.revokeObjectURL(url);return false;});
 }
@@ -747,6 +773,7 @@ function updateTagChoices() {
   }
 }
 function renderTagChoices() {
+  renderKnownTags();
   const box = $('#tagCategories'); box.replaceChildren(); tagControls = [];
   const presets = [...tagPresets], known = new Set(presets.map(t => t.name));
   for (const name of new Set([...games.flatMap(g => g.tags), ...library.tagsFrom($('#editTags').value)])) {
@@ -987,7 +1014,7 @@ $('#homeLink').onclick=event=>{
   },false,true);
 };
 $('#setupFolder').onclick = () => (remembered||nativeRetry)&&!$('#reconnect').hidden?$('#reconnect').onclick():$('#chooseFolder').onclick();
-function resetSearch(){clearTimeout(searchTimer);renderLimit=cardBatch;$('#search').value='';$('#tagSearch').value='';$('#tagCategory').value='';selectedTags.clear();$('#searchScope').value='all';$('#kindFilter').value='';$('#environmentFilter').value='';$('#tagMatch').value='all';$('#sortGames').value='name-asc';$('#libraryView').value='all'; }
+function resetSearch(){clearTimeout(searchTimer);tagLimit=120;renderLimit=cardBatch;$('#search').value='';$('#tagSearch').value='';$('#tagCategory').value='';selectedTags.clear();$('#searchScope').value='all';$('#kindFilter').value='';$('#environmentFilter').value='';$('#tagMatch').value='all';$('#sortGames').value='name-asc';$('#libraryView').value='all'; }
 $('#clearFilters').onclick = () => { resetSearch();render().catch(e => status(e.message));$('#search').focus(); };
 $('#emptyReset').onclick=()=>$('#clearFilters').click();
 $('#emptyPost').onclick=()=>$('#postButton').click();
@@ -1038,10 +1065,10 @@ function openFolderSelection(selection) {
     }
     if(!handle||handle.kind!=='directory')throw new Error('ファイルではなく、ゲームを保管しているフォルダーを1つドラッグしてください。');
     const controller=new AbortController();manualConnection=controller;nativeReadControls();
-    const timer=setTimeout(()=>controller.abort(uiError('保存先から応答がありません。選び直すか、もう一度ドラッグしてください。','TimeoutError')),30000);
-    const finishReading=()=>{clearTimeout(timer);if(manualConnection===controller)manualConnection=null;nativeReadControls();};
+    const idle=readTasks.readIdleDeadline(30000,()=>controller.abort(uiError('保存先から応答がありません。選び直すか、もう一度ドラッグしてください。','TimeoutError')));
+    const finishReading=()=>{idle.stop();if(manualConnection===controller)manualConnection=null;nativeReadControls();};
     let connectionMessage='';
-    try{connectionMessage=await connect(handle,false,false,false,controller.signal,{readOnlySelection:true,manualSelection:true,finishReading});}catch(error){
+    try{connectionMessage=await connect(handle,false,false,false,controller.signal,{readOnlySelection:true,manualSelection:true,finishReading,onActivity:idle.pulse});}catch(error){
       $('#folderSelectionHelp').open=true;
       if(!$('#settings').open)$('#settings').showModal();
       if(error.name==='AbortError')throw new Error('フォルダーは選択されましたが、接続処理が中断しました。保存先への接続とアクセス権を確認してください。詳細：'+error.message);
@@ -1098,10 +1125,11 @@ async function retryNativeConnection(){
   }finally{clearTimeout(timer);if(nativeReadAbort===controller)nativeReadAbort=null;}
 }
 async function connectRememberedRead(handle,shared=false,options={}){
-  const controller=new AbortController(),abort=()=>controller.abort(options.signal.reason);let timer;
-  if(options.signal?.aborted)abort();else options.signal?.addEventListener('abort',abort,{once:true});
-  try{await Promise.race([connect(handle,false,true,shared,controller.signal,options),new Promise((_,reject)=>{timer=setTimeout(()=>{const error=new Error('保存先への接続を中止しました。もう一度接続するか、設定から保存先を選び直してください。');error.name='TimeoutError';controller.abort(error);reject(error);},12000);})]);controller.signal.throwIfAborted();if(!options.signal)$('#settings').close();if($('#status').textContent===reconnectHint)status('');}
-  finally{clearTimeout(timer);options.signal?.removeEventListener('abort',abort);}
+ const controller=new AbortController(),abort=()=>controller.abort(options.signal.reason);
+ if(options.signal?.aborted)abort();else options.signal?.addEventListener('abort',abort,{once:true});
+ const idle=readTasks.readIdleDeadline(12000,()=>controller.abort(uiError('保存先への接続を中止しました。もう一度接続するか、設定から保存先を選び直してください。','TimeoutError')));
+ try{await connect(handle,false,true,shared,controller.signal,{...options,onActivity:()=>{idle.pulse();options.onActivity?.();},finishReading:()=>{idle.stop();options.finishReading?.();}});controller.signal.throwIfAborted();if(!options.signal)$('#settings').close();if($('#status').textContent===reconnectHint)status('');}
+ finally{idle.stop();options.signal?.removeEventListener('abort',abort);}
 }
 $('#retryNativeConnection').onclick=()=>{if(!busy&&!starting&&nativeBridge&&(!root||root.nativeReadOnly))return action(()=>retryNativeConnection(),true);};
 $('#reconnect').onclick = () => {
@@ -1125,7 +1153,7 @@ document.addEventListener('keydown',requestRememberedFromHome,{capture:true});
 $('#homeReconnect').onclick=()=>$('#reconnect').onclick();
 $('#refresh').onclick = () => action(async()=>{await refresh();return '一覧を更新しました。';});
 $('#search').oninput = () => {clearTimeout(searchTimer);renderLimit=cardBatch;searchTimer=setTimeout(()=>render().catch(e=>status(e.message)),100);};
-$('#tagSearch').oninput=()=>render().catch(e=>status(e.message));$('#tagCategory').onchange=()=>render().catch(e=>status(e.message));
+$('#tagSearch').oninput=()=>{tagLimit=120;render().catch(e=>status(e.message));};$('#tagCategory').onchange=()=>{tagLimit=120;render().catch(e=>status(e.message));};
 $('#loadMore').onclick=()=>{renderLimit+=cardBatch;render().catch(e=>status(e.message));};
 function updatePostSelection() {
   const bytes=postSelection.reduce((sum,file)=>sum+file.size,0);
@@ -1273,8 +1301,8 @@ function initialized() { if(connectionError)status(connectionError);starting = f
 if (!window.showDirectoryPicker&&!nativeBridge) { status('このブラウザーはフォルダーへの保存に対応していません。PC版Google Chromeを使用してください。'); initialized(); }
 else {
 const startupAbort=new AbortController();startupConnection=startupAbort;nativeReadControls();
-const startupTimeout=setTimeout(()=>{pauseAutomaticConnection();startupAbort.abort();if(nativeBridge)nativeRetry=true;status('前回の保存先への自動接続を中止しました。保存先を開き直してください。ヘルプ・設定から操作できます。');initialized();},12000);
-startupAbort.signal.addEventListener('abort',()=>clearTimeout(startupTimeout),{once:true});
+const startupIdle=readTasks.readIdleDeadline(12000,()=>{pauseAutomaticConnection();startupAbort.abort();if(nativeBridge)nativeRetry=true;status('前回の保存先への自動接続を中止しました。保存先を開き直してください。ヘルプ・設定から操作できます。');initialized();});
+startupAbort.signal.addEventListener('abort',()=>startupIdle.stop(),{once:true});
 Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previous,receipts]) => {
   startupAbort.signal.throwIfAborted();
   settingsReceipts=receipts;lastFolderRevision=previous?.revision||'';
@@ -1283,12 +1311,12 @@ Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previ
   // A failed or read-only helper must not discard the full browser connection.
   if(nativeBridge&&previous?.scope===folderScope&&previous?.handle&&!previous.handle.nativeDesktop&&!previous.handle.nativeReadOnly){
     const granted=await readTasks.readWithSignal(()=>previous.handle.queryPermission({mode:'read'}),startupAbort.signal);
-    if(granted==='granted'){await connect(previous.handle,false,true,false,startupAbort.signal);return;}
+    if(granted==='granted'){await connect(previous.handle,false,true,false,startupAbort.signal,{onActivity:startupIdle.pulse,finishReading:startupIdle.stop});return;}
   }
-  if(nativeBridge){const handle=await nativeTools.nativeFolder(nativeBridge,compatibilityTools.LAUNCHER_VERSION,startupAbort.signal,{onPendingChange:nativeReadControls});startupAbort.signal.throwIfAborted();if(handle){editingEnabled=false;$('#enableEditing').checked=false;await connect(handle,false,true,false,startupAbort.signal);return;}}
+  if(nativeBridge){const handle=await nativeTools.nativeFolder(nativeBridge,compatibilityTools.LAUNCHER_VERSION,startupAbort.signal,{onPendingChange:nativeReadControls});startupAbort.signal.throwIfAborted();if(handle){editingEnabled=false;$('#enableEditing').checked=false;await connect(handle,false,true,false,startupAbort.signal,{onActivity:startupIdle.pulse,finishReading:startupIdle.stop});return;}}
   if (previous?.name) $('#settingFolder').textContent = '前回：' + previous.name;
-  if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;writeControls();try{const permission=await remembered.queryPermission({mode:'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal);}else {syncStatus(reconnectHint);status(reconnectHint);}}catch(error){if(startupAbort.signal.aborted)return;queueFolderRecovery(error);syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}
-}).catch(error => {if(nativeBridge&&!root){nativeRetry=true;editingEnabled=false;$('#enableEditing').checked=false;}if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。再試行するか、「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{clearTimeout(startupTimeout);if(!startupAbort.signal.aborted)initialized();});
+  if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;writeControls();try{const permission=await remembered.queryPermission({mode:'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal,{onActivity:startupIdle.pulse,finishReading:startupIdle.stop});}else {syncStatus(reconnectHint);status(reconnectHint);}}catch(error){if(startupAbort.signal.aborted)return;queueFolderRecovery(error);syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}
+}).catch(error => {if(nativeBridge&&!root){nativeRetry=true;editingEnabled=false;$('#enableEditing').checked=false;}if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。再試行するか、「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{startupIdle.stop();if(!startupAbort.signal.aborted)initialized();});
 }
 
 

@@ -21,3 +21,12 @@ export async function prepareTogether(operations,signal){
     controller.signal.throwIfAborted();return results.map(result=>result.value);
   }finally{signal?.removeEventListener('abort',abort);}
 }
+
+// A healthy slow read may continue; a stalled read still releases the UI.
+// Stop before writes begin, and ignore late progress after stop/expiry.
+export function readIdleDeadline(milliseconds,onTimeout){
+ let timer,stopped=false;
+ const stop=()=>{stopped=true;clearTimeout(timer);};
+ const pulse=()=>{if(stopped)return;clearTimeout(timer);timer=setTimeout(()=>{stop();onTimeout();},milliseconds);};
+ pulse();return {pulse,stop};
+}

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 let html=await readFile('offline-release/GAME-PORTAL.html','utf8');
 html=html.replace('function initialized() {',`const originalStartupCompatibility=compatibilityTools.checkCompatibility;compatibilityTools.checkCompatibility=(...args)=>sessionStorage.getItem('startup-test')==='compatibility'?new Promise((resolve,reject)=>{window.releaseStartupCompatibility=()=>{const error=new Error('Late incompatible old folder');error.code='LIBRARY_INCOMPATIBLE';reject(error);};}):originalStartupCompatibility(...args);
 const originalStartupScan=library.scan;
-library.scan=(...args)=>sessionStorage.getItem('startup-test')==='scan'?new Promise((resolve,reject)=>{window.releaseStartupScan=()=>Promise.resolve(originalStartupScan(...args)).then(resolve,reject);}):originalStartupScan(...args);
+library.scan=(...args)=>['scan','progress'].includes(sessionStorage.getItem('startup-test'))?new Promise((resolve,reject)=>{window.pulseStartupScan=()=>args[2]?.onProgress?.({visited:100,prepared:10,total:1000});window.releaseStartupScan=()=>Promise.resolve(originalStartupScan(...args)).then(resolve,reject);}):originalStartupScan(...args);
 function initialized() {`);
 const server=createServer((q,r)=>r.end(html));await new Promise(r=>server.listen(0,'127.0.0.1',r));
 // Match a normal Chrome profile: Chromium 153 can crash when restoring OPFS handles in an incognito context.
@@ -42,6 +42,15 @@ try{
   }else{
    await page.evaluate(async()=>{sessionStorage.removeItem('startup-test');await finishLateDatabase();indexedDB.open=realStartupOpen;});await expect(page.locator('#settings')).toBeVisible();
    if(mode==='upgrade')assert.deepEqual(await page.evaluate(async()=>{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('game-portal-offline-folder-v1',2);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});const result={version:db.version};for(const name of ['settings','saves','libraries'])result[name]=await new Promise((resolve,reject)=>{const r=db.transaction(name).objectStore(name).get('sentinel');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();return result;}),{version:2,settings:'KEEP_settings',saves:'KEEP_saves',libraries:'KEEP_libraries'});
+  }
+  if(mode==='scan'){
+   await page.clock.install();await page.evaluate(()=>sessionStorage.setItem('startup-test','progress'));await page.reload();await page.waitForFunction(()=>typeof pulseStartupScan==='function');
+   for(let n=0;n<3;n++){await page.clock.runFor(10000);await page.evaluate(()=>pulseStartupScan());}
+   assert.equal(await page.evaluate(()=>starting),true);assert.notEqual(await page.locator('html').getAttribute('data-ready'),'true');
+   await page.evaluate(()=>releaseStartupScan());await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('#folderName')).toHaveText('New');
+   await page.reload();await page.waitForFunction(()=>typeof pulseStartupScan==='function');await page.evaluate(()=>pulseStartupScan());await page.clock.runFor(13000);
+   await expect(page.locator('html')).toHaveAttribute('data-ready','true');await expect(page.locator('#status')).toContainText('自動接続を中止');
+   await page.evaluate(()=>releaseStartupScan());assert.equal(await page.evaluate(()=>root),null);
   }
   assert.deepEqual(errors,[]);await context.close();contexts.delete(context);console.log('Startup recovery passed:',mode);
  }
