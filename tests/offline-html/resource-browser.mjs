@@ -27,6 +27,20 @@ try{
      document.querySelector('#player').showModal();window.resourceTestStop=player.startPlayer(document.querySelector('#frame'),{kind:'html',files,saved:{}},preview,()=>{});
    },expectBug);
    const body=page.frameLocator('#frame').locator('body');
+   if(!expectBug){
+     const xhrResult=await body.evaluate(async()=>{
+       const read=(url,type='text')=>new Promise(resolve=>{
+         const xhr=new XMLHttpRequest();
+         xhr.onload=()=>resolve({ok:true,status:xhr.status,value:type==='arraybuffer'?[...new Uint8Array(xhr.response)]:xhr.responseText});
+         xhr.onerror=()=>resolve({ok:false});
+         try{xhr.open('GET',url,true);xhr.responseType=type;xhr.send();}catch{resolve({ok:false});}
+       });
+       const sync=new XMLHttpRequest();sync.open('GET',new String('素材%20data.bin?cache=2'),false);sync.send();
+       const aborted=await new Promise(resolve=>{const xhr=new XMLHttpRequest();xhr.onabort=()=>resolve(true);xhr.onload=()=>resolve(false);xhr.open('GET','game.wasm');xhr.send();xhr.abort();});
+       return {binary:await read('game.wasm?version=2','arraybuffer'),unicode:await read('素材%20data.bin'),inline:await read('data:text/plain,inline'),sync:sync.responseText,aborted,missing:await read('missing.bin'),external:await read('https://example.invalid/blocked')};
+     });
+     assert.deepEqual(xhrResult,{binary:{ok:true,status:200,value:[0,97,115,109]},unicode:{ok:true,status:200,value:'unicode'},inline:{ok:true,status:200,value:'inline'},sync:'unicode',aborted:true,missing:{ok:false},external:{ok:false}},'XMLHttpRequest must resolve bundled resources without enabling external requests');
+   }
    assert.equal(await body.evaluate(()=> 'serviceWorker' in navigator),false,'opaque game capability probes must not expose unavailable service workers');
    assert.equal(await body.evaluate(()=>{try{void parent.document;return false;}catch{return true;}}),true,'game stays isolated from launcher');
    if(expectBug&&path.includes('日本語')){await expect(body).toHaveAttribute('data-failure','Game resource unavailable');console.log('Reproduced resource failure under a URL with Japanese/space directory names.');}
@@ -50,6 +64,6 @@ try{
        return result;
      }finally{crypto.randomUUID=random;window.postMessage=post;stop?.();}
    });assert.equal(failure.type,'error');assert.match(failure.message,/起動を再試行/);await page.close();
-   console.log('Resource paths passed: byte transfers and file-backed resources, ASCII/Unicode paths, scripts, WASM, AudioWorklet, external-network rejection and transfer failure guidance.');
+   console.log('Resource paths passed: byte transfers and file-backed resources, ASCII/Unicode paths, scripts, WASM, XMLHttpRequest, AudioWorklet, external-network rejection and transfer failure guidance.');
  }
 }finally{await browser.close();await new Promise(r=>server.close(r));}
