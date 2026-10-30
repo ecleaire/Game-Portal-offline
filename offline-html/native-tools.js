@@ -1,3 +1,4 @@
+function nativeError(message,name){const error=new DOMException(message,name);error.userMessage=message;return error;}
 export function nativeLayout(paths) {
   const exes=paths.filter(path=>/\.exe$/i.test(path)&&!path.split('/').some(p=>p.startsWith('.')||p==='__MACOSX')&&!/(?:^|\/)GAME-PORTAL-WINDOWS\.exe$/i.test(path));
   const main=exes.filter(path=>!(/\.console\.exe$/i.test(path)&&exes.some(other=>other.toLowerCase()===path.replace(/\.console\.exe$/i,'.exe').toLowerCase()))&&!(exes.length>1&&/(?:^|\/)UnityCrashHandler(?:32|64)?\.exe$/i.test(path)));
@@ -40,7 +41,7 @@ export async function launchNative(connection,libraryId,game,version) {
 export async function nativeFolder(connection,version,signal,{onPendingChange}={}) {
   const pending=new Set();
   const notify=()=>onPendingChange?.(pending.size);
-  function connectionError(name='NetworkError') {const error=new Error('起動補助との接続を確認してください。起動補助から開き直すか、「設定」で保存先を選び直せます。');error.name=name;return error;}
+  function connectionError(name='NetworkError') {const error=new Error('起動補助との接続を確認してください。起動補助から開き直すか、「設定」で保存先を選び直せます。');error.name=name;error.userMessage=error.message;return error;}
   async function request(action,path='',binary=false,limit=null) {
     const controller=new AbortController(),abort=()=>controller.abort(signal.reason);
     if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
@@ -49,7 +50,7 @@ export async function nativeFolder(connection,version,signal,{onPendingChange}={
     pending.add(controller);notify();
     try{
       const response=await fetch(connection.origin+'/native/folder',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','X-Game-Portal-Token':connection.token},body:JSON.stringify({version,action,path,...(limit===null?{}:{limit})})});
-      if(!response.ok){const error=await response.json();throw new DOMException(error.error||'保存先に接続できません。',error.name||'NotReadableError');}
+      if(!response.ok){const error=await response.json();throw nativeError(error.error||'保存先に接続できません。',error.name||'NotReadableError');}
       return await (binary?response.blob():response.json());
     }catch(error){if(controller.signal.aborted)throw controller.signal.reason;if(error instanceof TypeError)throw connectionError();throw error;}
     finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);pending.delete(controller);notify();}
@@ -57,7 +58,7 @@ export async function nativeFolder(connection,version,signal,{onPendingChange}={
   const info=await request('info');
   if(!info.configured)return null;
   const child=(path,name)=>{if(!name||name==='.'||name==='..'||/[\\/]/.test(name))throw new TypeError('ファイル名を確認してください。');return path?path+'/'+name:name;};
-  const deny=()=>{throw new DOMException('自動接続の試用版は読み取り専用です。追加・編集・セーブ共有には「保存先を選ぶ」を使ってください。','NotAllowedError');};
+  const deny=()=>{throw nativeError('自動接続の試用版は読み取り専用です。追加・編集・セーブ共有には「保存先を選ぶ」を使ってください。','NotAllowedError');};
   function handle(path,name,kind) {
     const result={name,kind,nativeReadOnly:true,queryPermission:async({mode='read'}={})=>mode==='read'?'granted':'denied',requestPermission:async({mode='read'}={})=>{if(mode!=='read')deny();return 'granted';},isSameEntry:async other=>other===result,removeEntry:async()=>deny()};
     if(kind==='file'){
@@ -73,7 +74,7 @@ export async function nativeFolder(connection,version,signal,{onPendingChange}={
       async *values(){for(const entry of (await request('list',path)).entries)yield handle(child(path,entry.name),entry.name,entry.kind);},
       async *entries(){for await(const entry of result.values())yield [entry.name,entry];}
     });
-    async function lookup(name,kind,options){if(options.create)deny();const next=child(path,name),entry=await request('stat',next);if(entry.kind!==kind)throw new DOMException('種類が違います。','TypeMismatchError');return handle(next,name,kind);}
+    async function lookup(name,kind,options){if(options.create)deny();const next=child(path,name),entry=await request('stat',next);if(entry.kind!==kind)throw nativeError('種類が違います。','TypeMismatchError');return handle(next,name,kind);}
     return result;
   }
   const root=handle('',info.name,'directory');

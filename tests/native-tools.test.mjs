@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {nativeLayout,validateExe,nativeConnection,nativePageConnection,launchNative,nativeFolder} from '../offline-html/native-tools.js';
+import {describeError} from '../offline-html/errors.js';
 import {canUpdateGame} from '../offline-html/updates.js';
 
 function exe(flags=2){const bytes=new Uint8Array(128),view=new DataView(bytes.buffer);view.setUint16(0,0x5a4d,true);view.setUint32(60,64,true);view.setUint32(64,0x4550,true);view.setUint16(86,flags,true);return new File([bytes],'game.exe');}
@@ -36,7 +37,7 @@ test('native reads time out while receiving the body, release pending state and 
     return {ok:true,arrayBuffer:()=>{throw Error('Must not allocate an intermediate binary ArrayBuffer');},blob:()=>{if(!hang)return Promise.resolve(new Blob(['game']));receiving();return new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(options.signal.reason),{once:true}));}};
   });
   const root=await nativeFolder({origin:'http://127.0.0.1:12345',token:'test'},'1.0.0',undefined,{onPendingChange:count=>counts.push(count)}),file=await root.getFileHandle('game.html');
-  const reading=file.getFile();await bodyReady;assert.equal(root.pendingReads,1);const rejected=assert.rejects(reading,error=>error.name==='TimeoutError'&&error.message.includes('設定'));t.mock.timers.tick(120000);await rejected;
+  const reading=file.getFile();await bodyReady;assert.equal(root.pendingReads,1);const rejected=assert.rejects(reading,error=>error.name==='TimeoutError'&&error.message.includes('設定')&&describeError(error).message.includes('起動補助'));t.mock.timers.tick(120000);await rejected;
   assert.equal(root.pendingReads,0);assert.equal(counts.at(-1),0);hang=false;assert.equal(await(await file.getFile()).text(),'game');assert.equal(root.pendingReads,0);
 });
 

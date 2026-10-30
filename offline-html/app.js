@@ -1,3 +1,4 @@
+function uiError(message,name){const error=new DOMException(message,name);error.userMessage=message;return error;}
 const $ = selector => document.querySelector(selector);
 // A completed write may restore focus only if no newer interaction superseded it.
 let favoriteFocusRevision=0;
@@ -5,7 +6,7 @@ for(const type of ['pointerdown','keydown'])document.addEventListener(type,()=>{
 const editionLabel=$('#homeLink .app-edition')||document.createElement('span');editionLabel.className='app-edition';editionLabel.textContent=launcherEdition==='player'?'プレイ専用':'クリエイター';$('#homeLink').append(editionLabel);
 for(const duplicate of document.querySelectorAll('#homeLink .app-edition'))if(duplicate!==editionLabel)duplicate.remove();
 if(launcherEdition==='player'){
-  const deny=()=>{throw new DOMException('ゲームの追加・変更はクリエイター版で行ってください。','NotAllowedError');};
+  const deny=()=>{throw uiError('ゲームの追加・変更はクリエイター版で行ってください。','NotAllowedError');};
   const writeSave=library.writeFile;
   library.writeFile=async(directory,name,value)=>{
     const path=directory.nativeDesktop?directory.desktopPath:(await root?.resolve(directory))?.join('/');
@@ -54,7 +55,7 @@ function failedAutomaticConnection(){
   if(++automaticConnectionFailures>=3){pauseAutomaticConnection();syncStatus('自動接続を停止しました。設定から保存先を選び直せます。');}
 }
 function cancelFolderConnection(){
-  const reason=new DOMException('接続待ちを中止しました。設定から保存先を選び直せます。','NativeReadCancelled');
+  const reason=uiError('接続待ちを中止しました。設定から保存先を選び直せます。','NativeReadCancelled');
   pauseAutomaticConnection();if(starting)startupConnection?.abort(reason);nativeReadAbort?.abort(reason);manualConnection?.abort(reason);root?.cancelReads?.();nativeTools.cancelFolderReads?.();
   if(starting)initialized();status('接続待ちを中止しました。設定から保存先を選び直せます。');
 }
@@ -133,7 +134,7 @@ async function requireLibraryConnection(forWrite=false,signal=null){
   if(!root||syncPaused)throw new Error(compatibilityProblem||'保管フォルダーへの接続を確認し、再読み込み・再接続してください。');
   const folder=root,id=localLibrary;await checkLibraryCompatibility(folder,signal);signal?.throwIfAborted();
   const found=await library.loadLibraryId(folder);signal?.throwIfAborted();
-  if(root!==folder||localLibrary!==id)throw new DOMException('保存先が変わりました。','AbortError');
+  if(root!==folder||localLibrary!==id)throw uiError('保存先が変わりました。','AbortError');
   if(id&&found!==id){syncPaused=true;$('#reconnect').hidden=false;syncStatus('保管フォルダーのIDが変わりました。設定からフォルダーを指定し直してください。');throw new Error('保管フォルダーのIDが変わりました。フォルダーを指定し直してください。');}
 }
 
@@ -252,7 +253,7 @@ async function checkSharedFolder(){
   if(folderWatchPromise||!available())return;
   const controller=new AbortController(),watchRoot=root;folderWatchAbort=controller;folderWatchStarted=performance.now();nativeReadControls();
   const progress=setTimeout(()=>nativeReadControls(),1500);
-  const timer=setTimeout(()=>controller.abort(new DOMException('保存先の確認が応答しません。再接続するか、保存先を選び直してください。','TimeoutError')),12000);
+  const timer=setTimeout(()=>controller.abort(uiError('保存先の確認が応答しません。再接続するか、保存先を選び直してください。','TimeoutError')),12000);
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
   let watchFailed=false;
   folderWatchPromise=(async()=>{
@@ -370,12 +371,12 @@ async function refresh({signal}={}) {
   if (!root) return;
   const folder=root,id=localLibrary;await checkLibraryCompatibility(folder,signal);signal?.throwIfAborted();
   const nextLibrary=await library.loadLibraryId(folder);
-  signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw new DOMException('保存先が変わりました。','AbortError');
+  signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw uiError('保存先が変わりました。','AbortError');
   if(id&&nextLibrary!==id){syncPaused=true;writeControls();throw new Error('保管フォルダーのIDが変わりました。設定からフォルダーを指定し直してください。');}
   const nextMetadata=await library.loadMetadata(folder),nextGames=await library.scan(folder,nextMetadata,{signal});
   signal?.throwIfAborted();
   if(await library.loadLibraryId(folder)!==nextLibrary)throw new Error('読み込み中に保管フォルダーのIDが変わりました。再接続してください。');
-  signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw new DOMException('保存先が変わりました。','AbortError');
+  signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw uiError('保存先が変わりました。','AbortError');
   localLibrary=nextLibrary;syncPaused=false;folderRecovery=null;$('#reconnect').hidden=true;syncStatus('共有フォルダーの自動確認：有効（ホームで3分操作がないとき）');
   metadata=nextMetadata;games=nextGames;renderLimit=cardBatch;
   // Keep unchanged cards after edits or manual refresh, as background sync does.
@@ -438,7 +439,7 @@ async function syncLibrary({idle=false}={}){
   if(idle&&!homeIsIdle())return;
   const folder=root,libraryId=localLibrary,controller=new AbortController();syncController=controller;
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
-  const deadline=setTimeout(()=>controller.abort(new DOMException('自動確認の読み取りが応答しません。接続を確認し、保存先を選び直してください。','TimeoutError')),30000);
+  const deadline=setTimeout(()=>controller.abort(uiError('自動確認の読み取りが応答しません。接続を確認し、保存先を選び直してください。','TimeoutError')),30000);
   if(idle)idleSyncController=controller;
   syncPromise=(async()=>{
     try{
@@ -498,7 +499,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   const mode = restoring||readOnlySelection ? 'read' : editingEnabled || request ? 'readwrite' : 'read';
   const permission = await read(()=>request ? requestFolderPermission(handle,mode) : handle.queryPermission({ mode }));
   signal?.throwIfAborted();
-  if (permission !== 'granted') throw new DOMException('保管フォルダーへのアクセスを許可してください。','NotAllowedError');
+  if (permission !== 'granted') throw uiError('保管フォルダーへのアクセスを許可してください。','NotAllowedError');
   // Read and validate before replacing the current folder or cached handle.
   await read(()=>checkLibraryCompatibility(handle,signal));
   const scannedLibrary=await read(()=>library.loadLibraryId(handle));
@@ -640,7 +641,7 @@ async function render() {
     const cover = document.createElement('div'); cover.className = 'cover'; cover.textContent = '▶\uFE0E';let thumbnailFailed=false;
     if (typeof game.thumbnail === 'string') { const img = document.createElement('img'); img.src = game.thumbnail; img.alt = ''; cover.replaceChildren(img); }
     else if (game.thumbnail) try {
-      const timeout=setTimeout(()=>thumbnailRead.abort(new DOMException('サムネイルの読み込みが応答しません。','TimeoutError')),8000);
+      const timeout=setTimeout(()=>thumbnailRead.abort(uiError('サムネイルの読み込みが応答しません。','TimeoutError')),8000);
       let file;try{file=await readTasks.readWithSignal(()=>library.getFile(folder, `.gameportal/thumbnails/${game.id}.webp`),thumbnailRead.signal);}finally{clearTimeout(timeout);}
       if (revision !== renderRevision) return;
       if (file.size <= 2 * 1024 * 1024) { const url = URL.createObjectURL(file); imageURLs.push(url); const img = document.createElement('img'); img.src = url; img.alt = ''; cover.replaceChildren(img); }
@@ -1017,7 +1018,7 @@ function openFolderSelection(selection) {
     }
     if(!handle||handle.kind!=='directory')throw new Error('ファイルではなく、ゲームを保管しているフォルダーを1つドラッグしてください。');
     const controller=new AbortController();manualConnection=controller;nativeReadControls();
-    const timer=setTimeout(()=>controller.abort(new DOMException('保存先から応答がありません。選び直すか、もう一度ドラッグしてください。','TimeoutError')),30000);
+    const timer=setTimeout(()=>controller.abort(uiError('保存先から応答がありません。選び直すか、もう一度ドラッグしてください。','TimeoutError')),30000);
     const finishReading=()=>{clearTimeout(timer);if(manualConnection===controller)manualConnection=null;nativeReadControls();};
     let connectionMessage='';
     try{connectionMessage=await connect(handle,false,false,false,controller.signal,{readOnlySelection:true,manualSelection:true,finishReading});}catch(error){
