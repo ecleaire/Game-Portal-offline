@@ -61,5 +61,39 @@ try{await context.addInitScript(()=>{if(top!==window)return;FileSystemDirectoryH
   await page.evaluate(()=>reportError(new Error('<img src=x onerror="window.errorMarkupExecuted=true">')));assert.equal(await page.locator('#operationErrorText img').count(),0);assert.equal(await page.evaluate(()=>window.errorMarkupExecuted),undefined);
   await page.evaluate(()=>action(async()=> '操作が完了しました。'));await expect(page.locator('#operationErrorDetail')).toBeHidden();await expect(page.locator('#operationErrorText')).toBeEmpty();
  }
- assert.deepEqual(errors,[]);console.log('Library view UI passed: individual view reset, favorites persistence/removal, recent play, compact preference, priority controls, actual save status, keyboard focus recovery, no focus stealing across pending writes, duplicate-click suppression, 12 size/viewport cases, independent windows, no game-folder writes obsolete read success/failure isolation, thumbnail failure recovery, search cancellation of stalled thumbnails and bounded thumbnail waits, abort/quota classification, safe diagnostics and stale-error clearing in both editions.');
+ // Metadata refreshes replace cards while a preference write may still be
+ // pending. The replacement must remain disabled and regain keyboard focus.
+ for(const rolePath of ['/player','/'])for(const fail of [false,true]){
+  await page.goto(url+rolePath);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await connect();
+  const id=await page.evaluate(async()=>{const game=games.find(g=>g.title==='Beta');await localState.updateGameView(localLibrary,game.id,{favorite:false});viewsLibrary=null;await render();window.normalReplacementWrite=localState.updateGameView;window.replacementWrites=0;window.releaseReplacementWrite=null;localState.updateGameView=async(...args)=>{if('favorite'in args[2]){replacementWrites++;await new Promise(r=>window.releaseReplacementWrite=r);if(window.failReplacementWrite)throw Error('Preference write failed');}return normalReplacementWrite(...args);};return game.id;});
+  await page.evaluate(fail=>window.failReplacementWrite=fail,fail);
+  const button=page.locator('.favorite-button[data-game-id="'+id+'"]');await button.focus();await page.keyboard.press('Enter');await page.waitForFunction(()=>!!releaseReplacementWrite);
+  await page.evaluate(async()=>{games=games.map(g=>g.title==='Beta'?{...g,title:'Beta updated'}:g);await render();writeControls();});
+  await expect(button).toBeDisabled();await button.evaluate(node=>node.click());assert.equal(await page.evaluate(()=>replacementWrites),1);
+  await page.evaluate(async id=>{await localState.updateGameView(localLibrary,id,{played:true});},id);
+  await page.evaluate(()=>{localState.updateGameView=normalReplacementWrite;releaseReplacementWrite();});
+  await expect(button).toBeEnabled();await expect(button).toHaveAttribute('aria-label',/Beta updated/);await expect(button).toHaveAttribute('aria-pressed',String(!fail));await expect(button).toBeFocused();
+  assert((await page.evaluate(async id=>(await localState.loadGameViews(localLibrary)).find(v=>v.id===id).lastPlayed,id))>0);
+  if(fail)await expect(page.locator('#viewPreferenceNotice')).toBeVisible();else await expect(page.locator('#viewPreferenceNotice')).toBeHidden();
+ }
+ // A successful preference write must not hide a newer read/write failure.
+ for(const rolePath of ['/player','/']){
+  await page.goto(url+rolePath);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await connect();
+  await page.evaluate(async()=>{const g=games.find(g=>g.title==='Alpha');await localState.updateGameView(localLibrary,g.id,{favorite:false});viewsLibrary=null;await render();window.raceAlpha=g.id;window.savedPreferenceWrite=localState.updateGameView;window.savedPreferenceRead=localState.loadGameViews;window.releasePreferenceWrite=null;localState.updateGameView=async(...args)=>{if('favorite'in args[2])await new Promise(r=>window.releasePreferenceWrite=r);return savedPreferenceWrite(...args);};});
+  const alpha=page.locator('.card').filter({hasText:'Alpha'}).locator('.favorite-button'),beta=page.locator('.card').filter({hasText:'Beta'}).locator('.favorite-button');
+  await alpha.click();await page.waitForFunction(()=>!!releasePreferenceWrite);
+  await page.evaluate(async()=>{localState.loadGameViews=async()=>{throw Error('New preference read failed');};viewsLibrary=null;await render();});await expect(page.locator('#viewPreferenceNotice')).toBeVisible();
+  await page.evaluate(()=>{localState.updateGameView=savedPreferenceWrite;releasePreferenceWrite();});await expect(alpha).toHaveAttribute('aria-pressed','true');await expect(page.locator('#viewPreferenceNotice')).toBeVisible();await expect(page.locator('#viewPreferenceMessage')).toContainText('New preference read failed');
+  await page.evaluate(()=>localState.loadGameViews=savedPreferenceRead);await page.locator('#retryGameViews').click();await expect(alpha).toBeEnabled();await expect(page.locator('#viewPreferenceNotice')).toBeHidden();
+  await page.evaluate(()=>{window.releasePreferenceWrite=null;localState.updateGameView=async(...args)=>{if(args[1]===raceAlpha)await new Promise(r=>window.releasePreferenceWrite=r);else throw Error('Other game preference write failed');return savedPreferenceWrite(...args);};});
+  await alpha.click();await page.waitForFunction(()=>!!releasePreferenceWrite);await beta.click();await expect(page.locator('#viewPreferenceMessage')).toContainText('Other game preference write failed');
+  await page.evaluate(()=>{localState.updateGameView=savedPreferenceWrite;releasePreferenceWrite();});await expect(alpha).toHaveAttribute('aria-pressed','false');await expect(page.locator('#viewPreferenceNotice')).toBeVisible();await expect(page.locator('#viewPreferenceMessage')).toContainText('Other game preference write failed');
+  await page.locator('#retryGameViews').click();await expect(page.locator('#viewPreferenceNotice')).toBeHidden();
+  await page.evaluate(()=>{window.releasePreferenceRead=null;localState.loadGameViews=async(...args)=>{const values=await savedPreferenceRead(...args);await new Promise(r=>window.releasePreferenceRead=r);return values;};viewsLibrary=null;window.pendingPreferenceRender=render();localState.updateGameView=async()=>{throw Error('Newer preference write failed');};});
+  await page.waitForFunction(()=>!!releasePreferenceRead);await beta.click();await expect(page.locator('#viewPreferenceMessage')).toContainText('Newer preference write failed');
+  await page.evaluate(async()=>{localState.loadGameViews=savedPreferenceRead;releasePreferenceRead();await pendingPreferenceRender;localState.updateGameView=savedPreferenceWrite;});await expect(page.locator('#viewPreferenceNotice')).toBeVisible();await expect(page.locator('#viewPreferenceMessage')).toContainText('Newer preference write failed');
+  await page.locator('#retryGameViews').click();await expect(page.locator('#viewPreferenceNotice')).toBeHidden();
+ }
+ assert.equal(await snapshot(),filesBefore);
+ assert.deepEqual(errors,[]);console.log('Library view UI passed: individual view reset, favorites persistence/removal, recent play, compact preference, priority controls, actual save status, keyboard focus recovery, no focus stealing across pending writes, duplicate-click suppression, 12 size/viewport cases, independent windows, no game-folder writes obsolete read success/failure isolation, thumbnail failure recovery, search cancellation of stalled thumbnails and bounded thumbnail waits, abort/quota classification, safe diagnostics and stale-error clearing, replacement-card write guards, keyboard focus recovery and preservation of newer preference failures in both editions.');
 }finally{await context.close();await new Promise(r=>server.close(r));await rm(dir,{recursive:true,force:true});}

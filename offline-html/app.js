@@ -344,7 +344,7 @@ function writeControls() {
   if(syncPaused){for(const id of ['restoreContent','confirmContentUpdate','verifyContentUpdate','verifySettingsSaves','postButton','confirmPost','saveGameSettings','restoreHistory','captureButton','editPlaying'])$('#'+id).disabled=true;document.querySelectorAll('[data-play]').forEach(b=>b.disabled=true);$('#postReason').textContent=compatibilityProblem||'共有フォルダーへの接続を確認し、再読み込みまたは再接続してください。';}
   $('#updatePlaying').disabled=syncPaused||!root||!openedGame||!updateTools.canUpdateGame(openedGame)||!!openedGame.settingsError&&!(openedGame.contentError&&openedGame.contentPending)||pendingSettings(openedGame.path);
   informationControls();
-  for(const button of document.querySelectorAll('.favorite-button'))button.disabled=busy||!viewPreferencesReady||!localLibrary||!button.dataset.gameId||button.dataset.saving==='true';
+  for(const button of document.querySelectorAll('.favorite-button'))button.disabled=busy||!viewPreferencesReady||!localLibrary||!button.dataset.gameId||button.dataset.saving==='true'||favoriteWrites.has(localLibrary+':'+button.dataset.gameId);
   if(starting)document.querySelectorAll('button').forEach(button=>{button.disabled=!button.matches('#helpButton,#settingsButton,[data-close]');});
   updateGameLoadControls();
 }
@@ -556,15 +556,34 @@ function fitCardTags(){
 }
 let cardTagWidth=-1;
 new ResizeObserver(entries=>{const width=entries[0]?.contentRect.width;if(width===cardTagWidth)return;cardTagWidth=width;requestAnimationFrame(fitCardTags);}).observe($('#games'));
-let gameViews=new Map(),viewsLibrary=null,viewPreferencesReady=false;
-function viewPreferenceError(error,loading=false){$('#viewPreferenceNotice').hidden=false;$('#viewPreferenceMessage').textContent=(loading?'このPCのお気に入り・履歴を確認できませんでした。確認できるまで全ゲームを表示します。':'表示設定を保存できませんでした。表示設定を再読込してから再試行してください。')+'元の情報は変更していません：'+error.message;}
+let gameViews=new Map(),viewsLibrary=null,viewPreferencesReady=false,viewPreferenceNoticeRevision=0;
+const favoriteWrites=new Set();
+function viewPreferenceError(error,loading=false){viewPreferenceNoticeRevision++;$('#viewPreferenceNotice').hidden=false;$('#viewPreferenceMessage').textContent=(loading?'このPCのお気に入り・履歴を確認できませんでした。確認できるまで全ゲームを表示します。':'表示設定を保存できませんでした。表示設定を再読込してから再試行してください。')+'元の情報は変更していません：'+error.message;}
 $('#retryGameViews').onclick=()=>{viewsLibrary=null;void render().catch(viewPreferenceError);};
 async function changeGameView(game,change,id=localLibrary){
  if(id!==localLibrary||!id||!game?.id)return;
+ const noticeRevision=viewPreferenceNoticeRevision;
  const value=await localState.updateGameView(id,game.id,change);if(localLibrary!==id)return;
- gameViews.set(game.id,value);$('#viewPreferenceNotice').hidden=true;await render();
+ gameViews.set(game.id,value);if(viewPreferencesReady&&noticeRevision===viewPreferenceNoticeRevision)$('#viewPreferenceNotice').hidden=true;await render();
 }
-function updateFavoriteButton(button,game){const selected=gameViews.get(game.id)?.favorite===true;button.textContent=selected?'★ お気に入り':'☆ お気に入り';button.setAttribute('aria-pressed',String(selected));button.setAttribute('aria-label',game.title+(selected?'のお気に入りを解除':'をお気に入りに追加'));button.disabled=busy||!viewPreferencesReady||!localLibrary||!game.id||button.dataset.saving==='true';}
+function updateFavoriteButton(button,game){const selected=gameViews.get(game.id)?.favorite===true;button.textContent=selected?'★ お気に入り':'☆ お気に入り';button.setAttribute('aria-pressed',String(selected));button.setAttribute('aria-label',game.title+(selected?'のお気に入りを解除':'をお気に入りに追加'));button.disabled=busy||!viewPreferencesReady||!localLibrary||!game.id||button.dataset.saving==='true'||favoriteWrites.has(localLibrary+':'+game.id);}
+function toggleFavorite(button,game){
+ const libraryId=localLibrary,key=libraryId+':'+game.id;
+ if(!libraryId||button.dataset.saving==='true'||favoriteWrites.has(key))return;
+ const current=games.find(g=>g.id===game.id&&g.path===game.path);if(!current)return;
+ const restoreFocus=document.activeElement===button,focusRevision=++favoriteFocusRevision;
+ favoriteWrites.add(key);button.dataset.saving='true';button.disabled=true;
+ void changeGameView(current,{favorite:!gameViews.get(game.id)?.favorite},libraryId).catch(viewPreferenceError).finally(()=>{
+  favoriteWrites.delete(key);delete button.dataset.saving;updateFavoriteButton(button,current);
+  let replacement=null;
+  if(localLibrary===libraryId){
+   const buttons=[...document.querySelectorAll('.favorite-button')].filter(node=>node.dataset.gameId===game.id);
+   for(const node of buttons){const latest=games.find(g=>g.id===game.id&&g.path===node.dataset.gamePath);if(latest)updateFavoriteButton(node,latest);}
+   replacement=buttons.find(node=>node.dataset.gamePath===game.path)||null;
+  }
+  if(restoreFocus&&localLibrary===libraryId&&focusRevision===favoriteFocusRevision&&document.activeElement===document.body)(replacement||$('#libraryView')).focus({preventScroll:true});
+ });
+}
 try{const size=localStorage.getItem('game-portal.card-size');if(['normal','compact','large'].includes(size))$('#cardSize').value=size;}catch{}
 $('#cardSize').onchange=()=>{const size=$('#cardSize').value;$('#games').dataset.size=size;try{localStorage.setItem('game-portal.card-size',size);}catch{status('表示サイズはこの画面に適用しました。このPCへの記憶はできませんでした。');}};
 $('#libraryView').onchange=()=>{if($('#libraryView').value==='recent')$('#sortGames').value='played';else if($('#sortGames').value==='played')$('#sortGames').value='name-asc';renderLimit=cardBatch;render().catch(e=>status(e.message));};
@@ -608,9 +627,10 @@ async function render() {
   const revision = ++renderRevision, folder = root,viewLibrary=localLibrary;
   renderReadAbort?.abort();const thumbnailRead=new AbortController();renderReadAbort=thumbnailRead;
   if(viewsLibrary!==localLibrary){
+    const noticeRevision=viewPreferenceNoticeRevision;
     let values=[],loadError=null;try{values=await localState.loadGameViews(localLibrary);}catch(error){loadError=error;}
     if(revision!==renderRevision||root!==folder||localLibrary!==viewLibrary)return;
-    viewPreferencesReady=!loadError;if(loadError)viewPreferenceError(loadError,true);else $('#viewPreferenceNotice').hidden=true;
+    viewPreferencesReady=!loadError;if(loadError)viewPreferenceError(loadError,true);else if(noticeRevision===viewPreferenceNoticeRevision)$('#viewPreferenceNotice').hidden=true;
     gameViews=new Map(values.map(v=>[v.id,v]));viewsLibrary=localLibrary;
   }
   $('#libraryViewTools').hidden=!root;$('#games').dataset.size=$('#cardSize').value;
@@ -657,7 +677,7 @@ async function render() {
     const open=document.createElement('a');open.href='#player';open.className='game-title-link';const titleText=document.createElement('span');titleText.className='game-title-text';titleText.textContent=game.title;open.append(titleText);open.onclick=event=>{event.preventDefault();playCurrent();};title.replaceChildren(open);
     const thumb=document.createElement('a');thumb.href='#player';thumb.className='game-thumb-link';thumb.tabIndex=-1;thumb.setAttribute('aria-label',game.title+'の画面を開く');thumb.onclick=open.onclick;thumb.append(cover);
     for(const img of cover.querySelectorAll('img')){img.loading='lazy';img.decoding='async';}
-    const favorite=document.createElement('button');favorite.type='button';favorite.className='secondary favorite-button';favorite.dataset.gameId=game.id||'';updateFavoriteButton(favorite,game);favorite.onclick=event=>{event.stopPropagation();if(favorite.dataset.saving==='true')return;const current=games.find(g=>g.id===game.id&&g.path===game.path);if(current){const restoreFocus=document.activeElement===favorite,focusRevision=++favoriteFocusRevision;favorite.dataset.saving='true';favorite.disabled=true;void changeGameView(current,{favorite:!gameViews.get(game.id)?.favorite}).catch(viewPreferenceError).finally(()=>{delete favorite.dataset.saving;updateFavoriteButton(favorite,current);if(restoreFocus&&focusRevision===favoriteFocusRevision&&document.activeElement===document.body){const target=favorite.isConnected?favorite:$('#libraryView');target.focus({preventScroll:true});}});}};
+    const favorite=document.createElement('button');favorite.type='button';favorite.className='secondary favorite-button';favorite.dataset.gameId=game.id||'';favorite.dataset.gamePath=game.path;updateFavoriteButton(favorite,game);favorite.onclick=event=>{event.stopPropagation();toggleFavorite(favorite,game);};
     body.append(type,title,tags);
     if(game.description){const summary=document.createElement('p');summary.className='game-summary';summary.textContent=game.description.slice(0,100)+(game.description.length>100?'…':'');body.append(summary);}
     if(game.settingsError){const warning=document.createElement('p');warning.className='hint';warning.textContent='設定の確認が必要です：'+game.settingsError;body.append(warning);}
