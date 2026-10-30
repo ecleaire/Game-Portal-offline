@@ -37,6 +37,19 @@ try{for(const edition of ['creator','player']){
  await page.evaluate(()=>{window.auditOriginal=library.loadMetadata;window.auditRelease=null;library.loadMetadata=async(...args)=>{await new Promise(resolve=>window.auditRelease=resolve);return auditOriginal(...args);};lastHomeActivity=performance.now()-HOME_IDLE_MS-1;void syncLibrary({idle:true});});
  await page.waitForFunction(()=>!!window.auditRelease);await page.clock.fastForward(31000);await page.waitForFunction(()=>!syncPromise);await expect(page.locator('#syncStatus')).toContainText('応答しません');await expect(page.locator('#settingsButton')).toBeEnabled();
  await page.evaluate(()=>{pauseAutomaticConnection();library.loadMetadata=auditOriginal;auditRelease();});
- assert.deepEqual(errors,[]);console.log('Sync cancellation passed ('+edition+'): stalled compatibility/identity/metadata/scan/save-directory reads release UI and play locks; late results preserve library identity.');
+ // Manual folder selection must pass its cancellation signal into scan.
+ await page.evaluate(async()=>{
+  const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('cancelled-selection',{create:true}),management=await folder.getDirectoryHandle('.gameportal',{create:true});
+  for(const [dir,name,text]of [[management,'library-id.json',JSON.stringify({schema:1,id:'b'.repeat(32)})],[folder,'other.html','<h1>Cancelled folder</h1>']]){const writer=await(await dir.getFileHandle(name,{create:true})).createWritable();await writer.write(text);await writer.close();}
+  window.showDirectoryPicker=async()=>folder;window.originalManualScan=library.scan;window.releaseManualScan=null;window.manualScanSignal=null;
+  library.scan=async(...args)=>{manualScanSignal=args[2]?.signal;await new Promise(resolve=>window.releaseManualScan=resolve);return originalManualScan(...args);};
+ });
+ await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!!releaseManualScan);
+ assert.equal(await page.evaluate(()=>manualScanSignal instanceof AbortSignal),true);
+ await expect(page.locator('#cancelFolderRead')).toBeVisible();await page.locator('#cancelFolderRead').click();await page.waitForFunction(()=>!busy,{},{timeout:2500});
+ assert.equal(await page.evaluate(()=>manualScanSignal.aborted),true);
+ await page.evaluate(()=>{library.scan=originalManualScan;releaseManualScan();});
+ assert.deepEqual(await page.evaluate(()=>({library:localLibrary,game:games[0].id})),identity);
+ assert.deepEqual(errors,[]);console.log('Sync cancellation passed ('+edition+'): stalled compatibility/identity/metadata/scan/save-directory reads release UI and play locks; manual folder selection forwards its abort signal; late results preserve library identity.');
  }finally{await context.close();}
 }}finally{await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:200});}

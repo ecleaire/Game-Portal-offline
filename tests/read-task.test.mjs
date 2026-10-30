@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readWithSignal,prepareTogether} from '../offline-html/read-task.js';
-import {readTree} from '../offline-html/library.js';
+import {readTree,scan} from '../offline-html/library.js';
 
 test('cancelled reads reject immediately and consume late success or failure',async()=>{
  for(const fail of [false,true]){
@@ -29,4 +29,25 @@ test('startup failure cancels reads but drains an already started save before re
  const work=prepareTogether([()=>new Promise((resolve,reject)=>fail=()=>reject(expected)),()=>new Promise(resolve=>finish=()=>resolve('saved'))]);work.catch(()=>{}).finally(()=>settled=true);
  while(!finish)await new Promise(resolve=>setImmediate(resolve));fail();await new Promise(resolve=>setImmediate(resolve));assert.equal(settled,false);finish();await assert.rejects(work,error=>error===expected);
  const controller=new AbortController();controller.abort();let started=0;await assert.rejects(prepareTogether([()=>started++],controller.signal),{name:'AbortError'});assert.equal(started,0);
+});
+
+
+test('cancelled library scans release stalled enumeration and ignore late results',{timeout:2000},async()=>{
+ for(const failure of [false,true]){
+  const controller=new AbortController();let release,reads=0;
+  const root={getFileHandle:async()=>{throw new DOMException('Missing','NotFoundError');},async *values(){await new Promise((resolve,reject)=>release=()=>failure?reject(Error('Late NAS failure')):resolve());yield {kind:'file',name:'game.html'};reads++;}};
+  const pending=scan(root,{games:{}},{signal:controller.signal});
+  while(!release)await new Promise(resolve=>setImmediate(resolve));controller.abort();await assert.rejects(pending,{name:'AbortError'});
+  release();await new Promise(resolve=>setImmediate(resolve));assert.equal(reads,0);
+ }
+});
+
+test('cancelled library scans release all metadata workers without starting queued games',{timeout:2000},async()=>{
+ for(const failure of [false,true]){
+  const controller=new AbortController(),releases=[];let reads=0;
+  const root={getFileHandle:async name=>{if(name==='.gameportal-uploading')throw new DOMException('Missing','NotFoundError');reads++;return new Promise((resolve,reject)=>releases.push(()=>failure?reject(Error('Late settings failure')):resolve({getFile:async()=>new File(['{}'],'settings.json')})));},async *values(){for(let i=0;i<12;i++)yield {kind:'file',name:'game'+i+'.html'};}};
+  const pending=scan(root,{games:{}},{signal:controller.signal});
+  while(reads<4)await new Promise(resolve=>setImmediate(resolve));controller.abort();await assert.rejects(pending,{name:'AbortError'});assert.equal(reads,4);
+  releases.forEach(release=>release());await new Promise(resolve=>setImmediate(resolve));assert.equal(reads,4);
+ }
 });

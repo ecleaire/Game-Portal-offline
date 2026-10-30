@@ -206,13 +206,14 @@ export async function gameId(path) {
 }
 export async function scan(root, metadata, {signal} = {}) {
   const games = [], candidates = []; let visited = 0;
+  const read=operation=>readWithSignal(operation,signal);
   async function add(path, title, kind, handle, folder, entry) {
     let settings, settingsError = '';
-    try { settings = await loadGameSettings(root, path); }
+    try { settings = await read(()=>loadGameSettings(root, path)); }
     catch (error) { settings = { data: null, text: null }; settingsError = error.message; }
     signal?.throwIfAborted();
     const saved = settings.data || (Object.hasOwn(metadata.games, path) ? metadata.games[path] : {});
-    const replacement=await resolveGameContent(root,path,{safePath,getFile}),id=settings.data?.id||await gameId(path);
+    const replacement=await read(()=>resolveGameContent(root,path,{safePath,getFile})),id=settings.data?.id||await gameId(path);
     if(replacement.contentError)settingsError= replacement.contentError;
     if(replacement.contentGameId&&replacement.contentGameId!==id)settingsError='ゲーム本体と作品情報のIDが一致しません。';
     return { id, settingsText: settings.text, settingsError, path, kind, handle, folder, entry, title: typeof saved?.title === 'string' && saved.title.trim() ? saved.title.slice(0, 120) : title,
@@ -225,7 +226,7 @@ export async function scan(root, metadata, {signal} = {}) {
   }
   async function walk(folder, prefix = '', depth = 0) {
     signal?.throwIfAborted();
-    try { await folder.getFileHandle('.gameportal-uploading'); return; } catch (error) { if (error.name !== 'NotFoundError') throw error; }
+    try { await read(()=>folder.getFileHandle('.gameportal-uploading')); return; } catch (error) { if (error.name !== 'NotFoundError') throw error; }
     const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX') entries.push(entry); }
     const html = entries.filter(e => e.kind === 'file' && /\.html?$/i.test(e.name));
     let native=null;try{native=nativeLayout(entries.filter(e=>e.kind==='file').map(e=>e.name));}catch{}
@@ -237,7 +238,7 @@ export async function scan(root, metadata, {signal} = {}) {
     }
     if (depth < 8) for (const dir of entries.filter(e => e.kind === 'directory')) await walk(dir, prefix + dir.name + '/', depth + 1);
   }
-  await walk(root);
+  await read(()=>walk(root));
   // Overlap metadata I/O on shared folders, with a small fixed concurrency.
   let next = 0, failure;
   await Promise.all(Array.from({length: Math.min(4,candidates.length)},async()=>{

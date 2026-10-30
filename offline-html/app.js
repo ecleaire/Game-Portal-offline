@@ -503,7 +503,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   if(launcherEdition==='player'&&!scannedLibrary)throw new Error('この保存先は準備が必要です。クリエイター版で一度開いて初回設定を済ませてください。');
   if(expectedLibrary&&scannedLibrary!==expectedLibrary){const error=new Error('保存先のIDが変わりました。設定からフォルダーを確認してください。');error.code='LIBRARY_ID_CHANGED';throw error;}
   if(portableConnection&&scannedLibrary!==portableConnection.libraryId)throw new Error('このHTMLの保存先と違います。「'+portableConnection.name+'」のフォルダーを選んでください。');
-  const next = await read(()=>library.loadMetadata(handle)), nextGames = await read(()=>library.scan(handle, next));
+  const next = await read(()=>library.loadMetadata(handle)), nextGames = await read(()=>library.scan(handle, next,{signal}));
   signal?.throwIfAborted();
   if(await read(()=>library.loadLibraryId(handle))!==scannedLibrary)throw new Error('読み込み中に保管フォルダーが変わりました。もう一度接続してください。');
   signal?.throwIfAborted();
