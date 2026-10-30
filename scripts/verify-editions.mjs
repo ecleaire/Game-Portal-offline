@@ -23,7 +23,7 @@ for(const edition of ['creator','player']){
   const binary=await readFile(base+'MacOS/GAME-PORTAL-'+suffix);
   if(!info.includes('<key>LSMinimumSystemVersion</key><string>'+MAC_MINIMUM+'</string>'))throw Error('Mac app minimum OS differs: '+name);
   if(suffix==='MAC')verifyMacMinimum(binary);else verifyMacImageMinimum(binary);
-  await verifySwiftRuntimeFiles(async(path,max)=>{const bytes=await readFile(path);if(bytes.length>max)throw Error('Oversized Swift runtime');return bytes;},base+'Frameworks');
+  await verifySwiftRuntimeFiles(async(path,max)=>{const bytes=await readFile(path);if(bytes.length>max)throw Error('Oversized Swift runtime');return bytes;},base+'Frameworks',base+'Resources/SwiftRuntime');
   if(binary.length<32||!binary.includes(Buffer.from(version)))throw Error('Mac app executable/version missing: '+name);
  }
 }

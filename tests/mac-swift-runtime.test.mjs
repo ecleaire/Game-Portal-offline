@@ -17,3 +17,10 @@ test('bundled Swift verification requires complete matching runtime and supports
  const newer=fixture(0x000a0e04);await assert.rejects(verifySwiftRuntimeFiles(newer.read,'base'),/10.14/);
  for(const change of [m=>m.files.splice(0,1),m=>m.files.push(m.files[0]),m=>m.files[0].name='../libswiftCore.dylib']){const f=fixture();change(f.manifest);f.files.set('base/runtime.json',Buffer.from(JSON.stringify(f.manifest)));await assert.rejects(verifySwiftRuntimeFiles(f.read,'base'));}
 });
+
+
+test('app runtime metadata can live in signed Resources while Frameworks contains code only',async()=>{
+ const f=fixture();for(const name of ['runtime.json','SWIFT-RUNTIME-LICENSE.txt']){f.files.set('Resources/SwiftRuntime/'+name,f.files.get('base/'+name));f.files.delete('base/'+name);}
+ await verifySwiftRuntimeFiles(f.read,'base','Resources/SwiftRuntime');
+ assert.deepEqual([...f.files.keys()].filter(path=>path.startsWith('base/')),['base/libswiftCore.dylib']);
+});

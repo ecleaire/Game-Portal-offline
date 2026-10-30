@@ -32,5 +32,5 @@ if(process.argv[1]?.endsWith('verify-code-zip.mjs')){
   const data=bytes.subarray(start,start+file.packed),output=file.method===0?data:inflateRawSync(data,{maxOutputLength:max});assert.equal(output.length,file.size);return output;
  };
  await verifyMacEngineFiles(read,async name=>files.has(name));
- for(const [role,basename]of[['プレイ用','GAME-PORTAL-PLAY'],['クリエイター用','GAME-PORTAL']])for(const suffix of ['MAC','MOJAVE']){await verifySwiftRuntimeFiles(read,'Mac/'+role+'/'+basename+'-'+suffix+'.app/Contents/Frameworks');await verifySwiftRuntimeFiles(read,'HTML/'+role+'/起動補助/_runtime/Swift-'+suffix);}
+ for(const [role,basename]of[['プレイ用','GAME-PORTAL-PLAY'],['クリエイター用','GAME-PORTAL']])for(const suffix of ['MAC','MOJAVE']){await verifySwiftRuntimeFiles(read,'Mac/'+role+'/'+basename+'-'+suffix+'.app/Contents/Frameworks','Mac/'+role+'/'+basename+'-'+suffix+'.app/Contents/Resources/SwiftRuntime');await verifySwiftRuntimeFiles(read,'HTML/'+role+'/起動補助/_runtime/Swift-'+suffix);}
 }

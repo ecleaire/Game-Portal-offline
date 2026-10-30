@@ -25,13 +25,13 @@ export async function bundleSwiftRuntime(binary,destination){
 }
 
 
-export async function verifySwiftRuntimeFiles(read,base){
- const manifest=JSON.parse((await read(base+'/runtime.json',16384)).toString());
+export async function verifySwiftRuntimeFiles(read,base,metadataBase=base){
+ const manifest=JSON.parse((await read(metadataBase+'/runtime.json',16384)).toString());
  if(manifest.schema!==1||manifest.kind!=='swift-mojave-v1'||!Array.isArray(manifest.files)||!manifest.files.length||manifest.files.length>80)throw Error('Invalid bundled Swift runtime manifest');
  const names=new Set();
  for(const file of manifest.files){
   if(!file||typeof file.name!=='string'||!(/^(libswift[A-Za-z0-9_]+\.dylib|SWIFT-RUNTIME-LICENSE\.txt)$/.test(file.name))||names.has(file.name)||!Number.isSafeInteger(file.size)||file.size<=0||file.size>100*1024*1024||!/^[a-f0-9]{64}$/.test(file.sha256))throw Error('Invalid bundled Swift runtime entry');
-  names.add(file.name);const bytes=await read(base+'/'+file.name,100*1024*1024);
+  names.add(file.name);const bytes=await read((file.name.endsWith('.dylib')?base:metadataBase)+'/'+file.name,100*1024*1024);
   if(bytes.length!==file.size||createHash('sha256').update(bytes).digest('hex')!==file.sha256)throw Error('Bundled Swift runtime is incomplete: '+file.name);
   if(file.name.endsWith('.dylib')){const images=verifyMacImageMinimum(bytes);if(file.name==='libswiftCore.dylib'&&!images.has(0x01000007))throw Error('Intel Swift runtime missing');}
  }

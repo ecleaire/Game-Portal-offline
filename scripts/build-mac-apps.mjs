@@ -70,7 +70,8 @@ export async function buildMacApps(suffix){
   // runtime cache, an old signature or resources from a previous build.
   await rm(app,{recursive:true,force:true});
   await mkdir(join(contents,'MacOS'),{recursive:true});await mkdir(resources,{recursive:true});
-  await cp(runtimeRoot,join(contents,'Frameworks'),{recursive:true});
+  await mkdir(join(contents,'Frameworks'),{recursive:true});await mkdir(join(resources,'SwiftRuntime'),{recursive:true});
+  for(const file of await readdir(runtimeRoot))await copyFile(join(runtimeRoot,file),join(file.endsWith('.dylib')?join(contents,'Frameworks'):join(resources,'SwiftRuntime'),file));
   await copyFile(family==='MOJAVE'?outputs[0]:binary,join(contents,'MacOS/GAME-PORTAL-'+family));
   const html=await readFile(join(root,edition==='player'?'GAME-PORTAL-PLAY.html':'GAME-PORTAL.html'),'utf8');
   await writeFile(join(resources,'GAME-PORTAL.html'),html);
