@@ -114,3 +114,21 @@ test('malformed pending IDs are rejected before opening the local database',asyn
  const device='1'.repeat(32),record={schema:1,libraryId,gameId,revision:'2'.repeat(32),deviceId:device,clock:{[device]:1},createdAt:new Date().toISOString(),data:{v:'keep'}};
  for(const key of ['revision','deviceId'])await assert.rejects(commitSaveSync(libraryId,gameId,{data:{},state:{}},{schema:1,base:null,clock:{},pending:{...record,[key]:[record[key]]}}),/セーブ同期の形式/);
 });
+
+
+test('stale conflict choices cannot overwrite a local save changed after the choice was shown',async()=>{
+ for(const choice of ['local','remote']){
+  const f=fixture(),a=client('1'.repeat(32),{v:'remote'}),b=client('2'.repeat(32),{v:'local'});await f.run(a);
+  const conflict=await f.run(b),shared=[...f.dir().files];b.edit({v:'new local progress'});
+  await assert.rejects(f.run(b,{resolution:{revision:choice==='local'?'local':conflict.heads[0].revision,fingerprint:conflict.fingerprint}}),/変わりました/);
+  assert.deepEqual(b.peek().data,{v:'new local progress'});assert.equal(b.peek().state.pending,null);assert.deepEqual(b.backups,[]);assert.deepEqual([...f.dir().files],shared);
+  const fresh=await f.run(b);assert.equal(fresh.state,'conflict');assert.notEqual(fresh.fingerprint,conflict.fingerprint);
+  await f.run(b,{resolution:{revision:fresh.heads[0].revision,fingerprint:fresh.fingerprint}});
+  assert.deepEqual(b.peek().data,{v:'remote'});assert.deepEqual(b.backups.at(-1),{v:'new local progress'});
+ }
+});
+
+test('local save key ordering alone does not invalidate a conflict choice',async()=>{
+ const f=fixture(),a=client('1'.repeat(32),{v:'remote'}),b=client('2'.repeat(32),{alpha:'A',beta:'B'});await f.run(a);const conflict=await f.run(b);
+ b.edit({beta:'B',alpha:'A'});await f.run(b,{resolution:{revision:'local',fingerprint:conflict.fingerprint}});assert.deepEqual(b.peek().data,{alpha:'A',beta:'B'});
+});

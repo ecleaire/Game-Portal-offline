@@ -1,0 +1,26 @@
+import {chromium,expect} from '@playwright/test';
+import {readFile,mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {createServer} from 'node:http';
+import {gzipSync} from 'node:zlib';
+import assert from 'node:assert/strict';
+const pages={creator:gzipSync(await readFile('offline-release/GAME-PORTAL.html')),player:gzipSync(await readFile('offline-release/GAME-PORTAL-PLAY.html'))};
+const server=createServer((q,r)=>{const body=pages[q.url.slice(1)];if(!body){r.writeHead(404);r.end();return;}r.writeHead(200,{'Content-Encoding':'gzip','Content-Type':'text/html; charset=utf-8','Content-Length':body.length});r.end(body);});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const temp=await mkdtemp(join(tmpdir(),'portal-low-spec-'));
+try{for(const role of ['creator','player']){
+ const context=await chromium.launchPersistentContext(join(temp,role),{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true});
+ try{
+ await context.addInitScript(()=>{Object.defineProperty(navigator,'deviceMemory',{get:()=>4});Object.defineProperty(navigator,'hardwareConcurrency',{get:()=>2});FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
+ const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setCPUThrottlingRate',{rate:4});
+ await page.goto('http://127.0.0.1:'+server.address().port+'/'+role);await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:20000});await expect(page.locator('#setupFolder')).toBeVisible();assert.equal(await page.evaluate(()=>cardBatch),24);
+ await page.evaluate(async()=>{window.fixture=await(await navigator.storage.getDirectory()).getDirectoryHandle('low-spec',{create:true});const management=await fixture.getDirectoryHandle('.gameportal',{create:true});for(const [dir,name,text]of [[management,'library-id.json',JSON.stringify({schema:1,id:'a'.repeat(32)})],[fixture,'game.html','<h1>Game</h1>']]){const writer=await(await dir.getFileHandle(name,{create:true})).createWritable();await writer.write(text);await writer.close();}window.showDirectoryPicker=async()=>fixture;});
+ await page.locator('#setupFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('.card')).toHaveCount(1);
+ await page.evaluate(async()=>{window.actualGames=games;games=Array.from({length:97},(_,i)=>({...actualGames[0],id:i.toString(16).padStart(32,'0'),path:'fixture'+i+'.html',title:'Game '+i,tags:['Godot','Tag '+i]}));resetCards();await render();window.tagOption=document.querySelector('#knownTags option');window.environmentOption=document.querySelector('#environmentFilter option');});
+ await expect(page.locator('.card')).toHaveCount(24);await expect(page.locator('#count')).toHaveText('97');await page.locator('#loadMore').click();await expect(page.locator('.card')).toHaveCount(48);
+ await page.locator('#search').fill('Game');await expect(page.locator('.card')).toHaveCount(24);assert.equal(await page.evaluate(()=>document.querySelector('#knownTags option')===tagOption&&document.querySelector('#environmentFilter option')===environmentOption),true);
+ await page.locator('#search').fill('No matching game');await expect(page.locator('.card')).toHaveCount(0);await page.locator('#clearFilters').click();await expect(page.locator('.card')).toHaveCount(24);
+ await page.evaluate(async()=>{games=actualGames;await render();});await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:20000});await expect(page.locator('#folderName')).toHaveText('low-spec');await expect(page.locator('.card')).toHaveCount(1);await expect(page.locator('#setupFolder')).toBeHidden();assert.deepEqual(errors,[]);
+ console.log('Low-spec checks passed ('+role+'): simulated 4 GB/two threads, CPU throttling, first setup, 24-card batches, reusable filter DOM, searching/reset and second-start restoration. Hardware performance unmeasured.');
+ }finally{await context.close();}
+}}finally{await new Promise(r=>server.close(r));await rm(temp,{recursive:true,force:true});}

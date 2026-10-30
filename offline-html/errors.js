@@ -12,7 +12,7 @@ const definitions={
  InvalidStateError:['STORAGE_UNAVAILABLE','保存領域を現在利用できません。','未保存のデータがある場合は画面を閉じず、接続と保存結果を確認してください。'],
  AbortError:['OPERATION_ABORTED','処理が中断されました。','保存中だった場合は、再保存の前に保存結果を確認してください。']
 };
-const domainCodes=new Set(['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED','LIBRARY_ID_CHANGED','LIBRARY_INCOMPATIBLE','FOLDER_PERMISSION_CONTEXT']);
+const domainCodes=new Set(['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED','LIBRARY_ID_CHANGED','LIBRARY_INCOMPATIBLE','FOLDER_PERMISSION_CONTEXT','STALE_SAVE_CHOICE']);
 export function describeError(error){
  const chain=[],seen=new Set();let current=error;
  while(current&&chain.length<8&&!seen.has(current)){

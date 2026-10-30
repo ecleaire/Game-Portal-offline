@@ -1,6 +1,6 @@
 # 開発・配布の手順
 
-使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.21.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。配布ZIPから開発コード・テスト・Git用設定を除外しています。開発するときは `git clone https://github.com/ecleaire/Game-Portal-offline.git` で取得してください。以下はソースを変更する人向けの手順です。
+使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.24.22.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。配布ZIPから開発コード・テスト・Git用設定を除外しています。開発するときは `git clone https://github.com/ecleaire/Game-Portal-offline.git` で取得してください。以下はソースを変更する人向けの手順です。
 
 ## 準備・検証
 

@@ -53,9 +53,14 @@ export async function syncSave(root,libraryId,gameId,tools,local,{signal,pullOnl
   if(current.state.pending){if(pullOnly)throw Error('前回のセーブ共有を確認できていません。設定から同期を再試行してください。');await finish();}
   cancelled(signal);
   const records=await readRecords(dir,libraryId,gameId,local,signal),heads=saveHeads(records),remoteClock=combine(records),clock=combine([...records,{clock:current.state.clock}]),dataText=saveText(current.data),base=current.state.base;
-  const fingerprint=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(records.toSorted((a,b)=>a.revision.localeCompare(b.revision))))))].map(n=>n.toString(16).padStart(2,'0')).join('');
+  // A choice describes both sides. Another tab or a save import can change
+  // local progress while the conflict panel remains open. Canonicalize keys so
+  // equivalent local saves do not produce a spurious stale-choice warning.
+  const observed={libraryId,gameId,records:records.toSorted((a,b)=>a.revision.localeCompare(b.revision)),local:{data:dataText,base,clock:saveText(current.state.clock)}};
+  const observedHash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(observed)));
+  const fingerprint=[...new Uint8Array(observedHash)].map(n=>n.toString(16).padStart(2,'0')).join('');
   cancelled(signal);
-  if(resolution&&resolution.fingerprint!==fingerprint)throw Error('ほかのPCでセーブが変わりました。もう一度確認してください。');
+  if(resolution&&resolution.fingerprint!==fingerprint){const error=Error('共有先またはこのPCのセーブが変わりました。「今すぐセーブを同期」で最新の内容を確認し、選び直してください。');error.code='STALE_SAVE_CHOICE';throw error;}
   const distinct=new Set(heads.map(r=>saveText(r.data))),remote=heads[0],dirty=base===null?Object.keys(current.data).length>0:dataText!==base;
   const rolledBack=!!remote&&dataText!==saveText(remote.data)&&covers(current.state.clock,remoteClock)&&!covers(remoteClock,current.state.clock);
   const conflict=distinct.size>1||rolledBack||!remote&&base!==null&&Object.keys(current.data).length>0||!!remote&&dirty&&dataText!==saveText(remote.data)&&!covers(current.state.clock,remoteClock);

@@ -96,7 +96,8 @@ let informationState=null,informationController=null,importedInformationThumbnai
 let inspectionRoot = null, inspectionReport = null, selectedHistory = null, capturedImage = null;
 let usageReport=null,usageController=null,usageLimit=60;
 let postSelection = [], editImageRevision = 0;
-let postCheck=null,postCheckRevision=0,cropBitmap=null,renderLimit=60,searchTimer;
+const cardBatch=(navigator.deviceMemory>0&&navigator.deviceMemory<=4)||(navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=4)?24:60;
+let postCheck=null,postCheckRevision=0,cropBitmap=null,renderLimit=cardBatch,searchTimer;
 let imageProcessing=false,imageError='',playRevision=0,gameLoading=null;
 let settingsReceipts=[];
 let contentTarget=null,contentSelection=[],contentCheck=null,contentCheckRevision=0;
@@ -188,7 +189,7 @@ $('#verifySettingsSaves').onclick=()=>action(async()=>{
   return '現在の設定との比較が完了しました。結果を確認してください。';
 });
 const cardCache=new Map();
-function resetCards(){for(const url of imageURLs)URL.revokeObjectURL(url);imageURLs=[];cardCache.clear();renderLimit=60;}
+function resetCards(){for(const url of imageURLs)URL.revokeObjectURL(url);imageURLs=[];cardCache.clear();renderLimit=cardBatch;}
 let editBaseline = '';
 function editValues() {
   return JSON.stringify([...['editTitle','editEnvironment','editTags','editDescription','editInstructions','cropZoom','cropX','cropY'].map(id=>$('#'+id).value),$('#clearImage').checked,$('#enableCrop').checked,[...$('#editImage').files].map(f=>[f.name,f.size,f.lastModified]),$('#newTag').value,informationImageRevision]);
@@ -231,9 +232,9 @@ async function rememberedScope(scope){
 }
 async function cacheHandle(value,remember=true){
   const creatorScope=folderSharing.creatorScope(folderScope);
-  const creator=creatorScope&&creatorScope!==folderScope?await rememberedScope(creatorScope):null;
+  const [creator,cached]=await Promise.all([creatorScope&&creatorScope!==folderScope?rememberedScope(creatorScope):null,value?null:rememberedScope(folderScope)]);
   const sourceRevision=creator?.handle?(creator.revision||'legacy'):null;
-  let record=value?await localState.cacheHandle(value,remember,folderScope,sourceRevision):await rememberedScope(folderScope);
+  let record=value?await localState.cacheHandle(value,remember,folderScope,sourceRevision):cached;
   if(value){lastFolderRevision=record.revision;folderChannel?.postMessage('changed');}
   else if(creator?.handle&&record?.sourceRevision!==sourceRevision)record={...creator,scope:folderScope};
   return record;
@@ -374,7 +375,7 @@ async function refresh({signal}={}) {
   if(await library.loadLibraryId(folder)!==nextLibrary)throw new Error('読み込み中に保管フォルダーのIDが変わりました。再接続してください。');
   signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw new DOMException('保存先が変わりました。','AbortError');
   localLibrary=nextLibrary;syncPaused=false;folderRecovery=null;$('#reconnect').hidden=true;syncStatus('共有フォルダーの自動確認：有効（ホームで3分操作がないとき）');
-  metadata=nextMetadata;games=nextGames;renderLimit=60;
+  metadata=nextMetadata;games=nextGames;renderLimit=cardBatch;
   // Keep unchanged cards after edits or manual refresh, as background sync does.
   // Legacy file-backed images can change independently of their settings.
   for(const [path,cached] of cardCache)if(cached.game.thumbnail===true)cardCache.delete(path);
@@ -563,7 +564,7 @@ async function changeGameView(game,change,id=localLibrary){
 function updateFavoriteButton(button,game){const selected=gameViews.get(game.id)?.favorite===true;button.textContent=selected?'★ お気に入り':'☆ お気に入り';button.setAttribute('aria-pressed',String(selected));button.setAttribute('aria-label',game.title+(selected?'のお気に入りを解除':'をお気に入りに追加'));button.disabled=busy||!viewPreferencesReady||!localLibrary||!game.id||button.dataset.saving==='true';}
 try{const size=localStorage.getItem('game-portal.card-size');if(['normal','compact','large'].includes(size))$('#cardSize').value=size;}catch{}
 $('#cardSize').onchange=()=>{const size=$('#cardSize').value;$('#games').dataset.size=size;try{localStorage.setItem('game-portal.card-size',size);}catch{status('表示サイズはこの画面に適用しました。このPCへの記憶はできませんでした。');}};
-$('#libraryView').onchange=()=>{if($('#libraryView').value==='recent')$('#sortGames').value='played';else if($('#sortGames').value==='played')$('#sortGames').value='name-asc';renderLimit=60;render().catch(e=>status(e.message));};
+$('#libraryView').onchange=()=>{if($('#libraryView').value==='recent')$('#sortGames').value='played';else if($('#sortGames').value==='played')$('#sortGames').value='name-asc';renderLimit=cardBatch;render().catch(e=>status(e.message));};
 window.addEventListener('focus',()=>{if(root&&!busy&&!$('#player').open){viewsLibrary=null;void render().catch(e=>status(e.message));}});
 function showLocalSave(state,message){$('#playSaveStatus').hidden=false;$('#playSaveStatus').dataset.state=state;$('#playSaveText').textContent=message;$('#retryLocalSave').hidden=state!=='failed';}
 $('#retryLocalSave').onclick=()=>action(async()=>{if(!await flushSave())return '保存できませんでした。空き容量を確認して再試行してください。';return 'このPCにセーブを保存しました。';});
@@ -571,17 +572,11 @@ function loadingStage(task,name,active=true){
  if(gameLoading!==task||task.cancelled)return;task.stages||=new Set();active?task.stages.add(name):task.stages.delete(name);
  $('#loadStage').hidden=!task.stages.size;$('#loadStage').textContent=[...task.stages].join('・')+(task.stages.size?'。少しお待ちください。':'');
 }
-async function render() {
-  const revision = ++renderRevision, folder = root,viewLibrary=localLibrary;
-  renderReadAbort?.abort();const thumbnailRead=new AbortController();renderReadAbort=thumbnailRead;
-  if(viewsLibrary!==localLibrary){
-    let values=[],loadError=null;try{values=await localState.loadGameViews(localLibrary);}catch(error){loadError=error;}
-    if(revision!==renderRevision||root!==folder||localLibrary!==viewLibrary)return;
-    viewPreferencesReady=!loadError;if(loadError)viewPreferenceError(loadError,true);else $('#viewPreferenceNotice').hidden=true;
-    gameViews=new Map(values.map(v=>[v.id,v]));viewsLibrary=localLibrary;
-  }
-  $('#libraryViewTools').hidden=!root;$('#games').dataset.size=$('#cardSize').value;
-  if($('#libraryView').value!=='recent'&&$('#sortGames').value==='played')$('#sortGames').value='name-asc';
+let catalogueFilterGames=null,catalogueFilterKey='';
+const tagCategoryByName=new Map(tagPresets.map(tag=>[tag.name,tag.category]));
+function renderCatalogueFilters(){
+ const key=JSON.stringify([$('#tagSearch').value,$('#tagCategory').value,[...selectedTags]]);
+ if(catalogueFilterGames===games&&catalogueFilterKey===key)return;
   const allTags = [...new Set(games.flatMap(g => g.tags))].sort((a,b) => a.localeCompare(b,'ja'));
   const tagCounts=new Map();for(const game of games)for(const tag of game.tags)tagCounts.set(tag,(tagCounts.get(tag)||0)+1);
   const environment=$('#environmentFilter').value;$('#environmentFilter').replaceChildren(new Option('すべての開発環境',''));
@@ -595,7 +590,7 @@ async function render() {
   $('#knownTags').replaceChildren();
   for (const tag of allTags) {
     const option = document.createElement('option'); option.value = tag; $('#knownTags').append(option);
-    if(!tag.normalize('NFKC').toLocaleLowerCase().includes(tagQuery)||category&&(tagPresets.find(t=>t.name===tag)?.category||'マイタグ')!==category)continue;shownTags++;
+    if(!tag.normalize('NFKC').toLocaleLowerCase().includes(tagQuery)||category&&(tagCategoryByName.get(tag)||'マイタグ')!==category)continue;shownTags++;
     const count=tagCounts.get(tag);
     const button = previousTags.get(tag)||document.createElement('button'); button.type='button';button.className = 'tag' + (selectedTags.has(tag) ? ' active' : ''); button.textContent = tag+' '+count;button.setAttribute('aria-label',tag);button.setAttribute('aria-pressed', String(selectedTags.has(tag)));
     button.onclick = () => { selectedTags.has(tag) ? selectedTags.delete(tag) : selectedTags.add(tag); render().catch(e => status(e.message)); }; visibleTags.push(button);
@@ -603,6 +598,21 @@ async function render() {
   const wantedTags=new Set(visibleTags);for(const button of [...$('#tagFilters').children])if(!wantedTags.has(button))button.remove();
   visibleTags.forEach((button,index)=>{const current=$('#tagFilters').children[index];if(current!==button)$('#tagFilters').insertBefore(button,current||null);});
   $('#tagFilterSummary').textContent=`${allTags.length}タグ中 ${shownTags}件`;
+
+ catalogueFilterGames=games;catalogueFilterKey=key;
+}
+async function render() {
+  const revision = ++renderRevision, folder = root,viewLibrary=localLibrary;
+  renderReadAbort?.abort();const thumbnailRead=new AbortController();renderReadAbort=thumbnailRead;
+  if(viewsLibrary!==localLibrary){
+    let values=[],loadError=null;try{values=await localState.loadGameViews(localLibrary);}catch(error){loadError=error;}
+    if(revision!==renderRevision||root!==folder||localLibrary!==viewLibrary)return;
+    viewPreferencesReady=!loadError;if(loadError)viewPreferenceError(loadError,true);else $('#viewPreferenceNotice').hidden=true;
+    gameViews=new Map(values.map(v=>[v.id,v]));viewsLibrary=localLibrary;
+  }
+  $('#libraryViewTools').hidden=!root;$('#games').dataset.size=$('#cardSize').value;
+  if($('#libraryView').value!=='recent'&&$('#sortGames').value==='played')$('#sortGames').value='name-asc';
+  renderCatalogueFilters();
   const keyword = $('#search').value.trim().toLocaleLowerCase();
   let matches = searchTools.searchGames(games,{query:keyword,scope:$('#searchScope').value,kind:$('#kindFilter').value,environment:$('#environmentFilter').value,tags:selectedTags,tagMatch:$('#tagMatch').value,sort:$('#sortGames').value});
   $('#libraryView').disabled=!viewPreferencesReady;const view=viewPreferencesReady?$('#libraryView').value:'all';$('#sortGames').disabled=view==='recent';$('#sortGames option[value=played]').hidden=view!=='recent';
@@ -954,7 +964,7 @@ $('#homeLink').onclick=event=>{
   },false,true);
 };
 $('#setupFolder').onclick = () => (remembered||nativeRetry)&&!$('#reconnect').hidden?$('#reconnect').onclick():$('#chooseFolder').onclick();
-function resetSearch(){clearTimeout(searchTimer);renderLimit=60;$('#search').value='';$('#tagSearch').value='';$('#tagCategory').value='';selectedTags.clear();$('#searchScope').value='all';$('#kindFilter').value='';$('#environmentFilter').value='';$('#tagMatch').value='all';$('#sortGames').value='name-asc';$('#libraryView').value='all'; }
+function resetSearch(){clearTimeout(searchTimer);renderLimit=cardBatch;$('#search').value='';$('#tagSearch').value='';$('#tagCategory').value='';selectedTags.clear();$('#searchScope').value='all';$('#kindFilter').value='';$('#environmentFilter').value='';$('#tagMatch').value='all';$('#sortGames').value='name-asc';$('#libraryView').value='all'; }
 $('#clearFilters').onclick = () => { resetSearch();render().catch(e => status(e.message));$('#search').focus(); };
 $('#emptyReset').onclick=()=>$('#clearFilters').click();
 $('#emptyPost').onclick=()=>$('#postButton').click();
@@ -1091,9 +1101,9 @@ document.addEventListener('pointerdown',requestRememberedFromHome,{capture:true}
 document.addEventListener('keydown',requestRememberedFromHome,{capture:true});
 $('#homeReconnect').onclick=()=>$('#reconnect').onclick();
 $('#refresh').onclick = () => action(async()=>{await refresh();return '一覧を更新しました。';});
-$('#search').oninput = () => {clearTimeout(searchTimer);renderLimit=60;searchTimer=setTimeout(()=>render().catch(e=>status(e.message)),100);};
+$('#search').oninput = () => {clearTimeout(searchTimer);renderLimit=cardBatch;searchTimer=setTimeout(()=>render().catch(e=>status(e.message)),100);};
 $('#tagSearch').oninput=()=>render().catch(e=>status(e.message));$('#tagCategory').onchange=()=>render().catch(e=>status(e.message));
-$('#loadMore').onclick=()=>{renderLimit+=60;render().catch(e=>status(e.message));};
+$('#loadMore').onclick=()=>{renderLimit+=cardBatch;render().catch(e=>status(e.message));};
 function updatePostSelection() {
   const bytes=postSelection.reduce((sum,file)=>sum+file.size,0);
   $('#postSummary').hidden=!postSelection.length;$('#postCheck').hidden=!postSelection.length;$('#postDetails').hidden=!postSelection.length;
