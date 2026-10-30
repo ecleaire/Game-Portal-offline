@@ -34,3 +34,11 @@ test('native user-facing validation guidance survives generic storage error name
  assert.equal(describeError(error).message,error.userMessage);assert.equal(describeError(error).code,'READ_FAILED');
  const pending=Object.assign(new Error('保存結果未確認です。再保存せず確認してください。',{cause:error}),{code:'SETTINGS_SAVE_UNCONFIRMED'});assert.equal(describeError(pending).message,pending.message);
 });
+
+
+test('operation-level preservation and recovery instructions survive nested storage failures',()=>{
+ for(const name of ['QuotaExceededError','NetworkError','AbortError']){
+  const error=new Error('セーブを退避できなかったため、本体は変更していません。ゲーム画面を閉じずに再試行してください。',{cause:new DOMException('Failure',name)});
+  const info=describeError(error);assert.equal(info.message,error.message);assert.notEqual(info.code,'OPERATION_FAILED');assert.match(info.details,new RegExp(name));
+ }
+});
