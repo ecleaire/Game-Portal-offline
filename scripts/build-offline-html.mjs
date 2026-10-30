@@ -47,6 +47,7 @@ const script = [
   wrap('maintenance', (await source('offline-html/maintenance.js')).replace("import { canUpdateGame,inspectGameContent } from './updates.js';",'const {canUpdateGame,inspectGameContent}=updateTools;'), 'localResources,inspectLibrary,loadSettingsHistory,restoreSettingsHistory'),
   wrap('dependencyTools', await source('offline-html/dependencies.js'), 'analyzeDependencies,inspectUploadDependencies'),
   wrap('improvements', (await source('offline-html/improvements.js')).replace("import { inspectUploadDependencies } from './dependencies.js';",'const {inspectUploadDependencies}=dependencyTools;').replace("import {nativeLayout,validateExe} from './native-tools.js';",'const {nativeLayout,validateExe}=nativeTools;'), 'checkUpload,cropRect'),
+  wrap('errorTools', await source('offline-html/errors.js'), 'describeError'),
   wrap('searchTools', await source('offline-html/search.js'), 'searchGames'),
   wrap('localState', await source('offline-html/local-state.js'), 'cacheHandle,forgetHandle,loadSettingsReceipts,trackSettingsReceipt,loadLocalSave,writeLocalSave,acquirePlaySession,validSave,validSaveBackups,loadSaveBackups,backupLocalSave,restoreLocalSaveBackup,saveDeviceId,loadSaveSync,commitSaveSync,loadGameViews,updateGameView'),
   wrap('sharedSaves', (await source('offline-html/shared-saves.js')).replace("import {readWithSignal} from './read-task.js';",'const {readWithSignal}=readTasks;'), 'syncSave,saveText,saveHeads,validSnapshot,validClock'),

@@ -213,11 +213,16 @@ let statusTimer;
 const transientStatuses=new Set(["ゲーム本体の更新を確認しました。情報・ID・セーブは保持し、更新前のセーブを退避しました。「起動を再試行」で新版を開けます。","前のゲーム本体へ戻しました。ゲーム情報は保持し、変更前のセーブを退避しました。「起動を再試行」で開けます。","本体更新が保存済みであることを確認しました。再更新は不要です。","確認待ちの本体更新はありません。","一覧を更新しました。","作品情報を保存しました。","設定履歴から復元しました。","サムネイルを保存しました。","履歴の保存内容を保存しました。","保存済みを確認しました。再保存は不要です。","使うセーブを共有しました。","選択をキャンセルしました。","容量確認を中止しました。","使用容量を確認しました。","ゲームの追加が完了しました。作品情報を設定できます。","確認記録を閉じました。設定は変更していません。","セーブを読み込みました。ゲームは一覧から開けます。","セーブを復元しました。本体の版は変更していません。「起動を再試行」で再開できます。","共有用HTMLを保存しました。別PCでは初回だけ案内されたフォルダーを選んでください。","このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。"]);
 const status = message => {
   clearTimeout(statusTimer);$('#status').textContent=message;
+  $('#operationErrorDetail').hidden=true;$('#operationErrorDetail').open=false;$('#operationErrorText').textContent='';
   document.querySelectorAll('[data-dialog-status]').forEach(node=>{node.textContent=node.closest('dialog').open?message:'';});
   if(transientStatuses.has(message))statusTimer=setTimeout(()=>{
     for(const node of document.querySelectorAll('#status,[data-dialog-status],#playerStatus'))if(node.textContent===message)node.textContent='';
   },message==='一覧を更新しました。'?10000:20000);
 };
+function reportError(error){
+ const info=errorTools.describeError(error);status(info.message);
+ $('#operationErrorDetail').hidden=false;$('#operationErrorText').textContent='v'+compatibilityTools.LAUNCHER_VERSION+' / '+info.code+'\n'+info.details;
+}
 async function rememberedScope(scope){
   let record=await localState.cacheHandle(null,true,scope);
   const legacy=folderSharing.legacyScope(scope);
@@ -355,7 +360,7 @@ async function action(fn, reconnecting = false, prioritizePlay = false) {
     if(syncPromise){try{await syncPromise;}catch(error){if(!reconnecting)throw error;}}
     const result=await fn();status(typeof result==='string'?result:'');
   }
-  catch (e) { compatibilityFailure(e);if(e.code==='LIBRARY_ID_CHANGED')syncPaused=true;if(nativeBridge&&root?.nativeReadOnly&&transientFolderError(e))nativeRetry=true;queueFolderRecovery(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;status(e.name === 'AbortError' ? '選択をキャンセルしました。' : e.message || '操作できませんでした。');if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
+  catch (e) { compatibilityFailure(e);if(e.code==='LIBRARY_ID_CHANGED')syncPaused=true;if(nativeBridge&&root?.nativeReadOnly&&transientFolderError(e))nativeRetry=true;queueFolderRecovery(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;reportError(e);if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
   finally { busy = false;document.body.setAttribute('aria-busy','false');document.body.classList.remove('working'); document.querySelectorAll('button').forEach(b => b.disabled = false);document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=false);try{writeControls();}finally{if(actionCompletion===completion)actionCompletion=null;finishAction();} }
 }
 async function refresh({signal}={}) {
@@ -770,7 +775,7 @@ async function flushSave() {
       const pending = pendingSave; pendingSave = null;
       try { showLocalSave('saving','未保存：このPCに保存しています…');await localState.writeLocalSave(pending.libraryId, pending.id, pending.data);if(!pendingSave)showLocalSave('saved','このPCに保存済み'); }
       catch (error) {
-        if (!pendingSave) pendingSave = pending;showLocalSave('failed','未保存：このPCへの保存に失敗しました。画面を閉じず、空き容量を確認して再試行してください。');
+        if (!pendingSave) pendingSave = pending;showLocalSave('failed','未保存：'+errorTools.describeError(error).message+' 画面を閉じずに保存を再試行してください。');
         $('#playerStatus').textContent = 'このPCへセーブできません。画面を閉じずに保存先の空き容量を確認し、「← ゲーム一覧」を再試行してください：' + error.message;
         return false;
       }
@@ -969,7 +974,7 @@ function renderActiveFilters(){
 }
 for(const id of ['searchScope','kindFilter','environmentFilter','tagMatch','sortGames'])$('#'+id).onchange=()=>render().catch(e=>status(e.message));
 function folderErrorDetail(error){
- $('#folderSelectionError').hidden=false;$('#folderSelectionError').open=false;$('#folderSelectionErrorText').textContent='v'+compatibilityTools.LAUNCHER_VERSION+' / '+(error.name||'Error')+'\n'+(error.message||'');
+ $('#folderSelectionError').hidden=false;$('#folderSelectionError').open=false;$('#folderSelectionErrorText').textContent='v'+compatibilityTools.LAUNCHER_VERSION+' / '+errorTools.describeError(error).code+'\n'+errorTools.describeError(error).details;
 }
 function requestFolderPermission(handle,mode){
  const adapt=error=>{
