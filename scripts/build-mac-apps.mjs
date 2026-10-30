@@ -84,6 +84,6 @@ export async function buildMacApps(suffix){
   execFileSync('codesign',['--force','--deep','--sign','-','--timestamp=none',app],{stdio:'inherit'});
   execFileSync('codesign',['--verify','--deep','--strict',app],{stdio:'inherit'});
  }
- if(suffix==='MAC')await publishDistribution('mojave');
+ if(suffix==='MAC')await publishDistribution('mojave-apps');
  console.log('Standalone Mac applications built: bundled Chromium, native window and filesystem; no external browser required.');
 }

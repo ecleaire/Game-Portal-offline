@@ -30,7 +30,7 @@ export async function materializeDistribution(root=defaultRoot){
  for(const suffix of ['MAC','MOJAVE']){const path=join(root,'GAME-PORTAL-'+suffix+'.command');try{await access(path);}catch{await writeFile(path,'#!/bin/'+(suffix==='MAC'?'zsh':'bash')+'\ncd -- "$(dirname -- "$0")" || exit 1\n./GAME-PORTAL-'+suffix+'\n');}}
 }
 export async function publishDistribution(group,root=defaultRoot){
- for(const file of distributionFiles.filter(file=>file.group===group))for(const target of file.targets){await mkdir(dirname(join(root,target)),{recursive:true});await cp(join(root,file.source),join(root,target),{recursive:true});}
+ for(const file of distributionFiles.filter(file=>file.group===group||group==='mojave-apps'&&file.group==='mojave'&&file.source.endsWith('.app')))for(const target of file.targets){await mkdir(dirname(join(root,target)),{recursive:true});await cp(join(root,file.source),join(root,target),{recursive:true});}
  for(const role of roles)for(const [name,text]of helperEntrypoints(role)){const path=join(root,'HTML',role,'起動補助',name);await mkdir(dirname(path),{recursive:true});await writeFile(path,text);if(name.endsWith('.command'))await chmod(path,0o755);}
  await mkdir(join(root,'_内部ファイル'),{recursive:true});await writeFile(join(root,markerPath),JSON.stringify({schema:1,project:'GAME-PORTAL',layout:'platform-role'},null,2)+'\n');
 }

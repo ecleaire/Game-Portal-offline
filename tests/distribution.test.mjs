@@ -21,3 +21,16 @@ test('platform packages preserve their roles, hydrate build inputs and detect st
   await assert.rejects(verifyPublishedDistribution(root),/Distribution output differs/);
  }finally{assert(resolve(root).startsWith(resolve(tmpdir())));await rm(root,{recursive:true,force:true});}
 });
+
+
+test('modern Mac packaging can publish both Mojave apps without a separately built legacy helper',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'portal-mojave-apps-'));
+ try{
+  for(const file of distributionFiles.filter(file=>file.group==='mojave'&&file.source.endsWith('.app'))){await mkdir(join(root,file.source,'Contents'),{recursive:true});await writeFile(join(root,file.source,'Contents','fixture'),'signed app');}
+  await publishDistribution('mojave-apps',root);
+  for(const role of ['プレイ用','クリエイター用']){
+   const name=role==='プレイ用'?'GAME-PORTAL-PLAY-MOJAVE.app':'GAME-PORTAL-MOJAVE.app';assert.equal(await readFile(join(root,'Mac',role,name,'Contents/fixture'),'utf8'),'signed app');
+   await assert.rejects(readFile(join(root,'HTML',role,'起動補助/_runtime/GAME-PORTAL-MOJAVE')),{code:'ENOENT'});
+  }
+ }finally{await rm(root,{recursive:true,force:true});}
+});
