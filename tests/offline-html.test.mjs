@@ -80,6 +80,10 @@ test('folder uploads reject portal records and conflicting paths before reading 
     ['release/index.html','release/assets','release/assets/data.bin'],
     ['release/index.html','release/Assets/a.bin','release/assets/b.bin'],
     ['release/index.html','release/IMAGE.png','release/image.png'],
+    ['release/index.html','release/ガ.png','release/カ\u3099.png'],
+    ['release/index.html','release/café.png','release/cafe\u0301.png'],
+    ['release/index.html','release/Café/a.bin','release/cafe\u0301/b.bin'],
+    ['release/index.html','release/ガ','release/カ\u3099/data.bin'],
     ['first/index.html','second/data.bin'],
     ['release/index.html','loose.bin']
   ];
@@ -92,6 +96,23 @@ test('folder uploads reject portal records and conflicting paths before reading 
   const m=await postedFixture(),files=['index.html','.gameportal-content.json'].map(name=>{const f=new File(['{}'],name);Object.defineProperty(f,'webkitRelativePath',{value:'release/'+name});return f;});
   await assert.rejects(replaceGameContent(m.root,m.game,files,m.id,library,preview,updateCheck),/管理用/);
   assert.equal(m.owner.folders.has('.gameportal-versions'),false);assert.equal(m.owner.files.has('.gameportal-content.json'),false);
+});
+
+test('Unicode name collisions stop content updates before creating staging data',async()=>{
+  const m=await postedFixture(),before=[...m.owner.files];
+  for(const paths of [['index.html','ガ.png','カ\u3099.png'],['index.html','Café/a.bin','cafe\u0301/b.bin']]){
+    let reads=0;const files=paths.map(path=>{const file=new File(['game'],path.split('/').at(-1));Object.defineProperty(file,'webkitRelativePath',{value:'release/'+path});file.arrayBuffer=async()=>{reads++;throw Error('Must reject before reading');};return file;});
+    await assert.rejects(replaceGameContent(m.root,m.game,files,m.id,library,preview,updateCheck),/同じ名前/);
+    assert.equal(reads,0);assert.equal(m.owner.folders.has('.gameportal-versions'),false);assert.deepEqual([...m.owner.files],before);
+  }
+});
+
+test('upload collision comparison preserves original Unicode names and distinct compatibility characters',()=>{
+  const names=['index.html','カ\u3099/絵.png','Ａ.txt','A.txt'];
+  const files=names.map(name=>({name:name.split('/').at(-1),webkitRelativePath:'release/'+name}));
+  assert.deepEqual(library.uploadPaths(files),names);
+  // Canonically identical parent spelling is rejected even with distinct leaves.
+  assert.throws(()=>library.uploadPaths([{name:'one',webkitRelativePath:'release/ガ/one'},{name:'two',webkitRelativePath:'release/カ\u3099/two'}]),/同じ名前/);
 });
 
 test('game folder traversal bounds empty directories and depth before reading game bytes',async()=>{

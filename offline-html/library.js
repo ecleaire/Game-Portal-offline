@@ -13,7 +13,9 @@ export function safePath(value) {
   return value.split('/');
 }
 // Validate the whole destination tree, not just each filename. Windows folds
-// case for directories too; portal records must never come from game uploads.
+// case for directories too; macOS also equates canonical Unicode spellings.
+// Compare normalized keys only: preserve every original filename on disk.
+// Portal records must never come from game uploads.
 export function uploadPaths(input) {
   const files=[...input],relative=files.some(file=>!!file.webkitRelativePath);
   if(relative&&files.some(file=>!file.webkitRelativePath||file.webkitRelativePath.split('/')[0]!==files[0].webkitRelativePath.split('/')[0]))throw new Error('同じフォルダーのファイルをまとめて選び直してください。');
@@ -22,8 +24,8 @@ export function uploadPaths(input) {
     const parts=safePath(path);
     if(parts.some(part=>/^\.gameportal(?:$|[-.])/i.test(part)||isGamePortalSidecar(part)))throw new Error('管理用ファイルが含まれています。ゲームの書き出しフォルダーだけを選んでください。');
     for(let i=1;i<=parts.length;i++){
-      const name=parts.slice(0,i).join('/'),key=name.toLowerCase(),kind=i===parts.length?'file':'directory',previous=nodes.get(key);
-      if(previous&&(previous.name!==name||previous.kind!==kind||kind==='file'))throw new Error('同じ名前または保存先が重なるファイル・フォルダーがあります。大文字・小文字も確認してください。');
+      const name=parts.slice(0,i).join('/'),key=name.normalize('NFC').toLowerCase(),kind=i===parts.length?'file':'directory',previous=nodes.get(key);
+      if(previous&&(previous.name!==name||previous.kind!==kind||kind==='file'))throw new Error('同じ名前または保存先が重なるファイル・フォルダーがあります。名前を変更して選び直してください。');
       nodes.set(key,{name,kind});
     }
   }
