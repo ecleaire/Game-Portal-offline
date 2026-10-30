@@ -170,11 +170,11 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 
 .filter-context{align-self:center;font-size:.9rem;color:var(--muted);padding:4px 8px}html[data-edition="player"] .player-secondary-actions{display:none!important}
 #exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}.desktop-path{margin-top:8px}.desktop-path input{flex:1 1 240px;min-width:0;width:100%}</style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.24.23</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.25.0</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><details id="operationErrorDetail" class="settings-detail" hidden><summary>エラーの詳細</summary><p id="operationErrorText" class="hint game-text"></p></details><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
-<section id="filters" class="filters" hidden aria-label="ゲームを探す"><div class="search-row"><label class="search-field"><span class="sr">ゲームを検索</span><span class="search-icon" aria-hidden="true">⌕</span><input id="search" type="search" aria-describedby="searchSummary" placeholder="ゲームをさがす"></label><button id="clearFilters" class="secondary" hidden>絞り込みを解除</button></div><details id="filterDetails" class="filter-details"><summary>くわしくさがす <span id="filterCount" class="hint"></span></summary><div class="search-options"><label>検索対象<select id="searchScope"><option value="all">すべて</option><option value="title">ゲーム名</option><option value="tags">タグ</option><option value="environment">開発環境</option><option value="description">概要・操作方法</option></select></label><label>作品形式<select id="kindFilter"><option value="">すべて</option><option value="html">HTML・書き出しフォルダー</option><option value="zip">WebゲームZIP</option><option value="exe">Windows EXE</option><option value="pyxapp">Pyxel PYXAPP</option></select></label><label>作成ツール<select id="environmentFilter"><option value="">すべての開発環境</option></select></label><label>タグの条件<select id="tagMatch"><option value="all">すべてのタグ</option><option value="any">どれかのタグ</option></select></label><label>並べ替え<select id="sortGames"><option value="name-asc">名前：あいうえお順</option><option value="name-desc">名前：逆順</option><option value="updated">設定の更新が新しい順</option><option value="played" hidden>最近遊んだ順</option></select></label></div><p id="searchSummary" class="hint" role="status">0件中 0件を表示</p><p class="hint search-help">空白で区切ったキーワードはすべて一致。形式・開発環境・タグは組み合わせて絞り込めます。</p><div id="tagFilterArea" hidden><p class="filter-label">タグで絞り込み </p><div class="tag-tools"><label><span class="sr">タグを検索</span><input id="tagSearch" type="search" placeholder="タグを検索"></label><label><span class="sr">タグの分類</span><select id="tagCategory"><option value="">すべての分類</option></select></label><span id="tagFilterSummary" class="hint" role="status"></span></div><div id="tagFilters" class="tags" aria-label="タグで絞り込み"></div></div></details><div id="activeFilters" class="active-filters" aria-label="選択中の検索条件" hidden></div></section>
+<section id="filters" class="filters" hidden aria-label="ゲームを探す"><div class="search-row"><label class="search-field"><span class="sr">ゲームを検索</span><span class="search-icon" aria-hidden="true">⌕</span><input id="search" type="search" aria-describedby="searchSummary" placeholder="ゲームをさがす"></label><button id="clearFilters" class="secondary" hidden>絞り込みを解除</button></div><details id="filterDetails" class="filter-details"><summary>くわしくさがす <span id="filterCount" class="hint"></span></summary><div class="search-options"><label>検索対象<select id="searchScope"><option value="all">すべて</option><option value="title">ゲーム名</option><option value="tags">タグ</option><option value="environment">開発環境</option><option value="description">概要・操作方法</option></select></label><label>作品形式<select id="kindFilter"><option value="">すべて</option><option value="html">HTML・書き出しフォルダー</option><option value="zip">WebゲームZIP</option><option value="exe">Windows EXE</option><option value="pyxapp">Pyxel PYXAPP</option></select></label><label>作成ツール<select id="environmentFilter"><option value="">すべての開発環境</option></select></label><label>タグの条件<select id="tagMatch"><option value="all">すべてのタグ</option><option value="any">どれかのタグ</option></select></label><label>並べ替え<select id="sortGames"><option value="name-asc">名前：あいうえお順</option><option value="name-desc">名前：逆順</option><option value="updated">設定の更新が新しい順</option><option value="played" hidden>最近遊んだ順</option></select></label></div><p id="searchSummary" class="hint" role="status">0件中 0件を表示</p><p class="hint search-help">空白で区切ったキーワードはすべて一致。形式・開発環境・タグは組み合わせて絞り込めます。</p><div id="tagFilterArea" hidden><p class="filter-label">タグで絞り込み </p><div class="tag-tools"><label><span class="sr">タグを検索</span><input id="tagSearch" type="search" placeholder="タグを検索"></label><label><span class="sr">タグの分類</span><select id="tagCategory"><option value="">すべての分類</option></select></label><span id="tagFilterSummary" class="hint" role="status"></span></div><div id="tagFilters" class="tags" aria-label="タグで絞り込み"></div><button id="tagMore" type="button" class="secondary" hidden>タグをさらに表示</button></div></details><div id="activeFilters" class="active-filters" aria-label="選択中の検索条件" hidden></div></section>
 <div id="libraryViewTools" class="library-view-tools" hidden><label>ゲームを絞り込む<select id="libraryView"><option value="all">すべて</option><option value="favorites">お気に入り</option><option value="recent">最近遊んだゲーム</option></select></label><label>表示サイズ<select id="cardSize"><option value="normal">標準</option><option value="compact">小さく</option><option value="large">大きく</option></select></label></div><div id="viewPreferenceNotice" class="notice" role="status" hidden><span id="viewPreferenceMessage"></span> <button id="retryGameViews" class="secondary">表示設定を再読込</button></div><div id="games" class="grid"></div><div class="load-more"><button id="loadMore" class="secondary" hidden>さらに表示</button></div><div id="emptyState" class="empty-state"><div class="empty-icon" aria-hidden="true">＋</div><h2 id="emptyTitle">ゲームをはじめよう</h2><p id="folderSuggestion" class="hint" hidden></p><p id="empty" class="empty" hidden>ゲームを保存したフォルダーを選んでください。</p><div class="buttons empty-actions"><button id="setupFolder" hidden title="フォルダーをここにドラッグしても接続できます">保存先フォルダーを選ぶ</button><button id="emptyReset" class="secondary" hidden>検索条件を解除</button><button id="emptyPost" hidden>最初のゲームを追加</button></div></div></main>
 <dialog id="help" class="wide-dialog" aria-labelledby="helpTitle">
   <div class="help-heading"><div><h2 id="helpTitle" tabindex="-1">ヘルプ</h2><p>目次から、知りたい操作を選んでください。</p></div><button class="secondary" data-close>閉じる</button></div>
@@ -1240,7 +1240,16 @@ async function prepareTogether(operations,signal){
   }finally{signal?.removeEventListener('abort',abort);}
 }
 
-return {readWithSignal,prepareTogether};})();
+// A healthy slow read may continue; a stalled read still releases the UI.
+// Stop before writes begin, and ignore late progress after stop/expiry.
+function readIdleDeadline(milliseconds,onTimeout){
+ let timer,stopped=false;
+ const stop=()=>{stopped=true;clearTimeout(timer);};
+ const pulse=()=>{if(stopped)return;clearTimeout(timer);timer=setTimeout(()=>{stop();onTimeout();},milliseconds);};
+ pulse();return {pulse,stop};
+}
+
+return {readWithSignal,prepareTogether,readIdleDeadline};})();
 const folderSharing=(()=>{// Portable hints contain no browser handle, permission or personal save.
 function connectionInfo(value) {
   if(value===null||value===undefined)return null;
@@ -1282,7 +1291,7 @@ function creatorScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope,creatorScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.24.23';
+const LAUNCHER_VERSION = '0.25.0';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -1740,11 +1749,18 @@ function embeddedPyxel(html) {
   const match = html.match(/base64\s*[:=]\s*(["'])([A-Za-z0-9+/=]+)\1/);
   return match ? match[2] : null;
 }
+// Bounded, session-only cache: unchanged paths need no repeated WebCrypto
+// work on periodic NAS scans. IDs and the on-disk format remain identical.
+const pathIds=new Map(),libraryCollator=new Intl.Collator('ja');
 async function gameId(path) {
-  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(path)))].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+  if(pathIds.has(path)){const cached=pathIds.get(path);pathIds.delete(path);pathIds.set(path,cached);return cached;}
+  const pending=crypto.subtle.digest('SHA-256',new TextEncoder().encode(path)).then(bytes=>[...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32));
+  pathIds.set(path,pending);if(pathIds.size>1024)pathIds.delete(pathIds.keys().next().value);
+  try{return await pending;}catch(error){if(pathIds.get(path)===pending)pathIds.delete(path);throw error;}
 }
-async function scan(root, metadata, {signal} = {}) {
-  const games = [], candidates = []; let visited = 0;
+async function scan(root, metadata, {signal,onProgress} = {}) {
+  const games = [], candidates = []; let visited = 0,prepared=0;
+  const progress=()=>{signal?.throwIfAborted();onProgress?.({visited,prepared,total:candidates.length});};
   const read=operation=>readWithSignal(operation,signal);
   async function add(path, title, kind, handle, folder, entry) {
     let settings, settingsError = '';
@@ -1766,7 +1782,7 @@ async function scan(root, metadata, {signal} = {}) {
   async function walk(folder, prefix = '', depth = 0) {
     signal?.throwIfAborted();
     try { await read(()=>folder.getFileHandle('.gameportal-uploading')); return; } catch (error) { if (error.name !== 'NotFoundError') throw error; }
-    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX') entries.push(entry); }
+    const entries = []; for await (const entry of folder.values()) { signal?.throwIfAborted(); if (entry.name === '.gameportal-uploading') return; if (++visited > 10000) throw new Error('ファイルが多すぎます。ゲーム専用のフォルダーを選択してください。'); if (!entry.name.startsWith('.') && entry.name !== '__MACOSX') entries.push(entry);progress(); }
     const html = entries.filter(e => e.kind === 'file' && /\.html?$/i.test(e.name));
     let native=null;try{native=nativeLayout(entries.filter(e=>e.kind==='file').map(e=>e.name));}catch{}
     const entry = native ? entries.find(e=>e.name===native.entry) : html.find(e => /^index\.html?$/i.test(e.name)) || (html.length === 1 ? html[0] : null);
@@ -1783,14 +1799,14 @@ async function scan(root, metadata, {signal} = {}) {
   await Promise.all(Array.from({length: Math.min(4,candidates.length)},async()=>{
     while(!failure&&next<candidates.length){
       const index=next++;
-      try{signal?.throwIfAborted();games[index]=await add(...candidates[index]);signal?.throwIfAborted();}catch(error){failure ||= error;}
+      try{signal?.throwIfAborted();games[index]=await add(...candidates[index]);signal?.throwIfAborted();prepared++;progress();}catch(error){failure ||= error;}
     }
   }));
   if(failure)throw failure;
   signal?.throwIfAborted();
   const ids = new Map(); for (const game of games) ids.set(game.id, (ids.get(game.id) || 0) + 1);
   for (const game of games) if (ids.get(game.id) > 1) { game.identityConflict = true; game.settingsError = '同じ作品IDのゲームが複数あります。別作品として追加する場合は「投稿」を使用してください。'; }
-  return games.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
+  return games.sort((a,b)=>libraryCollator.compare(a.title,b.title));
 }
 async function readTree(folder, preloaded = new Map(), {fileBacked = false,signal} = {}) {
   signal?.throwIfAborted();
@@ -2302,23 +2318,69 @@ function describeError(error){
 }
 
 return {describeError};})();
-const searchTools=(()=>{const normalized = value => String(value || '').normalize('NFKC').toLocaleLowerCase();
-function searchGames(games, options = {}) {
-  const words = normalized(options.query).trim().split(/\s+/).filter(Boolean), tags = [...(options.tags || [])];
-  const scope = options.scope || 'all';
-  const matches = games.filter(game => {
-    if (options.kind && game.kind !== options.kind) return false;
-    if (options.environment && game.developmentEnvironment !== options.environment) return false;
-    if (tags.length && !(options.tagMatch === 'any' ? tags.some(tag => game.tags.includes(tag)) : tags.every(tag => game.tags.includes(tag)))) return false;
-    const fields = {title:game.title,tags:game.tags.join(' '),environment:game.developmentEnvironment,description:(game.description || '')+' '+(game.instructions || '')};
-    const text = normalized(scope === 'all' ? Object.values(fields).join(' ') : fields[scope]);
-    return words.every(word => text.includes(word));
-  });
-  const title = (a,b) => a.title.localeCompare(b.title, 'ja') || a.path.localeCompare(b.path, 'ja');
-  return matches.sort((a,b) => options.sort === 'name-desc' ? -title(a,b) : options.sort === 'updated' ? (Date.parse(b.updatedAt) || 0) - (Date.parse(a.updatedAt) || 0) || title(a,b) : title(a,b));
+const searchTools=(()=>{const normalized=value=>String(value||'').normalize('NFKC').toLocaleLowerCase();
+const collator=new Intl.Collator('ja');
+// Weak keys release removed libraries and games. Searchable snapshots refer to
+// existing games without copying thumbnails/handles or persisting catalogues.
+const gameRecords=new WeakMap(),catalogues=new WeakMap();
+function recordFor(game){
+ const old=gameRecords.get(game),tags=game.tags;
+ if(old&&old.title===game.title&&old.path===game.path&&old.kind===game.kind&&old.environment===game.developmentEnvironment&&old.description===game.description&&old.instructions===game.instructions&&old.updatedAt===game.updatedAt&&old.tags.length===tags.length&&old.tags.every((tag,i)=>tag===tags[i]))return old;
+ const record={game,title:game.title,path:game.path,kind:game.kind,environment:game.developmentEnvironment,description:game.description,instructions:game.instructions,updatedAt:game.updatedAt,time:null,tags:[...tags],text:new Map()};
+ gameRecords.set(game,record);return record;
+}
+function catalogueFor(games,records){
+ const old=catalogues.get(games);
+ if(old&&old.records.length===records.length&&old.records.every((record,i)=>record===records[i]))return old;
+ const index={records,orders:new Map()};catalogues.set(games,index);return index;
+}
+const timeFor=record=>record.time??(record.time=Date.parse(record.updatedAt)||0);
+const byTitle=(a,b)=>collator.compare(a.title,b.title)||collator.compare(a.path,b.path);
+function ordered(index,sort){
+ const key=sort==='updated'?'updated':'name';
+ if(!index.orders.has(key)){const compare=key==='updated'?(a,b)=>timeFor(b)-timeFor(a)||byTitle(a,b):byTitle;const alreadySorted=index.records.every((record,i)=>!i||compare(index.records[i-1],record)<=0);index.orders.set(key,alreadySorted?index.records:[...index.records].sort(compare));}
+ return index.orders.get(key);
+}
+function optionsFor(options){
+ const words=normalized(options.query).trim().split(/\s+/).filter(Boolean),tags=[...(options.tags||[])];
+ return {...options,words,tags,scope:options.scope||'all'};
+}
+function matches(record,options){
+ if(options.kind&&record.kind!==options.kind||options.environment&&record.environment!==options.environment)return false;
+ if(options.tags.length&&!(options.tagMatch==='any'?options.tags.some(tag=>record.tags.includes(tag)):options.tags.every(tag=>record.tags.includes(tag))))return false;
+ // Browsing and tag-only filtering do not normalize descriptions at all.
+ if(!options.words.length)return true;
+ const scope=options.scope;
+ if(!record.text.has(scope)){
+  const fields={title:record.title,tags:record.tags.join(' '),environment:record.environment,description:(record.description||'')+' '+(record.instructions||'')};
+  if(record.text.size>=2)record.text.delete(record.text.keys().next().value);
+  record.text.set(scope,normalized(scope==='all'?Object.values(fields).join(' '):Object.hasOwn(fields,scope)?fields[scope]:''));
+ }
+ return options.words.every(word=>record.text.get(scope).includes(word));
+}
+function searchGames(games,options={}){
+ const query=optionsFor(options),index=catalogueFor(games,games.map(recordFor)),result=[];
+ const records=ordered(index,query.sort),reverse=query.sort==='name-desc';
+ for(let i=0;i<records.length;i++){const record=records[reverse?records.length-1-i:i];if(matches(record,query))result.push(record.game);}
+ return result;
+}
+// Yield during large/cold searches instead of blocking typing, List or Reload.
+// All cached records are validated before reuse, including in-place tag edits.
+async function searchGamesAsync(games,options={}, {signal}={}){
+ signal?.throwIfAborted();
+ if(games.length>1000){await new Promise(resolve=>setTimeout(resolve,0));signal?.throwIfAborted();}
+ const query=optionsFor(options),records=[];let deadline=performance.now()+8;
+ async function checkpoint(i){
+  signal?.throwIfAborted();
+  if((i&31)===31&&performance.now()>=deadline){await new Promise(resolve=>setTimeout(resolve,0));signal?.throwIfAborted();deadline=performance.now()+8;}
+ }
+ for(let i=0;i<games.length;i++){records.push(recordFor(games[i]));if((i&31)===31)await checkpoint(i);}
+ const index=catalogueFor(games,records),sorted=ordered(index,query.sort),result=[],reverse=query.sort==='name-desc';
+ for(let i=0;i<sorted.length;i++){const record=sorted[reverse?sorted.length-1-i:i];if(matches(record,query))result.push(record.game);if((i&31)===31)await checkpoint(i);}
+ signal?.throwIfAborted();return result;
 }
 
-return {searchGames};})();
+return {searchGames,searchGamesAsync};})();
 const localState=(()=>{// Folder handles, saves and bounded verification receipts stay in this profile.
 // Browser permissions and handles are never transferred to another PC.
 let database;
@@ -2920,6 +2982,7 @@ function startPlayer(frame, options, preview, onMessage) {
 
 return {startPlayer,decodeBase64,encodeBase64};})();
 function uiError(message,name){const error=new DOMException(message,name);error.userMessage=message;return error;}
+const appCollator=new Intl.Collator('ja');
 // Runs only in the trusted launcher document, never inside a game frame.
 const desktopHost=(()=>{
   if(window!==window.top||typeof window.__portalSend!=='function')throw Error('デスクトップ版の起動元を確認してください。');
@@ -3256,7 +3319,7 @@ async function checkSharedFolder(){
   if(folderWatchPromise||!available())return;
   const controller=new AbortController(),watchRoot=root;folderWatchAbort=controller;folderWatchStarted=performance.now();nativeReadControls();
   const progress=setTimeout(()=>nativeReadControls(),1500);
-  const timer=setTimeout(()=>controller.abort(uiError('保存先の確認が応答しません。再接続するか、保存先を選び直してください。','TimeoutError')),12000);
+  const idle=readTasks.readIdleDeadline(12000,()=>controller.abort(uiError('保存先の確認が応答しません。再接続するか、保存先を選び直してください。','TimeoutError')));
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
   let watchFailed=false;
   folderWatchPromise=(async()=>{
@@ -3264,7 +3327,7 @@ async function checkSharedFolder(){
       const record=await read(()=>cacheHandle());if(!available()||!record?.handle||record.scope&&record.scope!==folderScope)return;
       if(record.revision&&record.revision===lastFolderRevision){
         // Another tab may have granted permission since the initial restore.
-        if(!folderRecovery&&!syncPaused&&!compatibilityProblem&&remembered&&!$('#reconnect').hidden&&await read(()=>remembered.isSameEntry(record.handle))&&await read(()=>remembered.queryPermission({mode:'read'}))==='granted'&&available())await connectRememberedRead(remembered,false,{signal:controller.signal});
+        if(!folderRecovery&&!syncPaused&&!compatibilityProblem&&remembered&&!$('#reconnect').hidden&&await read(()=>remembered.isSameEntry(record.handle))&&await read(()=>remembered.queryPermission({mode:'read'}))==='granted'&&available())await connectRememberedRead(remembered,false,{signal:controller.signal,onActivity:idle.pulse,finishReading:idle.stop});
         return;
       }
       if(root&&await read(()=>root.isSameEntry(record.handle))){lastFolderRevision=record.revision;return;}
@@ -3274,11 +3337,11 @@ async function checkSharedFolder(){
           remembered=record.handle;automaticPermissionAttempted=false;lastFolderRevision=record.revision;$('#reconnect').hidden=false;status('保存先へのアクセス許可が必要です。「保存先に再接続する」を押してください。');return;
         }
         controller.signal.throwIfAborted();if(root!==watchRoot)return '';
-        lastFolderRevision=record.revision;await connectRememberedRead(record.handle,true,{signal:controller.signal});return '';
+        lastFolderRevision=record.revision;await connectRememberedRead(record.handle,true,{signal:controller.signal,onActivity:idle.pulse,finishReading:idle.stop});return '';
       })();
     }catch(error){if(root!==watchRoot||controller.signal.aborted&&controller.signal.reason?.name!=='TimeoutError')return;watchFailed=true;folderWatchRetryAt=performance.now()+folderWatchRetryDelay;folderWatchRetryDelay=Math.min(folderWatchRetryDelay*2,60000);lastFolderRevision='';folderWatchErrorMessage='保存先の共有を確認できません。ホームで間隔をあけて再確認します。設定から選び直すこともできます：'+error.message;status(folderWatchErrorMessage);}
   })();
-  try{await folderWatchPromise;}finally{if(!watchFailed){folderWatchRetryAt=0;folderWatchRetryDelay=5000;if(folderWatchErrorMessage&&$('#status').textContent===folderWatchErrorMessage)status('');folderWatchErrorMessage='';}clearTimeout(timer);clearTimeout(progress);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();}
+  try{await folderWatchPromise;}finally{if(!watchFailed){folderWatchRetryAt=0;folderWatchRetryDelay=5000;if(folderWatchErrorMessage&&$('#status').textContent===folderWatchErrorMessage)status('');folderWatchErrorMessage='';}idle.stop();clearTimeout(progress);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();}
 }
 setInterval(()=>{void checkSharedFolder();},5000);
 window.addEventListener('focus',()=>{void checkSharedFolder();});
@@ -3494,7 +3557,7 @@ $('#enableCrop').onchange=()=>{$('#cropFields').disabled=!$('#enableCrop').check
 for(const id of ['cropZoom','cropX','cropY'])$('#'+id).oninput=renderCropPreview;
 $('#resetCrop').onclick=()=>{$('#cropZoom').value='1';$('#cropX').value='50';$('#cropY').value='50';renderCropPreview();};
 $('#edit').addEventListener('close',()=>{editImageRevision++;resetCropState();});
-async function connect(handle, request = false, restoring = false, shared = false, signal = null, {expectedLibrary=null,preserveSearch=false,readOnlySelection=false,manualSelection=false,finishReading=()=>{}}={}) {
+async function connect(handle, request = false, restoring = false, shared = false, signal = null, {expectedLibrary=null,preserveSearch=false,readOnlySelection=false,manualSelection=false,finishReading=()=>{},onActivity=()=>{}}={}) {
   if(!restoring||manualSelection)status('ゲームの一覧を確認しています…');
   signal?.throwIfAborted();
   const read=operation=>readTasks.readWithSignal(operation,signal);
@@ -3510,7 +3573,9 @@ async function connect(handle, request = false, restoring = false, shared = fals
   if(launcherEdition==='player'&&!scannedLibrary)throw new Error('この保存先は準備が必要です。クリエイター版で一度開いて初回設定を済ませてください。');
   if(expectedLibrary&&scannedLibrary!==expectedLibrary){const error=new Error('保存先のIDが変わりました。設定からフォルダーを確認してください。');error.code='LIBRARY_ID_CHANGED';throw error;}
   if(portableConnection&&scannedLibrary!==portableConnection.libraryId)throw new Error('このHTMLの保存先と違います。「'+portableConnection.name+'」のフォルダーを選んでください。');
-  const next = await read(()=>library.loadMetadata(handle)), nextGames = await read(()=>library.scan(handle, next,{signal}));
+  let lastProgress=0;
+  const scanProgress=progress=>{if(signal?.aborted)return;onActivity();if((!restoring||manualSelection)&&performance.now()-lastProgress>=200){lastProgress=performance.now();status(progress.total?'ゲーム情報を確認中：'+progress.prepared+' / '+progress.total+'件':'フォルダーを確認中：'+progress.visited+'項目');}};
+  const next = await read(()=>library.loadMetadata(handle)), nextGames = await read(()=>library.scan(handle, next,{signal,onProgress:scanProgress}));
   signal?.throwIfAborted();
   if(await read(()=>library.loadLibraryId(handle))!==scannedLibrary)throw new Error('読み込み中に保管フォルダーが変わりました。もう一度接続してください。');
   signal?.throwIfAborted();
@@ -3597,35 +3662,53 @@ function loadingStage(task,name,active=true){
  if(gameLoading!==task||task.cancelled)return;task.stages||=new Set();active?task.stages.add(name):task.stages.delete(name);
  $('#loadStage').hidden=!task.stages.size;$('#loadStage').textContent=[...task.stages].join('・')+(task.stages.size?'。少しお待ちください。':'');
 }
-let catalogueFilterGames=null,catalogueFilterKey='';
+let catalogueFilterGames=null,catalogueDataGames=null,catalogueFilterKey='',catalogueTags=[],catalogueTagCounts=new Map(),knownTagsGames=null,tagLimit=120;
 const tagCategoryByName=new Map(tagPresets.map(tag=>[tag.name,tag.category]));
-function renderCatalogueFilters(){
- const key=JSON.stringify([$('#tagSearch').value,$('#tagCategory').value,[...selectedTags]]);
- if(catalogueFilterGames===games&&catalogueFilterKey===key)return;
-  const allTags = [...new Set(games.flatMap(g => g.tags))].sort((a,b) => a.localeCompare(b,'ja'));
-  const tagCounts=new Map();for(const game of games)for(const tag of game.tags)tagCounts.set(tag,(tagCounts.get(tag)||0)+1);
-  const environment=$('#environmentFilter').value;$('#environmentFilter').replaceChildren(new Option('すべての開発環境',''));
-  for(const name of [...new Set(games.map(g=>g.developmentEnvironment).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja')))$('#environmentFilter').append(new Option(name,name));
-  $('#environmentFilter').value=[...$('#environmentFilter').options].some(o=>o.value===environment)?environment:'';
-  $('#tagFilterArea').hidden = !allTags.length;
-  const tagCategories=[...new Set(tagPresets.map(t=>t.category))].concat('マイタグ');
-  const category=$('#tagCategory').value;$('#tagCategory').replaceChildren(new Option('すべての分類',''));for(const name of tagCategories)$('#tagCategory').append(new Option(name,name));$('#tagCategory').value=category;
-  const tagQuery=$('#tagSearch').value.normalize('NFKC').toLocaleLowerCase();let shownTags=0;
-  const previousTags=new Map([...$('#tagFilters').children].map(button=>[button.getAttribute('aria-label'),button])),visibleTags=[];
-  $('#knownTags').replaceChildren();
-  for (const tag of allTags) {
-    const option = document.createElement('option'); option.value = tag; $('#knownTags').append(option);
-    if(!tag.normalize('NFKC').toLocaleLowerCase().includes(tagQuery)||category&&(tagCategoryByName.get(tag)||'マイタグ')!==category)continue;shownTags++;
-    const count=tagCounts.get(tag);
-    const button = previousTags.get(tag)||document.createElement('button'); button.type='button';button.className = 'tag' + (selectedTags.has(tag) ? ' active' : ''); button.textContent = tag+' '+count;button.setAttribute('aria-label',tag);button.setAttribute('aria-pressed', String(selectedTags.has(tag)));
-    button.onclick = () => { selectedTags.has(tag) ? selectedTags.delete(tag) : selectedTags.add(tag); render().catch(e => status(e.message)); }; visibleTags.push(button);
-  }
-  const wantedTags=new Set(visibleTags);for(const button of [...$('#tagFilters').children])if(!wantedTags.has(button))button.remove();
-  visibleTags.forEach((button,index)=>{const current=$('#tagFilters').children[index];if(current!==button)$('#tagFilters').insertBefore(button,current||null);});
-  $('#tagFilterSummary').textContent=`${allTags.length}タグ中 ${shownTags}件`;
-
- catalogueFilterGames=games;catalogueFilterKey=key;
+function renderKnownTags(){
+ if(knownTagsGames===games)return;
+ const fragment=document.createDocumentFragment();
+ for(const tag of [...new Set(games.flatMap(game=>game.tags))].sort((a,b)=>appCollator.compare(a,b))){const option=document.createElement('option');option.value=tag;fragment.append(option);}
+ $('#knownTags').replaceChildren(fragment);knownTagsGames=games;
 }
+function renderCatalogueFilters(){
+ if(catalogueFilterGames!==games){
+  catalogueFilterGames=games;catalogueDataGames=null;catalogueFilterKey='';
+  $('#tagFilterArea').hidden=!games.some(game=>game.tags.length);
+  if(!$('#filterDetails').open){$('#tagFilters').replaceChildren();$('#tagMore').hidden=true;}
+  const selectedEnvironment=$('#environmentFilter').value;if(selectedEnvironment&&!games.some(game=>game.developmentEnvironment===selectedEnvironment))$('#environmentFilter').value='';
+  knownTagsGames=null;$('#knownTags').replaceChildren();if($('#edit').open)renderKnownTags();
+ }
+ if(!$('#filterDetails').open)return;
+ if(catalogueDataGames!==games){
+  catalogueTags=[...new Set(games.flatMap(game=>game.tags))].sort((a,b)=>appCollator.compare(a,b));catalogueTagCounts=new Map();
+  for(const game of games)for(const tag of game.tags)catalogueTagCounts.set(tag,(catalogueTagCounts.get(tag)||0)+1);
+  const environment=$('#environmentFilter').value;$('#environmentFilter').replaceChildren(new Option('すべての開発環境',''));
+  for(const name of [...new Set(games.map(game=>game.developmentEnvironment).filter(Boolean))].sort((a,b)=>appCollator.compare(a,b)))$('#environmentFilter').append(new Option(name,name));
+  $('#environmentFilter').value=[...$('#environmentFilter').options].some(option=>option.value===environment)?environment:'';
+  $('#tagFilterArea').hidden=!catalogueTags.length;
+  const category=$('#tagCategory').value;$('#tagCategory').replaceChildren(new Option('すべての分類',''));
+  for(const name of [...new Set(tagPresets.map(tag=>tag.category)),'マイタグ'])$('#tagCategory').append(new Option(name,name));$('#tagCategory').value=category;
+  catalogueDataGames=games;
+ }
+ // Only open filters aggregate and construct candidates. Search itself still
+ // examines every game and tag, including candidates beyond the visible page.
+ const key=JSON.stringify([$('#tagSearch').value,$('#tagCategory').value,[...selectedTags],tagLimit]);
+ if(catalogueFilterKey===key)return;
+ const category=$('#tagCategory').value,query=$('#tagSearch').value.normalize('NFKC').toLocaleLowerCase();
+ const previousTags=new Map([...$('#tagFilters').children].map(button=>[button.getAttribute('aria-label'),button])),visibleTags=[];let matching=0;
+ for(const tag of catalogueTags){
+  if(query&&!tag.normalize('NFKC').toLocaleLowerCase().includes(query)||category&&(tagCategoryByName.get(tag)||'マイタグ')!==category)continue;
+  if(++matching>tagLimit)continue;
+  const button=previousTags.get(tag)||document.createElement('button');button.type='button';button.className='tag'+(selectedTags.has(tag)?' active':'');button.textContent=tag+' '+catalogueTagCounts.get(tag);button.setAttribute('aria-label',tag);button.setAttribute('aria-pressed',String(selectedTags.has(tag)));
+  button.onclick=()=>{selectedTags.has(tag)?selectedTags.delete(tag):selectedTags.add(tag);render().catch(error=>status(error.message));};visibleTags.push(button);
+ }
+ const wanted=new Set(visibleTags);for(const button of [...$('#tagFilters').children])if(!wanted.has(button))button.remove();
+ visibleTags.forEach((button,index)=>{const current=$('#tagFilters').children[index];if(current!==button)$('#tagFilters').insertBefore(button,current||null);});
+ $('#tagFilterSummary').textContent=`${catalogueTags.length}タグ中 ${matching}件`+(matching>tagLimit?`・先頭${tagLimit}件を表示`:'');$('#tagMore').hidden=matching<=tagLimit;
+ catalogueFilterKey=key;
+}
+$('#filterDetails').addEventListener('toggle',()=>{if($('#filterDetails').open)render().catch(error=>status(error.message));});
+$('#tagMore').onclick=()=>{tagLimit+=120;render().catch(error=>status(error.message));};
 async function render() {
   const revision = ++renderRevision, folder = root,viewLibrary=localLibrary;
   renderReadAbort?.abort();const thumbnailRead=new AbortController();renderReadAbort=thumbnailRead;
@@ -3640,7 +3723,10 @@ async function render() {
   if($('#libraryView').value!=='recent'&&$('#sortGames').value==='played')$('#sortGames').value='name-asc';
   renderCatalogueFilters();
   const keyword = $('#search').value.trim().toLocaleLowerCase();
-  let matches = searchTools.searchGames(games,{query:keyword,scope:$('#searchScope').value,kind:$('#kindFilter').value,environment:$('#environmentFilter').value,tags:selectedTags,tagMatch:$('#tagMatch').value,sort:$('#sortGames').value});
+  let matches;
+  try{matches=await searchTools.searchGamesAsync(games,{query:keyword,scope:$('#searchScope').value,kind:$('#kindFilter').value,environment:$('#environmentFilter').value,tags:selectedTags,tagMatch:$('#tagMatch').value,sort:$('#sortGames').value},{signal:thumbnailRead.signal});}
+  catch(error){if(thumbnailRead.signal.aborted)return;throw error;}
+  if(revision!==renderRevision||root!==folder||localLibrary!==viewLibrary)return;
   $('#libraryView').disabled=!viewPreferencesReady;const view=viewPreferencesReady?$('#libraryView').value:'all';$('#sortGames').disabled=view==='recent';$('#sortGames option[value=played]').hidden=view!=='recent';
   if(view==='favorites')matches=matches.filter(g=>gameViews.get(g.id)?.favorite);
   if(view==='recent')matches=matches.filter(g=>gameViews.get(g.id)?.lastPlayed>0).sort((a,b)=>gameViews.get(b.id).lastPlayed-gameViews.get(a.id).lastPlayed||a.title.localeCompare(b.title,'ja')).slice(0,30);
@@ -3659,7 +3745,7 @@ async function render() {
   $('#emptyPost').hidden=!root||games.length>0||!editingEnabled;
   for (const game of matches.slice(0,renderLimit)) {
     const cached=cardCache.get(game.path);
-    if(cached&&!cached.thumbnailFailed&&(cached.game===game||cached.viewKey===syncTools.cardViewKey(game))){cached.game=game;const favorite=cached.node.querySelector('.favorite-button');if(favorite)updateFavoriteButton(favorite,game);visibleCards.push(cached.node);continue;}
+    if(cached&&!cached.thumbnailFailed&&(cached.game===game||cached.viewKey===syncTools.cardViewKey(game))){cached.game=game;cardCache.delete(game.path);cardCache.set(game.path,cached);const favorite=cached.node.querySelector('.favorite-button');if(favorite)updateFavoriteButton(favorite,game);visibleCards.push(cached.node);continue;}
     const article = document.createElement('article'); article.className = 'card';
     const cover = document.createElement('div'); cover.className = 'cover'; cover.textContent = '▶\uFE0E';let thumbnailFailed=false;
     if (typeof game.thumbnail === 'string') { const img = document.createElement('img'); img.src = game.thumbnail; img.alt = ''; cover.replaceChildren(img); }
@@ -3692,6 +3778,8 @@ async function render() {
   const wanted=new Set(visibleCards);for(const card of [...$('#games').children])if(!wanted.has(card))card.remove();
   visibleCards.forEach((card,index)=>{const current=$('#games').children[index];if(current!==card)$('#games').insertBefore(card,current||null);});fitCardTags();
   const paths=new Set(games.map(game=>game.path));for(const path of cardCache.keys())if(!paths.has(path))cardCache.delete(path);
+  const offscreen=[...cardCache].filter(([,cached])=>!wanted.has(cached.node)&&!cached.node.contains(document.activeElement));
+  for(const [path]of offscreen.slice(0,Math.max(0,offscreen.length-cardBatch)))cardCache.delete(path);
   const retained=new Set([...cardCache.values()].flatMap(({node})=>[...node.querySelectorAll('img')].map(img=>img.src)));
   imageURLs=imageURLs.filter(url=>{if(retained.has(url))return true;URL.revokeObjectURL(url);return false;});
 }
@@ -3750,6 +3838,7 @@ function updateTagChoices() {
   }
 }
 function renderTagChoices() {
+  renderKnownTags();
   const box = $('#tagCategories'); box.replaceChildren(); tagControls = [];
   const presets = [...tagPresets], known = new Set(presets.map(t => t.name));
   for (const name of new Set([...games.flatMap(g => g.tags), ...library.tagsFrom($('#editTags').value)])) {
@@ -3990,7 +4079,7 @@ $('#homeLink').onclick=event=>{
   },false,true);
 };
 $('#setupFolder').onclick = () => (remembered||nativeRetry)&&!$('#reconnect').hidden?$('#reconnect').onclick():$('#chooseFolder').onclick();
-function resetSearch(){clearTimeout(searchTimer);renderLimit=cardBatch;$('#search').value='';$('#tagSearch').value='';$('#tagCategory').value='';selectedTags.clear();$('#searchScope').value='all';$('#kindFilter').value='';$('#environmentFilter').value='';$('#tagMatch').value='all';$('#sortGames').value='name-asc';$('#libraryView').value='all'; }
+function resetSearch(){clearTimeout(searchTimer);tagLimit=120;renderLimit=cardBatch;$('#search').value='';$('#tagSearch').value='';$('#tagCategory').value='';selectedTags.clear();$('#searchScope').value='all';$('#kindFilter').value='';$('#environmentFilter').value='';$('#tagMatch').value='all';$('#sortGames').value='name-asc';$('#libraryView').value='all'; }
 $('#clearFilters').onclick = () => { resetSearch();render().catch(e => status(e.message));$('#search').focus(); };
 $('#emptyReset').onclick=()=>$('#clearFilters').click();
 $('#emptyPost').onclick=()=>$('#postButton').click();
@@ -4041,10 +4130,10 @@ function openFolderSelection(selection) {
     }
     if(!handle||handle.kind!=='directory')throw new Error('ファイルではなく、ゲームを保管しているフォルダーを1つドラッグしてください。');
     const controller=new AbortController();manualConnection=controller;nativeReadControls();
-    const timer=setTimeout(()=>controller.abort(uiError('保存先から応答がありません。選び直すか、もう一度ドラッグしてください。','TimeoutError')),30000);
-    const finishReading=()=>{clearTimeout(timer);if(manualConnection===controller)manualConnection=null;nativeReadControls();};
+    const idle=readTasks.readIdleDeadline(30000,()=>controller.abort(uiError('保存先から応答がありません。選び直すか、もう一度ドラッグしてください。','TimeoutError')));
+    const finishReading=()=>{idle.stop();if(manualConnection===controller)manualConnection=null;nativeReadControls();};
     let connectionMessage='';
-    try{connectionMessage=await connect(handle,false,false,false,controller.signal,{readOnlySelection:true,manualSelection:true,finishReading});}catch(error){
+    try{connectionMessage=await connect(handle,false,false,false,controller.signal,{readOnlySelection:true,manualSelection:true,finishReading,onActivity:idle.pulse});}catch(error){
       $('#folderSelectionHelp').open=true;
       if(!$('#settings').open)$('#settings').showModal();
       if(error.name==='AbortError')throw new Error('フォルダーは選択されましたが、接続処理が中断しました。保存先への接続とアクセス権を確認してください。詳細：'+error.message);
@@ -4101,10 +4190,11 @@ async function retryNativeConnection(){
   }finally{clearTimeout(timer);if(nativeReadAbort===controller)nativeReadAbort=null;}
 }
 async function connectRememberedRead(handle,shared=false,options={}){
-  const controller=new AbortController(),abort=()=>controller.abort(options.signal.reason);let timer;
-  if(options.signal?.aborted)abort();else options.signal?.addEventListener('abort',abort,{once:true});
-  try{await Promise.race([connect(handle,false,true,shared,controller.signal,options),new Promise((_,reject)=>{timer=setTimeout(()=>{const error=new Error('保存先への接続を中止しました。もう一度接続するか、設定から保存先を選び直してください。');error.name='TimeoutError';controller.abort(error);reject(error);},12000);})]);controller.signal.throwIfAborted();if(!options.signal)$('#settings').close();if($('#status').textContent===reconnectHint)status('');}
-  finally{clearTimeout(timer);options.signal?.removeEventListener('abort',abort);}
+ const controller=new AbortController(),abort=()=>controller.abort(options.signal.reason);
+ if(options.signal?.aborted)abort();else options.signal?.addEventListener('abort',abort,{once:true});
+ const idle=readTasks.readIdleDeadline(12000,()=>controller.abort(uiError('保存先への接続を中止しました。もう一度接続するか、設定から保存先を選び直してください。','TimeoutError')));
+ try{await connect(handle,false,true,shared,controller.signal,{...options,onActivity:()=>{idle.pulse();options.onActivity?.();},finishReading:()=>{idle.stop();options.finishReading?.();}});controller.signal.throwIfAborted();if(!options.signal)$('#settings').close();if($('#status').textContent===reconnectHint)status('');}
+ finally{idle.stop();options.signal?.removeEventListener('abort',abort);}
 }
 $('#retryNativeConnection').onclick=()=>{if(!busy&&!starting&&nativeBridge&&(!root||root.nativeReadOnly))return action(()=>retryNativeConnection(),true);};
 $('#reconnect').onclick = () => {
@@ -4128,7 +4218,7 @@ document.addEventListener('keydown',requestRememberedFromHome,{capture:true});
 $('#homeReconnect').onclick=()=>$('#reconnect').onclick();
 $('#refresh').onclick = () => action(async()=>{await refresh();return '一覧を更新しました。';});
 $('#search').oninput = () => {clearTimeout(searchTimer);renderLimit=cardBatch;searchTimer=setTimeout(()=>render().catch(e=>status(e.message)),100);};
-$('#tagSearch').oninput=()=>render().catch(e=>status(e.message));$('#tagCategory').onchange=()=>render().catch(e=>status(e.message));
+$('#tagSearch').oninput=()=>{tagLimit=120;render().catch(e=>status(e.message));};$('#tagCategory').onchange=()=>{tagLimit=120;render().catch(e=>status(e.message));};
 $('#loadMore').onclick=()=>{renderLimit+=cardBatch;render().catch(e=>status(e.message));};
 function updatePostSelection() {
   const bytes=postSelection.reduce((sum,file)=>sum+file.size,0);
@@ -4276,8 +4366,8 @@ function initialized() { if(connectionError)status(connectionError);starting = f
 if (!window.showDirectoryPicker&&!nativeBridge) { status('このブラウザーはフォルダーへの保存に対応していません。PC版Google Chromeを使用してください。'); initialized(); }
 else {
 const startupAbort=new AbortController();startupConnection=startupAbort;nativeReadControls();
-const startupTimeout=setTimeout(()=>{pauseAutomaticConnection();startupAbort.abort();if(nativeBridge)nativeRetry=true;status('前回の保存先への自動接続を中止しました。保存先を開き直してください。ヘルプ・設定から操作できます。');initialized();},12000);
-startupAbort.signal.addEventListener('abort',()=>clearTimeout(startupTimeout),{once:true});
+const startupIdle=readTasks.readIdleDeadline(12000,()=>{pauseAutomaticConnection();startupAbort.abort();if(nativeBridge)nativeRetry=true;status('前回の保存先への自動接続を中止しました。保存先を開き直してください。ヘルプ・設定から操作できます。');initialized();});
+startupAbort.signal.addEventListener('abort',()=>startupIdle.stop(),{once:true});
 Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previous,receipts]) => {
   startupAbort.signal.throwIfAborted();
   settingsReceipts=receipts;lastFolderRevision=previous?.revision||'';
@@ -4286,12 +4376,12 @@ Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previ
   // A failed or read-only helper must not discard the full browser connection.
   if(nativeBridge&&previous?.scope===folderScope&&previous?.handle&&!previous.handle.nativeDesktop&&!previous.handle.nativeReadOnly){
     const granted=await readTasks.readWithSignal(()=>previous.handle.queryPermission({mode:'read'}),startupAbort.signal);
-    if(granted==='granted'){await connect(previous.handle,false,true,false,startupAbort.signal);return;}
+    if(granted==='granted'){await connect(previous.handle,false,true,false,startupAbort.signal,{onActivity:startupIdle.pulse,finishReading:startupIdle.stop});return;}
   }
-  if(nativeBridge){const handle=await nativeTools.nativeFolder(nativeBridge,compatibilityTools.LAUNCHER_VERSION,startupAbort.signal,{onPendingChange:nativeReadControls});startupAbort.signal.throwIfAborted();if(handle){await connect(handle,false,true,false,startupAbort.signal);return;}}
+  if(nativeBridge){const handle=await nativeTools.nativeFolder(nativeBridge,compatibilityTools.LAUNCHER_VERSION,startupAbort.signal,{onPendingChange:nativeReadControls});startupAbort.signal.throwIfAborted();if(handle){await connect(handle,false,true,false,startupAbort.signal,{onActivity:startupIdle.pulse,finishReading:startupIdle.stop});return;}}
   if (previous?.name) $('#settingFolder').textContent = '前回：' + previous.name;
-  if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;writeControls();try{const permission=await remembered.queryPermission({mode:'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal);}else {syncStatus(reconnectHint);status(reconnectHint);}}catch(error){if(startupAbort.signal.aborted)return;queueFolderRecovery(error);syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}
-}).catch(error => {if(nativeBridge&&!root){nativeRetry=true;editingEnabled=false;$('#enableEditing').checked=false;}if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。再試行するか、「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{clearTimeout(startupTimeout);if(!startupAbort.signal.aborted)initialized();});
+  if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;writeControls();try{const permission=await remembered.queryPermission({mode:'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal,{onActivity:startupIdle.pulse,finishReading:startupIdle.stop});}else {syncStatus(reconnectHint);status(reconnectHint);}}catch(error){if(startupAbort.signal.aborted)return;queueFolderRecovery(error);syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}
+}).catch(error => {if(nativeBridge&&!root){nativeRetry=true;editingEnabled=false;$('#enableEditing').checked=false;}if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。再試行するか、「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{startupIdle.stop();if(!startupAbort.signal.aborted)initialized();});
 }
 
 
