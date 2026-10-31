@@ -71,9 +71,13 @@ try{
  // than permanently disabling Creator/Player synchronization after three polls.
  await player.bringToFront();await player.clock.install();
  await player.evaluate(()=>{window.normalSharedCache=localState.cacheHandle;window.failedSharedReads=0;localState.cacheHandle=async(...args)=>{if(!args[0]){failedSharedReads++;throw new DOMException('Shared selection temporarily unavailable','NetworkError');}return normalSharedCache(...args);};});
- for(let attempt=0;attempt<4;attempt++){await player.clock.fastForward(61000);await player.evaluate(()=>checkSharedFolder());}
+ // Let actual FSA/IDB reads settle between fake-clock jumps. Advancing a
+ // minute while an automatic catalogue read is pending can manufacture a
+ // timeout or legitimately postpone this separate selection watcher.
+ const settleReads=()=>player.evaluate(async()=>{await folderWatchPromise;await syncPromise;await folderWatchPromise;});
+ for(let attempt=0;attempt<4;attempt++){await settleReads();await player.clock.fastForward(61000);await settleReads();await player.evaluate(()=>checkSharedFolder());await settleReads();}
  assert((await player.evaluate(()=>failedSharedReads))>=4);assert.equal(await player.evaluate(()=>automaticConnectionPaused),false);await expect(player.locator('#folderName')).toHaveText('Beta');
- await player.evaluate(()=>localState.cacheHandle=normalSharedCache);await chooseCreator('Alpha');await player.bringToFront();await player.evaluate(()=>folderWatchPromise);await player.clock.fastForward(61000);await player.evaluate(async()=>{await folderWatchPromise;await checkSharedFolder();});await expect(player.locator('#folderName')).toHaveText('Alpha');
+ await player.evaluate(()=>localState.cacheHandle=normalSharedCache);await chooseCreator('Alpha');await player.bringToFront();await settleReads();await player.clock.fastForward(61000);await settleReads();await player.evaluate(()=>checkSharedFolder());await settleReads();await expect(player.locator('#folderName')).toHaveText('Alpha');
  assert.equal(await player.evaluate(()=>folderWatchRetryDelay),5000);await expect(player.locator('#status')).toBeEmpty();
  // Explicit cancellation still prevents automatic reconnection.
  await player.evaluate(()=>cancelFolderConnection());await chooseCreator('Beta');await player.bringToFront();await player.clock.fastForward(61000);await player.evaluate(()=>checkSharedFolder());await expect(player.locator('#folderName')).toHaveText('Alpha');await player.clock.resume();
