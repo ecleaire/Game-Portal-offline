@@ -7,7 +7,7 @@ export async function macDesktopPage(html,bootstrap,licenses){
   replace("job.reject(error(message.error||{}));});", "job.reject(error(message.error||{}));};");
   replace("if(objects)chrome.webview.postMessageWithAdditionalObjects({id,op,...args},objects);else chrome.webview.postMessage({id,op,...args});", "window.__portalSend(JSON.stringify({id,op,...args}));");
   replace('let serial=0;const requests=new Map(),handles=new Map(),reads=new Set();',`let serial=0;const requests=new Map(),handles=new Map(),reads=new Set();
-  let freeReadSlots=4;const readWaiters=[];
+  let freeReadSlots=document.documentElement.dataset.performance==='low'?2:4;const readWaiters=[];
   function releaseReadSlot(){let waiter;while((waiter=readWaiters.shift())){if(waiter.job.cancelled){waiter.reject(new DOMException('読み込みを中止しました。','NativeReadCancelled'));continue;}delete waiter.job.cancelWait;waiter.resolve(releaseReadSlot);return;}freeReadSlots++;}
   function acquireReadSlot(job){if(freeReadSlots){freeReadSlots--;return Promise.resolve(releaseReadSlot);}return new Promise((resolve,reject)=>{const waiter={job,resolve,reject};job.cancelWait=()=>{const index=readWaiters.indexOf(waiter);if(index>=0)readWaiters.splice(index,1);reject(new DOMException('読み込みを中止しました。','NativeReadCancelled'));};readWaiters.push(waiter);});}`);
   const start=bootstrap.indexOf('      getFile:async()=>'),end=bootstrap.indexOf('\n    });',start);

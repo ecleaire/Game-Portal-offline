@@ -34,6 +34,29 @@ static void PortalPump() {
   portal_pumping = true; CefDoMessageLoopWork(); portal_pumping = false;
   if (portal_deferred_pump) { portal_deferred_pump = false; dispatch_async(dispatch_get_main_queue(), ^{ PortalPump(); }); }
 }
+// Continue pumping while hidden so pending writes and browser shutdown drain.
+// Only legacy background windows use a lower wake-up rate; visible game
+// windows retain the existing 33ms cadence.
+static bool PortalLowResource() {
+  static const bool low = [] {
+    NSOperatingSystemVersion os = [[NSProcessInfo processInfo] operatingSystemVersion];
+    NSString* name = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleExecutable"];
+    return [name hasSuffix:@"-MOJAVE"] || (os.majorVersion == 10 && os.minorVersion == 14);
+  }();
+  return low;
+}
+static void PortalSchedulePump() {
+  if (!portal_running.load()) return;
+  NSView* view = portal_browser ? (__bridge NSView*)portal_browser->GetHost()->GetWindowHandle() : nil;
+  const bool background = PortalLowResource() && !portal_closing &&
+      ([NSApp isHidden] || (view && [[view window] isMiniaturized]));
+  const NSTimeInterval delay = background ? 0.2 : 0.033;
+  portal_timer = [NSTimer timerWithTimeInterval:delay repeats:NO block:^(NSTimer*) {
+    PortalPump(); PortalSchedulePump();
+  }];
+  [portal_timer setTolerance:background ? 0.04 : 0.003];
+  [[NSRunLoop mainRunLoop] addTimer:portal_timer forMode:NSRunLoopCommonModes];
+}
 static void PortalNotice(const std::string& kind, const std::string& text = "") {
   if (!portal_callback) return;
   CefRefPtr<CefDictionaryValue> data = CefDictionaryValue::Create();
@@ -188,8 +211,7 @@ extern "C" bool portal_cef_initialize(const char* framework, const char* helper,
   if (diagnostic) fprintf(stderr, "CEF main initialized: pid=%d\n", getpid());
   // AppKit owns the main loop. A common-mode timer pumps CEF even while native
   // event tracking is active; dispatch-only callbacks can starve subprocess IPC.
-  portal_timer = [NSTimer timerWithTimeInterval:0.033 repeats:YES block:^(NSTimer*) { PortalPump(); }];
-  [[NSRunLoop mainRunLoop] addTimer:portal_timer forMode:NSRunLoopCommonModes];
+  PortalSchedulePump();
   return true;
 }
 extern "C" bool portal_cef_open(void* parent, const char* address) {

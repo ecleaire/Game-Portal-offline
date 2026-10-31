@@ -18,7 +18,7 @@ const profile=await mkdtemp(join(tmpdir(),'portal-compatibility-browser-'));
 const browser=await chromium.launchPersistentContext(profile,{executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH||undefined,headless:true,viewport:{width:1280,height:960}});
 try{
  const context=browser,page=await context.newPage(),errors=[];
- await context.addInitScript(()=>{FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
+ await context.addInitScript(()=>{if(window===top)localStorage.setItem('game-portal.creator-editing.v2','false');FileSystemDirectoryHandle.prototype.queryPermission=async()=> 'granted';FileSystemDirectoryHandle.prototype.requestPermission=async()=> 'granted';});
  const origin='http://127.0.0.1:'+server.address().port;
  async function open(path='/'){
    const target=path==='/'?page:await context.newPage();target.on('pageerror',e=>errors.push(e.message));

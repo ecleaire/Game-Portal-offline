@@ -34,7 +34,7 @@ try {
     if (!String(e.message).includes('ERR_BLOCKED_BY_ADMINISTRATOR')) throw e;
     console.log('file:// startup NOT RUN: managed browser administrator policy blocks file URLs.');
   } finally { await filePage.close(); }
-  await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});await page.goto(origin); await expect(page.getByRole('heading',{name:/ゲーム/,level:1})).toBeVisible(); await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
+  await page.addInitScript(()=>{try{localStorage.setItem('game-portal.remember-folder','false');}catch{}});await page.addInitScript(()=>{if(window===top)localStorage.setItem('game-portal.creator-editing.v2','false');});await page.goto(origin); await expect(page.getByRole('heading',{name:/ゲーム/,level:1})).toBeVisible(); await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
   await expect(page.locator('#appVersion')).toHaveText(expectedVersion);
   peer = await context.newPage(); await peer.goto(origin); await expect(peer.getByRole('heading',{name:/ゲーム/,level:1})).toBeVisible(); peer.on('pageerror',error=>errors.push(error.message)); await expect(peer.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
   await page.evaluate(async () => {

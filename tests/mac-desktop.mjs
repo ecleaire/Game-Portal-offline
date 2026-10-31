@@ -36,6 +36,8 @@ try{
 const until=async(test,label)=>{for(let count=0;count<400;count++){if(await test())return;await new Promise(resolve=>setTimeout(resolve,50));}throw Error('Timed out: '+label+' / '+document.body.innerText.slice(-500));};
 const check=(condition,label)=>{if(!condition)throw Error(label);};
 await until(()=>document.documentElement.dataset.ready==='true','startup');
+check(editingEnabled===(launcherEdition==='creator'),'edition default editing mode');
+if(${JSON.stringify(family)}==='MOJAVE'){check(lowResourceMode&&cardBatch===12,'legacy low-resource launcher profile');}
 if(${cycle}===0&&launcherEdition==='creator'){check(!root,'first creator start has no selected folder');document.getElementById('settingsButton').click();check(document.getElementById('settings').open,'settings before connection');document.getElementById('desktopFolderPath').value=${JSON.stringify(disk)};await document.getElementById('desktopConnectPath').onclick();document.getElementById('settings').close();}
 await until(()=>root,'native folder restore');
 await until(()=>games.length===1,'game listing');

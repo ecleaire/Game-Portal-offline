@@ -4,12 +4,12 @@ import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 import {macDesktopPage} from '../scripts/macos/desktop-page.mjs';
 const generated=macDesktopPage(await readFile('GAME-PORTAL.html','utf8'),await readFile('desktop/bootstrap.js','utf8'),'');
-async function fixture(){
+async function fixture(low=false){
  const page=await generated,start=page.indexOf('const desktopHost=(()=>{'),end=page.indexOf('const desktopOriginalNativeFolder=',start);
  assert(start>=0&&end>start);
  const timers=new Map(),sent=[];let serial=0;
  const window={};window.top=window;
- const context={window,location:{pathname:'/'},document:{getElementById:()=>null},localState:{},nativeTools:{},nativeReadControls:()=>{},setTimeout(fn){const id=++serial;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},DOMException,File,Blob,AbortController,ArrayBuffer,Uint8Array,player:{decodeBase64:()=>new Uint8Array([1])}};
+ const context={window,location:{pathname:'/'},document:{documentElement:{dataset:low?{performance:'low'}:{}},getElementById:()=>null},localState:{},nativeTools:{},nativeReadControls:()=>{},setTimeout(fn){const id=++serial;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},DOMException,File,Blob,AbortController,ArrayBuffer,Uint8Array,player:{decodeBase64:()=>new Uint8Array([1])}};
  window.__portalSend=text=>{const request=JSON.parse(text);sent.push({...request,timer:serial});let value;
   if(request.op==='restore')value={token:'stalled',secret:'secret',name:'NAS'};
   else if(request.op==='selectPath')value={token:'healthy',secret:'other-secret',name:'other-games'};
@@ -42,5 +42,17 @@ test('Mac cancellation settles reads without waiting for queued abortRead and al
  await f.tick();f.context.host.cancel();await rejected;
  const folder=await f.context.host.fromPath('/other-games'),file=await folder.getFileHandle('another.html');
  assert.equal((await file.getFile()).size,1);
+ f.context.host.cancel();await f.tick();
+});
+
+for(const low of [false,true])test(`Mac ${low?'legacy':'normal'} read queue bounds active reads and cancels waiting jobs`,async()=>{
+ const f=await fixture(low),slots=low?2:4;
+ const jobs=Array.from({length:slots+2},()=>f.file.getFile());
+ const results=Promise.all(jobs.map(job=>assert.rejects(job,{name:'NativeReadCancelled'})));
+ await f.tick();assert.equal(f.sent.filter(x=>x.op==='beginRead').length,slots);
+ f.context.host.cancel();await results;await f.tick();
+ assert.equal(f.sent.filter(x=>x.op==='beginRead').length,slots,'cancelled waiters must never reach native IO');
+ const folder=await f.context.host.fromPath('/other-games'),file=await folder.getFileHandle('another.html');
+ assert.equal((await file.getFile()).size,1,'slots remain reusable after a fully cancelled queue');
  f.context.host.cancel();await f.tick();
 });

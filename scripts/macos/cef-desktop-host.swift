@@ -3,6 +3,14 @@ import CoreFoundation
 import AppKit
 import Darwin
 
+// Keep this choice native: Mojave and the dedicated legacy edition get the
+// lighter launcher UI, without changing a game's rendering or browser sandbox.
+let desktopLowResource: Bool = {
+    let os = ProcessInfo.processInfo.operatingSystemVersion
+    let name = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String ?? ""
+    return name.hasSuffix("-MOJAVE") || (os.majorVersion == 10 && os.minorVersion == 14)
+}()
+
 @_silgen_name("portal_cef_application") func portal_cef_application()
 @_silgen_name("portal_cef_initialize") func portal_cef_initialize(_ framework: UnsafePointer<CChar>, _ helper: UnsafePointer<CChar>, _ profile: UnsafePointer<CChar>, _ bundle: UnsafePointer<CChar>, _ callback: @convention(c) (UnsafePointer<CChar>?) -> Void) -> Bool
 @_silgen_name("portal_cef_open") func portal_cef_open(_ parent: UnsafeMutableRawPointer, _ url: UnsafePointer<CChar>) -> Bool
@@ -41,7 +49,16 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // The preparation process never serves HTML. Avoid retaining a second
         // full copy of the bundled page while the actual browser is running.
         let runtime = FileManager.default.fileExists(atPath: Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework/Chromium Embedded Framework").path)
-        page = try (runtime ? Data(contentsOf: resource) : Data()); super.init(); desktopInstance = self
+        page = try (runtime ? Data(contentsOf: resource) : Data())
+        if runtime && desktopLowResource {
+            // Touch only the small document prefix; avoid decoding/copying the
+            // entire bundled runtime and its base64 assets into a Swift String.
+            let prefix = page.prefix(512)
+            if let range = prefix.range(of: Data("<html lang=\"ja\"".utf8)) {
+                page.replaceSubrange(range, with: Data("<html lang=\"ja\" data-performance=\"low\"".utf8))
+            }
+        }
+        super.init(); desktopInstance = self
         if let library = library { let root = try files.register(library); try files.remember(root) }
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -65,7 +82,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func show() {
         if testMode { fputs("GAME PORTAL lifecycle: show engine=\(engineReady) context=\(contextReady)\n", stderr) }
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
-        view = NSView(frame: NSRect(x: 0, y: 0, width: min(1200, max(600, screen.width - 40)), height: min(820, max(400, screen.height - 64))))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: min(desktopLowResource ? 1100 : 1200, max(600, screen.width - 40)), height: min(desktopLowResource ? 680 : 820, max(400, screen.height - 64))))
         window = NSWindow(contentRect: view.bounds, styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "GAME PORTAL " + (desktopEdition == "player" ? "プレイ専用" : "クリエイター")
         window.isReleasedWhenClosed = false

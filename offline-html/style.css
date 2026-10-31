@@ -167,3 +167,9 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 .player-secondary-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:8px 0}.player-secondary-actions:not(:has(button:not([hidden]))){display:none}.player-secondary-actions .buttons{flex-wrap:wrap}.player-secondary-actions button{min-height:44px}.save-state{display:block;font-size:.9rem;line-height:1.6;color:var(--muted)}.save-state[data-state=failed],.save-state[data-state=pending]{color:var(--text)}#playSaveStatus{padding:10px;border:1px solid var(--line);border-radius:8px;margin:8px 0}#playSaveStatus[hidden]{display:none}#loadStage{font-size:.933rem;line-height:1.7}
 
 .filter-context{align-self:center;font-size:.9rem;color:var(--muted);padding:4px 8px}html[data-edition="player"] .player-secondary-actions{display:none!important}
+
+/* Limit launcher compositing on legacy hardware. Game iframe styling and
+   rendering remain under the game's control. */
+[data-performance=low] .card,[data-performance=low] .card:hover,[data-performance=low] .card:focus-within{transition:none;transform:none;box-shadow:none}
+[data-performance=low] .cover{background:var(--panel)}
+[data-performance=low] dialog{box-shadow:none}
