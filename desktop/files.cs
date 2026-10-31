@@ -103,6 +103,21 @@ internal sealed class DesktopFiles {
             if(File.Exists(destination))File.Replace(temp,destination,null);else File.Move(temp,destination);moved=true;
         }finally{if(!moved&&File.Exists(temp))try{File.Delete(temp);}catch(IOException){}}
     }
+    // Stateless bounded reads bypass WebView2 response-stream transport. Every
+    // part revalidates containment and the library, and rejects a changing file.
+    internal object ReadPart(Root root,string path,int offset,int expectedSize,string expectedStamp){
+        if(offset<0||expectedSize< -1||expectedSize>200*1024*1024||expectedSize==-1&&(offset!=0||expectedStamp!=""))throw new InvalidDataException("読み込み位置を確認してください。");
+        string full=Full(root,path);
+        using(var input=new FileStream(full,FileMode.Open,FileAccess.Read,FileShare.Read)){
+            long size=input.Length;if(size>200L*1024*1024)throw new IOException("ファイルは200MB以内にしてください。");
+            var info=new FileInfo(full);string stamp=info.LastWriteTimeUtc.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if(offset>size||expectedSize>=0&&(size!=expectedSize||stamp!=expectedStamp))throw new IOException("読み込み中にファイルが変わりました。一覧に戻り、更新完了後に開き直してください。");
+            input.Position=offset;byte[] bytes=new byte[(int)Math.Min(262144,size-offset)];int count=0;
+            while(count<bytes.Length){int next=input.Read(bytes,count,bytes.Length-count);if(next==0)throw new IOException("ファイルの読み込みが途中で止まりました。");count+=next;}
+            info.Refresh();if(input.Length!=size||info.LastWriteTimeUtc.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture)!=stamp)throw new IOException("読み込み中にファイルが変わりました。更新完了後に開き直してください。");
+            return new {size=size,stamp=stamp,offset=offset,data=Convert.ToBase64String(bytes)};
+        }
+    }
     internal void Write(Root root,string path,Stream input){
         string full=Full(root,path);if(path==".gameportal/library-id.json"){
             using(var memory=new MemoryStream()){byte[] bytes=new byte[1025];int count,total=0;while((count=input.Read(bytes,total,bytes.Length-total))>0){total+=count;if(total>=bytes.Length)throw new IOException("ID設定が大きすぎます。");}memory.Write(bytes,0,total);memory.Position=0;var data=Parse(Encoding.UTF8.GetString(bytes,0,total));object schema;if(!data.TryGetValue("schema",out schema)||!(schema is int)||(int)schema!=1||!ValidId(Text(data,"id"))||root.Id!=null&&root.Id!=Text(data,"id"))throw new IOException("保存先のIDを変更できません。");Atomic(full,memory,1024);root.Id=Text(data,"id");root.InitializingId=false;}return;

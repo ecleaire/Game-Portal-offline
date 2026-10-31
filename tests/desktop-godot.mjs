@@ -13,6 +13,12 @@ try{for(const [role,name]of[['クリエイター用','GAME-PORTAL'],['プレイ�
  await page.getByRole('link',{name:'Godot',exact:true}).click();
  try{await expect.poll(()=>logs.some(line=>line.includes('GODOT_FIXTURE_READY')),{timeout:60000}).toBe(true);}catch(error){console.log('GODOT FAILURE',await page.locator('#playerStatus').innerText(),await page.frameLocator('#frame').locator('body').innerText().catch(()=>''));throw error;}
  await expect(page.frameLocator('#frame').locator('canvas')).toBeVisible();console.log('ACTUAL GODOT 4.3 WEB ZIP READY:',role);
- await page.locator('#reloadPlaying').click();await page.waitForTimeout(2000);await page.locator('#closePlayer').click();await page.waitForFunction(()=>!busy&&!pendingSave&&!flushing);await page.evaluate(()=>chrome.webview.postMessage({id:2147483646,op:'closeWindow'}));await browser.close();browser=null;
+ // Simulate the reported WebView2 response-stream failure on the real EXE,
+ // while retaining native filesystem IO and the actual Godot Web export.
+ await page.evaluate(()=>{window.normalReadFetch=fetch;window.fallbackAttempts=0;window.fetch=(url,...args)=>{const target=new URL(url,location.href);if(target.pathname==='/io/read'&&target.searchParams.get('path')==='Godot.zip'){fallbackAttempts++;return Promise.reject(new TypeError('Failed to fetch'));}return normalReadFetch(url,...args);};});
+ const readyBefore=logs.filter(line=>line.includes('GODOT_FIXTURE_READY')).length;
+ await page.locator('#reloadPlaying').click();await expect.poll(()=>logs.filter(line=>line.includes('GODOT_FIXTURE_READY')).length,{timeout:60000}).toBeGreaterThan(readyBefore);await expect(page.frameLocator('#frame').locator('canvas')).toBeVisible();expect(await page.evaluate(()=>fallbackAttempts)).toBeGreaterThan(0);console.log('ACTUAL GODOT WEB ZIP READY WITH FAILED FETCH FALLBACK:',role);
+ await page.evaluate(()=>window.fetch=normalReadFetch);
+await page.locator('#closePlayer').click();await page.waitForFunction(()=>!busy&&!pendingSave&&!flushing);await page.evaluate(()=>chrome.webview.postMessage({id:2147483646,op:'closeWindow'}));await browser.close();browser=null;
  for(let n=0;n<100&&child.exitCode===null;n++)await delay(100);if(child.exitCode===null)child.kill();child=null;page=null;
 }}finally{await browser?.close().catch(()=>{});if(child)child.kill();await rm(temp,{recursive:true,force:true,maxRetries:10,retryDelay:300});}

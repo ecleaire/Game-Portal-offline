@@ -5,11 +5,16 @@ const desktopHost=(()=>{
   const notify=()=>{if(typeof nativeReadControls==='function')nativeReadControls(reads.size);};
   function error(info){const result=new Error(info.message||'保存先を確認してください。');result.name=info.name||'NotReadableError';result.userMessage=result.message;return result;}
   chrome.webview.addEventListener('message',event=>{const message=event.data,job=requests.get(message.id);if(!job)return;requests.delete(message.id);clearTimeout(job.timer);reads.delete(job);notify();message.ok?job.resolve(message.value):job.reject(error(message.error||{}));});
-  function rpc(op,args={},objects=null){
+  function rpc(op,args={},objects=null,signal=null){
     return new Promise((resolve,reject)=>{
-      const id=++serial,readonly=['restore','stat','list','selectPath','dropFolder','sharedConnection'].includes(op)||(['file','directory'].includes(op)&&!args.create),job={resolve,reject,id};
-      if(readonly){reads.add(job);job.timer=setTimeout(()=>{requests.delete(id);reads.delete(job);notify();reject(error({name:'TimeoutError',message:'保存先から応答がありません。再接続するか、保存先を選び直してください。'}));},12000);}
-      requests.set(id,job);notify();try{if(objects)chrome.webview.postMessageWithAdditionalObjects({id,op,...args},objects);else chrome.webview.postMessage({id,op,...args});}catch(e){requests.delete(id);clearTimeout(job.timer);reads.delete(job);notify();reject(e);}
+      if(signal?.aborted){reject(signal.reason);return;}
+      const id=++serial,readonly=['restore','stat','list','selectPath','dropFolder','sharedConnection'].includes(op)||op==='readPart'||(['file','directory'].includes(op)&&!args.create),job={id};
+      const abort=()=>{requests.delete(id);clearTimeout(job.timer);reads.delete(job);notify();job.reject(signal.reason);};
+      job.resolve=value=>{signal?.removeEventListener('abort',abort);resolve(value);};
+      job.reject=cause=>{signal?.removeEventListener('abort',abort);reject(cause);};
+      signal?.addEventListener('abort',abort,{once:true});
+      if(readonly){reads.add(job);job.timer=setTimeout(()=>{requests.delete(id);reads.delete(job);notify();job.reject(error({name:'TimeoutError',message:'保存先から応答がありません。再接続するか、保存先を選び直してください。'}));},12000);}
+      requests.set(id,job);notify();try{if(objects)chrome.webview.postMessageWithAdditionalObjects({id,op,...args},objects);else chrome.webview.postMessage({id,op,...args});}catch(e){requests.delete(id);clearTimeout(job.timer);reads.delete(job);notify();job.reject(e);}
     });
   }
   const child=(path,name)=>{if(typeof name!=='string'||!name||name==='.'||name==='..'||/[\\/]/.test(name))throw new TypeError('ファイル名を確認してください。');return path?path+'/'+name:name;};
@@ -25,7 +30,44 @@ const desktopHost=(()=>{
       async *entries(){for await(const entry of h.values())yield [entry.name,entry];}
     });else Object.assign(h,{
       getFileInfo:async()=>{const info=await rpc('stat',{root:root.token,path});if(info.kind!=='file')throw error({name:'TypeMismatchError',message:'ファイルではありません。'});return {size:info.size};},
-      getFile:async()=>{const controller=new AbortController(),job={controller};reads.add(job);notify();const timer=setTimeout(()=>controller.abort(),120000);try{const response=await fetch('/io/read?root='+root.token+'&path='+encodeURIComponent(path),{headers:{'X-Game-Portal-Desktop':root.secret},signal:controller.signal});if(!response.ok)throw error(await response.json());return new File([await response.blob()],name);}finally{clearTimeout(timer);reads.delete(job);notify();}},
+      getFile:async(options={})=>{
+        const controller=new AbortController(),job={controller};reads.add(job);notify();
+        const relay=()=>controller.abort(options.signal.reason);
+        if(options.signal?.aborted)relay();else options.signal?.addEventListener('abort',relay,{once:true});
+        const timer=setTimeout(()=>controller.abort(error({name:'TimeoutError',message:'ファイルの読み込みが時間内に完了しませんでした。'})),120000);
+        try{
+          try{
+            const response=await fetch('/io/read?root='+root.token+'&path='+encodeURIComponent(path),{headers:{'X-Game-Portal-Desktop':root.secret},signal:controller.signal});
+            if(!response.ok)throw error(await response.json());
+            const blob=await response.blob();controller.signal.throwIfAborted();
+            const length=response.headers.get('Content-Length');
+            if(length!==null&&(!/^\d+$/.test(length)||Number(length)!==blob.size))throw new TypeError('Windows response stream was incomplete');
+            return new File([blob],name);
+          }catch(cause){
+            controller.signal.throwIfAborted();
+            // A filesystem/permission error is authoritative. Only retry an
+            // unsuccessful read transport; never retry a write or an abort.
+            if(!['TypeError','NetworkError'].includes(cause?.name))throw cause;
+            let offset=0,size=-1,stamp='';const parts=[];
+            try{
+              do{
+                controller.signal.throwIfAborted();
+                const part=await rpc('readPart',{root:root.token,path,offset,size,stamp},null,controller.signal);
+                controller.signal.throwIfAborted();
+                if(!Number.isSafeInteger(part.size)||part.size<0||part.size>200*1024*1024||part.offset!==offset||typeof part.stamp!=='string'||!part.stamp||part.stamp.length>64||size>=0&&(part.size!==size||part.stamp!==stamp))throw Error('分割読み込み中にファイル情報が変わりました。');
+                const bytes=player.decodeBase64(part.data);
+                if(bytes.length>262144||offset+bytes.length>part.size||!bytes.length&&offset<part.size)throw Error('分割読み込みのデータが不完全です。');
+                size=part.size;stamp=part.stamp;parts.push(bytes);offset+=bytes.length;
+              }while(offset<size);
+              return new File(parts,name);
+            }catch(failure){
+              controller.signal.throwIfAborted();
+              const detail=error({name:failure.name==='TimeoutError'?'TimeoutError':'NotReadableError',message:'Windowsのファイル読み込みに失敗しました。通常読み込みと分割読み込みの両方を確認しました。［DESKTOP_READ_FALLBACK_FAILED］ '+failure.message});
+              detail.code='DESKTOP_READ_FALLBACK_FAILED';throw detail;
+            }
+          }
+        }finally{clearTimeout(timer);options.signal?.removeEventListener('abort',relay);reads.delete(job);notify();}
+      },
       createWritable:async()=>{
         const lease=await rpc('beginWrite',{root:root.token,path});
         let blob=null,finished=false;

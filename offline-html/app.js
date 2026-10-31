@@ -1002,7 +1002,7 @@ async function loadGame(game,task) {
   try {
     const entryLimit=game.kind==='html'?200:50;
     if(typeof game.handle.getFileInfo==='function'&&(await read(()=>game.handle.getFileInfo())).size>entryLimit*1024*1024)throw new Error('起動ファイルは'+entryLimit+'MB以内にしてください。ゲームのファイルを確認してください。');
-    const file = await read(()=>game.handle.getFile()); let options;
+    const file = await read(()=>game.handle.nativeDesktop?game.handle.getFile({signal:loadController.signal}):game.handle.getFile()); let options;
     if(file.size>entryLimit*1024*1024)throw new Error('起動ファイルは'+entryLimit+'MB以内にしてください。ゲームのファイルを確認してください。');
     const htmlBytes = game.kind === 'html' ? new Uint8Array(await read(()=>file.arrayBuffer())) : null;
     const embedded = htmlBytes ? library.embeddedPyxel(new TextDecoder().decode(htmlBytes)) : null;

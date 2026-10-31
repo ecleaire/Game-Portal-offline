@@ -79,7 +79,10 @@ internal sealed class DesktopForm : Form {
             var query=System.Web.HttpUtility.ParseQueryString(uri.Query);var root=files.Known(query["root"]??"");string path=query["path"]??"",secret;
             try{secret=e.Request.Headers.GetHeader("X-Game-Portal-Desktop");}catch{secret="";}if(secret!=root.Secret)throw new UnauthorizedAccessException("起動元を確認してください。");
             if(uri.AbsolutePath=="/io/read"&&e.Request.Method=="GET"){
-                var read=await Task.Run(()=>{Stream stream=files.Read(root,path);try{return Tuple.Create(stream,stream.Length);}catch{stream.Dispose();throw;}});e.Response=view.CoreWebView2.Environment.CreateWebResourceResponse(read.Item1,200,"OK","Content-Type: application/octet-stream\r\nCache-Control: no-store\r\nContent-Length: "+read.Item2);return;
+                var read=await Task.Run(()=>{Stream stream=files.Read(root,path);try{return Tuple.Create(stream,stream.Length);}catch{stream.Dispose();throw;}});
+                try{e.Response=view.CoreWebView2.Environment.CreateWebResourceResponse(read.Item1,200,"OK","Content-Type: application/octet-stream\r\nCache-Control: no-store\r\nContent-Length: "+read.Item2);}
+                catch(COMException){read.Item1.Dispose();e.Response=JsonResponse(new {name="NetworkError",message="Windowsの応答ストリームを作成できませんでした。"},400);}
+                catch{read.Item1.Dispose();throw;}return;
             }
             if(uri.AbsolutePath=="/io/write"&&e.Request.Method=="POST"){
                 DesktopProgram.CheckPlayerWrite(path);
@@ -125,6 +128,9 @@ internal sealed class DesktopForm : Form {
             case "sharedConnection":return files.SharedInfo(root);
             case "recoverSharedConnection":if(DesktopProgram.PlayerOnly)throw new UnauthorizedAccessException("共有先の変更はクリエイター版で行ってください。");files.RecoverShared(root,DesktopFiles.Text(data,"revision"));return true;
             case "shareConnection":if(DesktopProgram.PlayerOnly)throw new UnauthorizedAccessException("共有先の変更はクリエイター版で行ってください。");return files.Share(root,DesktopFiles.Text(data,"revision"));
+            case "readPart":
+                object offset,size;if(!data.TryGetValue("offset",out offset)||!(offset is int)||!data.TryGetValue("size",out size)||!(size is int))throw new InvalidDataException("読み込み位置を確認してください。");
+                return files.ReadPart(root,path,(int)offset,(int)size,DesktopFiles.Text(data,"stamp"));
             case "stat":return files.Stat(root,path);
             case "list":return files.List(root,path);
             case "directory":if(DesktopFiles.Flag(data,"create"))DesktopProgram.CheckPlayerWrite(path,true);files.Entry(root,path,true,DesktopFiles.Flag(data,"create"));return true;

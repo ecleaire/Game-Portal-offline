@@ -10,7 +10,7 @@ export async function macDesktopPage(html,bootstrap,licenses){
   let freeReadSlots=document.documentElement.dataset.performance==='low'?2:4;const readWaiters=[];
   function releaseReadSlot(){let waiter;while((waiter=readWaiters.shift())){if(waiter.job.cancelled){waiter.reject(new DOMException('読み込みを中止しました。','NativeReadCancelled'));continue;}delete waiter.job.cancelWait;waiter.resolve(releaseReadSlot);return;}freeReadSlots++;}
   function acquireReadSlot(job){if(freeReadSlots){freeReadSlots--;return Promise.resolve(releaseReadSlot);}return new Promise((resolve,reject)=>{const waiter={job,resolve,reject};job.cancelWait=()=>{const index=readWaiters.indexOf(waiter);if(index>=0)readWaiters.splice(index,1);reject(new DOMException('読み込みを中止しました。','NativeReadCancelled'));};readWaiters.push(waiter);});}`);
-  const start=bootstrap.indexOf('      getFile:async()=>'),end=bootstrap.indexOf('\n    });',start);
+  const start=bootstrap.indexOf('      getFile:async('),end=bootstrap.indexOf('\n    });',start);
   if(start<0||end<0)throw Error('Mac file adapter marker changed');
   bootstrap=bootstrap.slice(0,start)+`      getFile:async()=>{
         const parts=[];let offset=0,reader=null,release=null;const job={id:0,reject:()=>{},cancelled:false};reads.add(job);notify();
