@@ -37,6 +37,9 @@ try{
  await receiver.locator('#settingsButton').click();await receiver.locator('#chooseFolder').click();await expect(receiver.getByRole('heading',{name:'移行した作品',exact:true})).toBeVisible();await expect(receiver.locator('.card img')).toHaveCount(1);
  assert.deepEqual(await receiver.evaluate(()=>({library:localLibrary,game:games[0].id})),ids);assert.deepEqual(await receiver.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id)),{});
  const history=await receiver.evaluate(()=>maintenance.loadSettingsHistory(root,games[0],library));assert.equal(history.complete,true);assert.equal(history.entries.length,2);assert.equal(history.entries[0].error,'');
+ // Creator starts editable; switch explicitly to view-only before checking
+ // that the transferred game hides editing tools and keeps its own saves.
+ await receiver.locator('#settingsButton').click();await receiver.locator('#enableEditing').uncheck();await receiver.waitForFunction(()=>!busy);await receiver.locator('#settings [data-close]').click();
  await receiver.locator('.game-title-link').click();await receiver.waitForFunction(()=>!busy);await expect(receiver.locator('#playerDescription')).toHaveText('移行した概要');await expect(receiver.locator('#playerInstructions')).toHaveText('移行した操作方法');await expect(receiver.frameLocator('#frame').locator('body')).toHaveAttribute('data-previous','none');await expect(receiver.frameLocator('#frame').locator('body')).toHaveAttribute('data-version','updated');await expect(receiver.locator('#editPlaying')).toBeHidden();await receiver.locator('#closePlayer').click();
  assert.deepEqual(await receiver.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id)),{level:'receiver'});assert.deepEqual(await sender.evaluate(()=>localState.loadLocalSave(localLibrary,games[0].id)),{level:'sender-only'});
  assert.deepEqual(requests,[]);assert.deepEqual(errors,[]);
