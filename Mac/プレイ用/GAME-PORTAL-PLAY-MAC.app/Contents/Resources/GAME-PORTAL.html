@@ -176,7 +176,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 [data-performance=low] .cover{background:var(--panel)}
 [data-performance=low] dialog{box-shadow:none}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.26.0</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.26.1</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><details id="operationErrorDetail" class="settings-detail" hidden><summary>エラーの詳細</summary><p id="operationErrorText" class="hint game-text"></p></details><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -555,7 +555,7 @@ function creatorScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope,creatorScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.26.0';
+const LAUNCHER_VERSION = '0.26.1';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -1563,7 +1563,7 @@ const definitions={
  InvalidStateError:['STORAGE_UNAVAILABLE','保存領域を現在利用できません。','未保存のデータがある場合は画面を閉じず、接続と保存結果を確認してください。'],
  AbortError:['OPERATION_ABORTED','処理が中断されました。','保存中だった場合は、再保存の前に保存結果を確認してください。']
 };
-const domainCodes=new Set(['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED','LIBRARY_ID_CHANGED','LIBRARY_INCOMPATIBLE','FOLDER_PERMISSION_CONTEXT','STALE_SAVE_CHOICE']);
+const domainCodes=new Set(['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED','LIBRARY_ID_CHANGED','LIBRARY_INCOMPATIBLE','FOLDER_PERMISSION_CONTEXT','STALE_SAVE_CHOICE','DESKTOP_READ_FALLBACK_FAILED']);
 function describeError(error){
  const chain=[],seen=new Set();let current=error;
  while(current&&chain.length<8&&!seen.has(current)){
@@ -3323,7 +3323,7 @@ async function loadGame(game,task) {
   try {
     const entryLimit=game.kind==='html'?200:50;
     if(typeof game.handle.getFileInfo==='function'&&(await read(()=>game.handle.getFileInfo())).size>entryLimit*1024*1024)throw new Error('起動ファイルは'+entryLimit+'MB以内にしてください。ゲームのファイルを確認してください。');
-    const file = await read(()=>game.handle.getFile()); let options;
+    const file = await read(()=>game.handle.nativeDesktop?game.handle.getFile({signal:loadController.signal}):game.handle.getFile()); let options;
     if(file.size>entryLimit*1024*1024)throw new Error('起動ファイルは'+entryLimit+'MB以内にしてください。ゲームのファイルを確認してください。');
     const htmlBytes = game.kind === 'html' ? new Uint8Array(await read(()=>file.arrayBuffer())) : null;
     const embedded = htmlBytes ? library.embeddedPyxel(new TextDecoder().decode(htmlBytes)) : null;
