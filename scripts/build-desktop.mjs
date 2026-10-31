@@ -1,3 +1,4 @@
+import './ci-failure-diagnostics.mjs';
 import {materializeDistribution,publishDistribution} from './distribution.mjs';
 await materializeDistribution();
 import {readFile,writeFile,mkdir,access} from 'node:fs/promises';
@@ -26,7 +27,7 @@ const host=(await readFile(join(root,'desktop/host.cs'),'utf8')).replaceAll('__D
 let validators=(await readFile(join(root,'scripts/windows/native-launcher.cs'),'utf8')).replace('__VERSION__',pkg.version);for(const name of ['CheckLibrary','Executable','Id'])validators=validators.replace('static string '+name+'(','internal static string '+name+'(').replace('static void '+name+'(','internal static void '+name+'(');await writeFile(join(build,'validators.cs'),validators);
 const framework=join(process.env.SystemRoot||'C:/Windows','Microsoft.NET/Framework64/v4.0.30319'),compiler=join(framework,'csc.exe'),core=join(sdk,'lib/net462/Microsoft.Web.WebView2.Core.dll'),forms=join(sdk,'lib/net462/Microsoft.Web.WebView2.WinForms.dll'),loader=join(sdk,'runtimes/win-x64/native/WebView2Loader.dll'),output=resolve((edition==='creator'?process.env.PORTAL_DESKTOP_OUTPUT:process.env.PORTAL_DESKTOP_PLAYER_OUTPUT)||join(root,filename+'.exe'));
 const args=['/nologo','/target:winexe','/platform:x64','/optimize+','/utf8output','/main:DesktopProgram','/out:'+output,...['System.Windows.Forms','System.Drawing','System.Web.Extensions','System.Web'].map(name=>'/reference:'+join(framework,name+'.dll')),'/reference:'+core,'/reference:'+forms,...[[core,'Microsoft.Web.WebView2.Core.dll'],[forms,'Microsoft.Web.WebView2.WinForms.dll'],[loader,'WebView2Loader.dll'],[join(build,'GAME-PORTAL-DESKTOP.html'),'GAME-PORTAL-DESKTOP.html'],[join(build,'desktop-build.json'),'desktop-build.json']].map(([file,name])=>'/resource:'+file+','+name),join(build,'assembly.cs'),join(build,'host.cs'),join(build,'validators.cs'),join(root,'desktop/files.cs'),join(root,'desktop/folder-dialog.cs'),join(root,'desktop/shared-connection.cs'),join(root,'desktop/self-test.cs')];
-try{execFileSync(compiler,args,{stdio:'pipe'});}catch(error){process.stderr.write(String(error.stdout||'')+String(error.stderr||''));throw Error('Desktop compilation failed');}
+try{execFileSync(compiler,args,{stdio:'pipe'});}catch(error){process.stderr.write(String(error.stdout||'')+String(error.stderr||''));throw Error('Desktop compilation failed\n'+(String(error.stdout||'')+String(error.stderr||'')).slice(-2400));}
 await writeFile(join(root,'offline-release',filename+'.exe'),await readFile(output));
 await writeFile(join(root,'DESKTOP-LICENSES.txt'),licenses);
 console.log('Desktop EXE built: '+config.version+', embedded launcher '+pkg.version+'. No adjacent HTML or SDK DLLs needed.');
