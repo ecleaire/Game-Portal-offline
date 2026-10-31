@@ -26,19 +26,83 @@ async function access(name, mode, operation) {
     tx.oncomplete = () => {clearTimeout(timeout);resolve(result);}; tx.onabort = () => {clearTimeout(timeout);reject(tx.error || new Error('このPCへ保存できませんでした。'));}; tx.onerror = () => {};
   });
 }
+// A broken IndexedDB blob area must not require deleting the database that
+// contains saves. Use an independent, handle-only store after that specific
+// failure. Once recovered, a scope stays here until explicitly forgotten.
+let folderDatabase;
+function openFolderDatabase(){
+  if(!folderDatabase)folderDatabase=new Promise((resolve,reject)=>{
+    const request=indexedDB.open('game-portal-folder-recovery-v1',1);let expired=false;
+    const timer=setTimeout(()=>{expired=true;reject(new Error('保存先の記憶から応答がありません。Chromeを開き直してください。'));},8000);
+    request.onupgradeneeded=()=>{if(expired){request.transaction.abort();return;}request.result.createObjectStore('selections');};
+    request.onerror=()=>{clearTimeout(timer);reject(request.error);};
+    request.onblocked=()=>{expired=true;clearTimeout(timer);reject(new Error('ほかのランチャーを閉じ、保存先の記憶を再試行してください。'));};
+    request.onsuccess=()=>{clearTimeout(timer);const db=request.result;if(expired){db.close();return;}db.onversionchange=()=>{db.close();folderDatabase=null;};resolve(db);};
+  }).catch(error=>{folderDatabase=null;throw error;});
+  return folderDatabase;
+}
+const folderKey=scope=>scope===null?'folder':['folder',scope];
+async function recoveredFolder(scope,record=undefined,forget=false,clear=false){
+  const db=await openFolderDatabase(),writing=record!==undefined||forget||clear;
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('selections',writing?'readwrite':'readonly'),store=tx.objectStore('selections');let result,failure;
+    const timer=writing?null:setTimeout(()=>{reject(new Error('保存先の記憶を読み込めませんでした。'));try{tx.abort();}catch{}},8000);
+    const fail=error=>{failure=error;try{tx.abort();}catch{clearTimeout(timer);reject(error);}};
+    try{
+      if(clear)store.clear();
+      else if(record!==undefined){
+        store.put({active:true,record},folderKey(scope));
+        if(scope!==null)store.put({active:true,pointer:scope},'folder');
+        result={active:true,record};
+      }else if(forget){
+        store.put({active:true,record:null},folderKey(scope));
+        const request=store.get('folder');request.onsuccess=()=>{try{if(request.result?.pointer===scope)store.put({active:true,record:null},'folder');}catch(error){fail(error);}};
+      }else{
+        const request=store.get(folderKey(scope));request.onsuccess=()=>{
+          const value=request.result;
+          if(scope===null&&value?.active&&typeof value.pointer==='string'){
+            const pointed=store.get(folderKey(value.pointer));pointed.onsuccess=()=>{result=pointed.result;};
+          }else result=value;
+        };
+      }
+    }catch(error){fail(error);}
+    tx.oncomplete=()=>{clearTimeout(timer);resolve(result);};tx.onabort=()=>{clearTimeout(timer);reject(failure||tx.error||new Error('保存先を記憶できませんでした。'));};tx.onerror=()=>{};
+  });
+}
+async function clearRecoveredGlobal(){
+  const db=await openFolderDatabase();return new Promise((resolve,reject)=>{const tx=db.transaction('selections','readwrite');tx.objectStore('selections').delete('folder');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);tx.onerror=()=>{};});
+}
 export async function cacheHandle(value, remember = true, scope = null, sourceRevision = null) {
-  if(!value)return scope===null?access('settings','readonly',store=>store.get('folder')):scopedFolder(scope);
+  const recovery=await recoveredFolder(scope);
+  if(!value)return recovery?.active?recovery.record:scope===null?access('settings','readonly',store=>store.get('folder')):scopedFolder(scope);
   const record={name:value.name,revision:crypto.randomUUID(),scope,...(sourceRevision?{sourceRevision}:{}),...(remember?{handle:value}:{})};
-  if(scope===null)await access('settings','readwrite',store=>store.put(record,'folder'));
-  else await scopedFolder(scope,record);
+  const recover=async()=>{
+    try{await recoveredFolder(scope,record);return record;}
+    catch(cause){
+      if(/Failed to write blobs/i.test(cause?.message||''))try{await recoveredFolder(scope,{...record,handle:undefined,requiresSelection:true});}catch{}
+      throw new Error('保存先を記憶できませんでした。ゲームとセーブは消していません。次回は保存先を選び直してください。',{cause});
+    }
+  };
+  if(recovery?.active)return recover();
+  try{
+    if(scope===null)await access('settings','readwrite',store=>store.put(record,'folder'));
+    else await scopedFolder(scope,record);
+  }catch(error){
+    if(!/Failed to write blobs/i.test(error?.message||''))throw error;
+    // A metadata-only marker on repeated blob failure prevents restoring an
+    // older selection after restart. No saved games are removed.
+    return recover();
+  }
+  await clearRecoveredGlobal();
   return record;
 }
 export async function forgetHandle(scope = null) {
-  if(scope!==null)return scopedFolder(scope,null,true);
-  return access('settings','readwrite',store=>{
+  if(scope!==null){if((await recoveredFolder(scope))?.active)await recoveredFolder(scope,undefined,true);return scopedFolder(scope,null,true);}
+  await access('settings','readwrite',store=>{
     const scan=store.openKeyCursor();scan.onsuccess=()=>{const cursor=scan.result;if(!cursor)return;const key=cursor.key;if(Array.isArray(key)&&key.length===2&&key[0]==='folder'&&typeof key[1]==='string')store.delete(key);cursor.continue();};
     return store.delete('folder');
   });
+  await recoveredFolder(null,undefined,false,true);
 }
 async function scopedFolder(scope,record=null,forget=false){
   if(typeof scope!=='string')throw new Error('保存先の記憶を確認してください。');
