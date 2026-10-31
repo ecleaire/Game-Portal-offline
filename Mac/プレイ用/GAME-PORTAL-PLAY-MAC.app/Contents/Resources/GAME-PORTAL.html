@@ -169,8 +169,14 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 .player-secondary-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:8px 0}.player-secondary-actions:not(:has(button:not([hidden]))){display:none}.player-secondary-actions .buttons{flex-wrap:wrap}.player-secondary-actions button{min-height:44px}.save-state{display:block;font-size:.9rem;line-height:1.6;color:var(--muted)}.save-state[data-state=failed],.save-state[data-state=pending]{color:var(--text)}#playSaveStatus{padding:10px;border:1px solid var(--line);border-radius:8px;margin:8px 0}#playSaveStatus[hidden]{display:none}#loadStage{font-size:.933rem;line-height:1.7}
 
 .filter-context{align-self:center;font-size:.9rem;color:var(--muted);padding:4px 8px}html[data-edition="player"] .player-secondary-actions{display:none!important}
+
+/* Limit launcher compositing on legacy hardware. Game iframe styling and
+   rendering remain under the game's control. */
+[data-performance=low] .card,[data-performance=low] .card:hover,[data-performance=low] .card:focus-within{transition:none;transform:none;box-shadow:none}
+[data-performance=low] .cover{background:var(--panel)}
+[data-performance=low] dialog{box-shadow:none}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.25.6</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.26.0</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><details id="operationErrorDetail" class="settings-detail" hidden><summary>エラーの詳細</summary><p id="operationErrorText" class="hint game-text"></p></details><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -201,7 +207,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
       </section>
       <section id="helpTrouble" class="help-section" tabindex="-1"><h3>困ったとき</h3>
         <details open><summary>保存先に接続できない・待ち続ける</summary><ol><li>待ち続ける場合は<strong>「接続待ちを中止」</strong>を押します。</li><li>NASなら先にエクスプローラーやFinderで保存先を開けるか確認します。</li><li>「設定」→「保存先を選ぶ」で選び直すか、設定の枠へフォルダーをドラッグします。Windowsアプリではパス入力も使えます。</li><li>アクセスの確認が出たら許可します。HTMLはPC版Google Chromeで直接開いてください。</li></ol><p>自動接続は失敗が続くと停止します。画面の案内に従って接続し直してください。</p></details>
-        <details><summary>ゲームが見つからない・変更が反映されない</summary><p>使っている保存先を確認し、検索中なら<strong>「絞り込みを解除」</strong>、続いて<strong>「一覧を更新」</strong>を押します。同じ共有フォルダーの変更は、ホームで3分間操作しないときにも確認します。別々にコピーしたフォルダーの間では自動同期しません。</p></details>
+        <details><summary>ゲームが見つからない・変更が反映されない</summary><p>使っている保存先を確認し、検索中なら<strong>「絞り込みを解除」</strong>、続いて<strong>「一覧を更新」</strong>を押します。同じ共有フォルダーの一覧・作品情報は、ホームで操作が落ち着くと定期的に確認します（通常約30秒、Mojave版は約1分ごと。遅い保存先では間隔を延ばします）。別々にコピーしたフォルダーの間では自動同期しません。</p></details>
         <details><summary>ゲームが起動しない・読み込みが終わらない</summary><p>「← ゲーム一覧」で待機をやめ、保存先との接続を確認してください。接続を戻しても動かない場合は、ゲームを管理する人に確認します。</p><p>WindowsのEXEゲームは、WindowsアプリまたはHTMLのWindows用起動補助が必要です。MacではWindows用EXEは起動できません。</p></details>
         <details><summary>セーブの確認を求められた</summary><p>共有セーブが複数ある場合は、続けたいものを選びます。保存結果の確認が必要と表示された場合は、操作を繰り返さず、接続を戻して画面の確認ボタンを使ってください。</p></details>
       </section>
@@ -222,7 +228,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
   </section>
   <section class="settings-card settings-preferences" aria-label="基本設定">
     <div class="settings-option"><label for="colorTheme">表示モード</label><select id="colorTheme"><option value="dark">ダーク</option><option value="light">ライト</option></select></div>
-    <div class="settings-option settings-editing"><div><label class="check"><input id="enableEditing" type="checkbox" aria-describedby="editingHelp" aria-label="編集モード">編集モード<span id="editingState" class="editing-state" aria-hidden="true">オフ</span></label><p id="editingHelp">ゲームを追加・編集するときにオンにします。</p></div></div>
+    <div class="settings-option settings-editing"><div><label class="check"><input id="enableEditing" type="checkbox" aria-describedby="editingHelp" aria-label="編集モード">編集モード<span id="editingState" class="editing-state" aria-hidden="true">オフ</span></label><p id="editingHelp">クリエイター版では最初からオンです。閲覧だけにするときはオフにできます。</p></div></div>
   </section>
   <section id="sharedSavePanel" class="settings-card" aria-labelledby="sharedSaveTitle">
     <h3 id="sharedSaveTitle">セーブの共有</h3>
@@ -549,7 +555,7 @@ function creatorScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope,creatorScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.25.6';
+const LAUNCHER_VERSION = '0.26.0';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -2361,7 +2367,10 @@ const folderScope=location.pathname;
 let portableConnection=null,connectionError='',lastFolderRevision='',folderWatchPromise=null,folderChannel=null,folderWatchAbort=null;
 let folderWatchRetryAt=0,folderWatchRetryDelay=5000,folderWatchErrorMessage='';
 try{portableConnection=folderSharing.connectionInfo(JSON.parse($('#folderConnection').textContent));}catch(error){connectionError=error.message;}
-try{folderChannel=new BroadcastChannel('game-portal-folder:'+(folderSharing.creatorScope(folderScope)||folderScope));folderChannel.onmessage=()=>{void checkSharedFolder();};}catch{}
+try{folderChannel=new BroadcastChannel('game-portal-folder:'+(folderSharing.creatorScope(folderScope)||folderScope));folderChannel.onmessage=event=>{
+  if(event.data?.type==='catalog-changed'){if(event.data.libraryId===localLibrary)requestCatalogCheck();}
+  else void checkSharedFolder();
+};}catch{}
 
 let root = null, remembered = null, metadata = null, games = [], editing = null, busy = false, localLibrary = null;
 let folderRecovery=null,folderRecoveryPromise=null,folderRecoveryAbort=null;
@@ -2410,12 +2419,13 @@ window.addEventListener('hashchange',()=>{if(nativeBridge&&(!root||root.nativeRe
 let openedGame = null, stopGame = null, pendingSave = null, saveTimer, flushing = null, activePlay = null, closingPlayer = false;
 let actionCompletion=null,playerRequest=null,playerReloadWorker=null,playerCloseOperation=null;
 let saveFileRead=null;
-let editingEnabled = false, starting = true;
+let editingEnabled = launcherEdition!=='player', editingPreference=editingEnabled, starting = true;
 let informationState=null,informationController=null,importedInformationThumbnail=undefined,informationImageRevision=0;
 let inspectionRoot = null, inspectionReport = null, selectedHistory = null, capturedImage = null;
 let usageReport=null,usageController=null,usageLimit=60;
 let postSelection = [], editImageRevision = 0;
-const cardBatch=(navigator.deviceMemory>0&&navigator.deviceMemory<=4)||(navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=4)?24:60;
+const lowResourceMode=document.documentElement.dataset.performance==='low';
+const cardBatch=lowResourceMode?12:(navigator.deviceMemory>0&&navigator.deviceMemory<=4)||(navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=4)?24:60;
 let postCheck=null,postCheckRevision=0,cropBitmap=null,renderLimit=cardBatch,searchTimer;
 let imageProcessing=false,imageError='',playRevision=0,gameLoading=null;
 let settingsReceipts=[];
@@ -2463,6 +2473,7 @@ library.setSettingsSaveObserver(async(stage,attempt)=>{
   if(stage==='cancelled'&&retrySettingsReceipt)await localState.trackSettingsReceipt(retrySettingsReceipt,false,receipt);
   else await localState.trackSettingsReceipt(receipt,stage!=='started',stage==='started'?retrySettingsReceipt:null);
   settingsReceipts=await localState.loadSettingsReceipts();if($('#edit').open)updateEditDirty();
+  if(stage==='confirmed'&&attempt.kind!=='post')announceCatalogChange();
 });
 function renderSaveVerification(rebuild=false){
   $('#saveVerificationNotice').hidden=!settingsReceipts.length;$('#saveVerificationNoticeText').textContent=`保存結果未確認の操作が${settingsReceipts.length}件あります。再保存せず確認してください。`;
@@ -2473,10 +2484,14 @@ function renderSaveVerification(rebuild=false){
 function openSaveVerification(){renderSaveVerification(true);$('#saveVerification').showModal();}
 $('#openSaveVerification').onclick=openSaveVerification;
 for(const button of document.querySelectorAll('[data-verify-settings]'))button.onclick=openSaveVerification;
-$('#verifySettingsSaves').onclick=()=>action(async()=>{
+$('#verifySettingsSaves').onclick=()=>{
+  if(busy||playerRequest)return;
+  const folder=root,permission=folder?requestFolderPermission(folder,editingEnabled?'readwrite':'read').then(value=>({value}),error=>({error})):null;
+  return action(async()=>{
   await requireLibraryConnection(editingEnabled);
   if(!root)throw new Error('保存した保管フォルダーを指定してください。');
-  if(await requestFolderPermission(root,editingEnabled?'readwrite':'read')!=='granted')throw new Error('保管フォルダーへのアクセスを許可してください。');
+  if(root!==folder)throw new Error('保存先が変わりました。もう一度確認してください。');
+  const grant=await permission;if(grant.error)throw grant.error;if(grant.value!=='granted')throw new Error('保管フォルダーへのアクセスを許可してください。');
   settingsReceipts=await localState.loadSettingsReceipts();const results=[];let confirmedAny=false;
   for(const receipt of [...settingsReceipts].filter(a=>a.libraryId===localLibrary)){
     const result=await library.verifySettingsSave(root,receipt);const box=document.createElement('div');box.className='maintenance-item';const label=document.createElement('strong');label.textContent=receipt.gamePath;const text=document.createElement('p');
@@ -2489,7 +2504,7 @@ $('#verifySettingsSaves').onclick=()=>action(async()=>{
       text.textContent=result.state==='not-saved'?'今回の保存内容は反映されていません。入力・履歴を確認してから、必要な場合に手動で保存してください。':'現在の設定は保存予定とも保存前とも異なります。他の変更を上書きせず、再読み込みと設定履歴を確認してください。';
       if(receipt.kind==='post')text.textContent+=' 投稿フォルダーは点検で確認できます。作品を自動で削除・再投稿しません。';
       if(result.state==='not-saved'){
-        const retry=document.createElement('button');retry.className='secondary';retry.dataset.retrySettings='';retry.textContent='履歴の保存内容を再試行';retry.disabled=!editingEnabled;retry.onclick=()=>action(async()=>{
+        const retry=document.createElement('button');retry.className='secondary';retry.dataset.retrySettings='';retry.textContent='履歴の保存内容を再試行';retry.disabled=!editingEnabled;retry.onclick=()=>writeAction(async()=>{
           await requireLibraryConnection(true);if(!editingEnabled)throw new Error('設定で編集を有効にしてください。');
           if((await library.verifySettingsSave(root,receipt)).state!=='not-saved')throw new Error('現在の設定が変わりました。保存結果をもう一度確認してください。');
           retrySettingsReceipt=receipt;
@@ -2506,7 +2521,7 @@ $('#verifySettingsSaves').onclick=()=>action(async()=>{
   renderSaveVerification();$('#saveVerificationResults').replaceChildren(...results);
   if(confirmedAny)return savedResult('保存済みを確認しました。再保存は不要です。');
   return '現在の設定との比較が完了しました。結果を確認してください。';
-});
+});};
 const cardCache=new Map();
 function resetCards(){for(const url of imageURLs)URL.revokeObjectURL(url);imageURLs=[];cardCache.clear();renderLimit=cardBatch;}
 let editBaseline = '';
@@ -2526,8 +2541,14 @@ function updateEditDirty(){
 function confirmEditClose(){return !hasEditChanges()||confirm('未保存の変更を破棄して閉じますか？ ゲーム本体と保存済みの設定は残ります。');}
 $('#editForm').addEventListener('input',updateEditDirty);
 $('#editForm').addEventListener('change',updateEditDirty);
-try { editingEnabled = localStorage.getItem('game-portal.offline-editing') === 'true'; } catch { /* A new session starts read-only. */ }
-if(launcherEdition==='player')editingEnabled=false;
+// Migrate the old default-OFF preference once. A user's new explicit OFF
+// choice remains respected; the Player edition never enables editing.
+try { const saved=localStorage.getItem('game-portal.creator-editing.v2');if(saved!==null)editingPreference=saved==='true'; } catch {}
+editingEnabled=editingPreference=launcherEdition!=='player'&&editingPreference;
+function saveEditingPreference(value){
+  editingPreference=launcherEdition!=='player'&&value;
+  try{localStorage.setItem('game-portal.creator-editing.v2',String(editingPreference));localStorage.setItem('game-portal.offline-editing',String(editingPreference));}catch{}
+}
 let imageURLs = [], selectedTags = new Set(), renderRevision = 0, renderReadAbort = null;
 let statusTimer;
 const transientStatuses=new Set(["ゲーム本体の更新を確認しました。情報・ID・セーブは保持し、更新前のセーブを退避しました。「起動を再試行」で新版を開けます。","前のゲーム本体へ戻しました。ゲーム情報は保持し、変更前のセーブを退避しました。「起動を再試行」で開けます。","本体更新が保存済みであることを確認しました。再更新は不要です。","確認待ちの本体更新はありません。","一覧を更新しました。","作品情報を保存しました。","設定履歴から復元しました。","サムネイルを保存しました。","履歴の保存内容を保存しました。","保存済みを確認しました。再保存は不要です。","使うセーブを共有しました。","選択をキャンセルしました。","容量確認を中止しました。","使用容量を確認しました。","ゲームの追加が完了しました。作品情報を設定できます。","確認記録を閉じました。設定は変更していません。","セーブを読み込みました。ゲームは一覧から開けます。","セーブを復元しました。本体の版は変更していません。「起動を再試行」で再開できます。","共有用HTMLを保存しました。別PCでは初回だけ案内されたフォルダーを選んでください。","このPCに記憶した投稿先を削除しました。現在の接続とセーブは保持しています。次にフォルダーを選ぶと自動で記憶します。"]);
@@ -2566,7 +2587,7 @@ function folderSharingControls(){
   $('#sharedConnectionHint').textContent=hint?'このHTMLの保存先：'+hint:'';
 }
 async function checkSharedFolder(){
-  const available=()=>performance.now()>=folderWatchRetryAt&&!folderMemoryBlocked&&!automaticConnectionPaused&&!folderRecovery&&!root?.nativeReadOnly&&!folderRecoveryPromise&&!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!contentTarget?.contentPending&&!games.some(game=>game.contentPending)&&!document.hidden;
+  const available=()=>performance.now()>=folderWatchRetryAt&&!folderMemoryBlocked&&!automaticConnectionPaused&&!folderRecovery&&!root?.nativeReadOnly&&!folderRecoveryPromise&&!syncPromise&&!starting&&!busy&&!closingPlayer&&!activePlay&&!pendingSave&&!flushing&&!document.querySelector('dialog[open]')&&!settingsReceipts.length&&!contentTarget?.contentPending&&!games.some(game=>game.contentPending)&&!document.hidden;
   if(folderWatchPromise||!available())return;
   const controller=new AbortController(),watchRoot=root;folderWatchAbort=controller;folderWatchStarted=performance.now();nativeReadControls();
   const progress=setTimeout(()=>nativeReadControls(),1500);
@@ -2592,7 +2613,7 @@ async function checkSharedFolder(){
       })();
     }catch(error){if(root!==watchRoot||controller.signal.aborted&&controller.signal.reason?.name!=='TimeoutError')return;watchFailed=true;folderWatchRetryAt=performance.now()+folderWatchRetryDelay;folderWatchRetryDelay=Math.min(folderWatchRetryDelay*2,60000);lastFolderRevision='';folderWatchErrorMessage='保存先の共有を確認できません。ホームで間隔をあけて再確認します。設定から選び直すこともできます：'+error.message;status(folderWatchErrorMessage);}
   })();
-  try{await folderWatchPromise;}finally{if(!watchFailed){folderWatchRetryAt=0;folderWatchRetryDelay=5000;if(folderWatchErrorMessage&&$('#status').textContent===folderWatchErrorMessage)status('');folderWatchErrorMessage='';}idle.stop();clearTimeout(progress);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();}
+  try{await folderWatchPromise;}finally{if(!watchFailed){folderWatchRetryAt=0;folderWatchRetryDelay=5000;if(folderWatchErrorMessage&&$('#status').textContent===folderWatchErrorMessage)status('');folderWatchErrorMessage='';}idle.stop();clearTimeout(progress);folderWatchPromise=null;if(folderWatchAbort===controller)folderWatchAbort=null;if(!busy)writeControls();nativeReadControls();void recoverFolderConnection();void syncWhenHomeIdle();void syncCatalogAutomatically();}
 }
 setInterval(()=>{void checkSharedFolder();},5000);
 window.addEventListener('focus',()=>{void checkSharedFolder();});
@@ -2688,6 +2709,22 @@ async function action(fn, reconnecting = false, prioritizePlay = false) {
   catch (e) { compatibilityFailure(e);if(e.code==='LIBRARY_ID_CHANGED')syncPaused=true;if(nativeBridge&&root?.nativeReadOnly&&transientFolderError(e))nativeRetry=true;queueFolderRecovery(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;reportError(e);if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
   finally { busy = false;document.body.setAttribute('aria-busy','false');document.body.classList.remove('working'); document.querySelectorAll('button').forEach(b => b.disabled = false);document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=false);try{writeControls();}finally{if(actionCompletion===completion)actionCompletion=null;finishAction();} }
 }
+function writeAction(fn){
+  if(busy||playerRequest)return;
+  const folder=root;
+  // Start permission work in the actual Save/Add click, before image decoding,
+  // synchronization or a metadata read can consume the user's activation.
+  const permission=launcherEdition!=='player'&&editingEnabled&&folder?requestFolderPermission(folder,'readwrite').then(value=>({value}),error=>({error})):null;
+  return action(async()=>{
+    if(launcherEdition==='player')throw Error('ゲームの追加・変更はクリエイター版で行ってください。');
+    if(!folder)throw Error('保存先を選んでください。');
+    if(!editingEnabled)throw Error('編集モードを有効にしてください。');
+    const result=await permission;if(result.error)throw result.error;
+    if(result.value!=='granted')throw Error('書き込みの許可が必要です。「設定」から同じ保存先を選んで編集を許可してください。');
+    if(root!==folder)throw Error('保存先が変わりました。もう一度操作してください。');
+    writePermissionRestricted=false;return fn();
+  });
+}
 async function refresh({signal}={}) {
   if (!root) return;
   const folder=root,id=localLibrary;await checkLibraryCompatibility(folder,signal);signal?.throwIfAborted();
@@ -2698,7 +2735,7 @@ async function refresh({signal}={}) {
   signal?.throwIfAborted();
   if(await library.loadLibraryId(folder)!==nextLibrary)throw new Error('読み込み中に保管フォルダーのIDが変わりました。再接続してください。');
   signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw uiError('保存先が変わりました。','AbortError');
-  localLibrary=nextLibrary;syncPaused=false;folderRecovery=null;$('#reconnect').hidden=true;syncStatus('共有フォルダーの自動確認：有効（ホームで3分操作がないとき）');
+  localLibrary=nextLibrary;syncPaused=false;folderRecovery=null;$('#reconnect').hidden=true;syncStatus('ゲーム一覧を定期的に自動確認します。セーブの確認はホームで3分操作がないときに行います。');
   metadata=nextMetadata;games=nextGames;renderLimit=cardBatch;
   // Keep unchanged cards after edits or manual refresh, as background sync does.
   // Legacy file-backed images can change independently of their settings.
@@ -2752,16 +2789,28 @@ async function syncAllSaves(signal){
 $('#syncSaves').onclick=()=>requestSaveSync(()=>syncAllSaves());
 $('#openSharedSaves').onclick=()=>{$('#settings').showModal();$('#sharedSavePanel').scrollIntoView({block:'start'});};
 let lastHomeActivity=performance.now(),lastHomeSync=0,idleSyncController=null;
+let nextCatalogSync=0,catalogNoticeTimer=null;
+const catalogNoticeIds=new Set();
+function catalogSyncDelay(elapsed=0){return Math.min(300000,Math.max(lowResourceMode?60000:30000,elapsed*6));}
+function requestCatalogCheck(){nextCatalogSync=Math.min(nextCatalogSync,performance.now()+1000);}
+function announceCatalogChange(){
+  if(!localLibrary)return;catalogNoticeIds.add(localLibrary);
+  if(catalogNoticeTimer!==null)return;
+  catalogNoticeTimer=setTimeout(()=>{catalogNoticeTimer=null;for(const libraryId of catalogNoticeIds)folderChannel?.postMessage({type:'catalog-changed',libraryId});catalogNoticeIds.clear();},250);
+}
+function homeIsQuiet(){return performance.now()-lastHomeActivity>=2000&&!activePlay&&!stopGame&&!openedGame&&!pendingSave&&!flushing&&!settingsReceipts.length&&!document.querySelector('dialog[open]');}
 function homeIsIdle(){return performance.now()-lastHomeActivity>=HOME_IDLE_MS&&!activePlay&&!stopGame&&!openedGame&&!pendingSave&&!flushing&&!settingsReceipts.length&&!document.querySelector('dialog[open]');}
 function noteHomeActivity(){lastHomeActivity=performance.now();idleSyncController?.abort();folderRecoveryAbort?.abort();folderWatchAbort?.abort();}
 for(const event of ['pointerdown','pointermove','keydown','wheel','input','focusin'])document.addEventListener(event,noteHomeActivity,{capture:true,passive:true});
-async function syncLibrary({idle=false}={}){
+async function syncLibrary({idle=false,automatic=false}={}){
   if(!root||starting||busy||automaticConnectionPaused||syncPaused||syncPromise||folderRecoveryPromise||closingPlayer||document.hidden||document.querySelector('dialog[open]:not(#player)'))return;
+  if((idle||automatic)&&(folderRecovery||folderWatchPromise||contentTarget?.contentPending||games.some(game=>game.contentPending)))return;
   if(idle&&!homeIsIdle())return;
+  if(automatic&&!homeIsQuiet())return;
   const folder=root,libraryId=localLibrary,controller=new AbortController();syncController=controller;
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
   const deadline=setTimeout(()=>controller.abort(uiError('自動確認の読み取りが応答しません。接続を確認し、保存先を選び直してください。','TimeoutError')),30000);
-  if(idle)idleSyncController=controller;
+  if(idle||automatic)idleSyncController=controller;
   syncPromise=(async()=>{
     try{
       await read(()=>checkLibraryCompatibility(folder,controller.signal));
@@ -2771,7 +2820,7 @@ async function syncLibrary({idle=false}={}){
       const nextMetadata=await read(()=>library.loadMetadata(folder)),nextGames=await read(()=>library.scan(folder,nextMetadata,{signal:controller.signal}));
       controller.signal.throwIfAborted();
       if(await read(()=>library.loadLibraryId(folder))!==nextId)throw new Error('読み込み中に保管フォルダーが変わりました。');
-      if(root!==folder||busy||document.hidden||document.querySelector('dialog[open]:not(#player)')||idle&&!homeIsIdle())return;
+      if(root!==folder||busy||document.hidden||document.querySelector('dialog[open]:not(#player)')||idle&&!homeIsIdle()||automatic&&!homeIsQuiet())return;
       const changed=syncTools.libraryViewKey(games)!==syncTools.libraryViewKey(nextGames)||localLibrary!==nextId;
       metadata=nextMetadata;games=nextGames;localLibrary=nextId;
       if(changed){await render();updatePlayerInfo();writeControls();}
@@ -2782,11 +2831,21 @@ async function syncLibrary({idle=false}={}){
   try{await syncPromise;}finally{clearTimeout(deadline);syncPromise=null;if(syncController===controller)syncController=null;if(idleSyncController===controller)idleSyncController=null;}
 }
 async function syncWhenHomeIdle(){
+  if(folderWatchPromise||folderRecovery)return;
   if(!homeIsIdle()||performance.now()-lastHomeSync<HOME_IDLE_MS||!root||starting||busy||automaticConnectionPaused||syncPaused||syncPromise||closingPlayer||document.hidden)return;
   lastHomeSync=performance.now();await syncLibrary({idle:true});
 }
 setInterval(()=>{void syncWhenHomeIdle();},5000);
+async function syncCatalogAutomatically(){
+  if(folderWatchPromise||folderRecovery)return;
+  if(performance.now()<nextCatalogSync||!homeIsQuiet()||!root||starting||busy||automaticConnectionPaused||syncPaused||syncPromise||folderRecoveryPromise||closingPlayer||document.hidden)return;
+  const started=performance.now();nextCatalogSync=started+catalogSyncDelay();
+  try{await syncLibrary({automatic:true});}finally{nextCatalogSync=performance.now()+catalogSyncDelay(performance.now()-started);}
+}
+setInterval(()=>{void syncCatalogAutomatically();},5000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)requestCatalogCheck();});
 async function savedResult(message){
+  announceCatalogChange();
   try{await refresh();if($('#player').open)$('#playerStatus').textContent=message;return message;}
   catch(error){if(remembered)$('#reconnect').hidden=false;const warning=message+' 一覧更新だけ失敗しました。再保存せず、接続を確認して「再読み込み」を押してください：'+error.message;if($('#player').open)$('#playerStatus').textContent=warning;return warning;}
 }
@@ -2842,8 +2901,9 @@ async function connect(handle, request = false, restoring = false, shared = fals
   const nextLocalLibrary = initialize ? await library.ensureLibraryId(handle) : scannedLibrary;
   await checkLibraryCompatibility(handle,signal);
   signal?.throwIfAborted();
-  if(handle.nativeReadOnly){editingEnabled=false;$('#enableEditing').checked=false;}
+  editingEnabled=!handle.nativeReadOnly&&editingPreference;$('#enableEditing').checked=editingEnabled;
   resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; automaticPermissionAttempted=false; if(!preserveSearch){resetSearch();sharedSaveIssues.clear();saveSyncRows();}folderRecovery=null;
+  nextCatalogSync=performance.now()+catalogSyncDelay();
   nativeRetry=false;
   automaticConnectionPaused=false;automaticConnectionFailures=0;
   if(!handle.nativeReadOnly)clearNativePageConnection();
@@ -2853,7 +2913,7 @@ async function connect(handle, request = false, restoring = false, shared = fals
   $('#sharedFolderPath').value=portableConnection?.path||'';try{$('#sharedFolderPath').value=localStorage.getItem('game-portal.folder-path.'+localLibrary)||$('#sharedFolderPath').value;}catch{}
   metadata = next; games = nextGames; $('#folderName').textContent = handle.name; $('#settingFolder').textContent = handle.name;
   $('#folderSelectionError').hidden=true;$('#folderSelectionErrorText').textContent='';
-  await render(); if(!signal)$('#settings').close();syncStatus(('共有フォルダーの自動確認：有効（ホームで3分操作がないとき）')+cacheError);
+  await render(); if(!signal)$('#settings').close();syncStatus(('ゲーム一覧を定期的に自動確認します。セーブの確認はホームで3分操作がないときに行います。')+cacheError);
   return cacheError.trim();
 }
 async function filterByGameTag(tag){
@@ -3416,7 +3476,7 @@ $('#chooseFolder').onclick = () => {
   try{
     if(!window.showDirectoryPicker)throw new Error('フォルダー選択に対応したPC版Chromeを使用してください。');
     // Avoid restoring a picker-ID location or passing a stale directory handle.
-    selection=Promise.resolve(window.showDirectoryPicker({mode:'read'})).then(handle=>({handle}),error=>({error}));
+    selection=Promise.resolve(window.showDirectoryPicker({mode:launcherEdition!=='player'&&editingPreference?'readwrite':'read'})).then(handle=>({handle}),error=>({error}));
   }catch(error){selection=Promise.resolve({error});}
   return openFolderSelection(selection);
 };
@@ -3549,29 +3609,30 @@ const contentPreflight=async(files,tools,packageTools)=>{
   if(check.kind==='exe')throw new Error('EXEは「ゲームを追加」から追加してください。本体の入れ替えはゲームを終了してから保管フォルダーで行ってください。');
   return check;
 };
-$('#confirmContentUpdate').onclick=()=>action(async()=>{
+$('#confirmContentUpdate').onclick=()=>writeAction(async()=>{
   if(!contentCheck?.valid||contentTarget?.contentPending)throw new Error('更新前チェックと前回の更新結果を確認してください。');
   const files=[...contentSelection],game=contentTarget;await stopForContentUpdate();
   await updateTools.replaceGameContent(root,game,files,localLibrary,library,preview,contentPreflight,progress=>status(`更新ファイルを準備しています：${progress.current} / ${progress.total}`));
   $('#updateContent').close();return savedResult('ゲーム本体の更新を確認しました。情報・ID・セーブは保持し、更新前のセーブを退避しました。「起動を再試行」で新版を開けます。');
 });
-$('#restoreContent').onclick=()=>action(async()=>{
+$('#restoreContent').onclick=()=>writeAction(async()=>{
   const game=contentTarget;await stopForContentUpdate('before-content-restore');await updateTools.restoreGameContent(root,game,localLibrary,library);
   $('#updateContent').close();return savedResult('前のゲーム本体へ戻しました。ゲーム情報は保持し、変更前のセーブを退避しました。「起動を再試行」で開けます。');
 });
-$('#verifyContentUpdate').onclick=()=>action(async()=>{
+$('#verifyContentUpdate').onclick=()=>writeAction(async()=>{
   await requireLibraryConnection(true);if(!editingEnabled)throw new Error('確認記録を更新するには編集を有効にしてください。');
   const result=await updateTools.verifyContentUpdate(root,contentTarget,localLibrary,library);
   await refresh();contentTarget=games.find(g=>g.id===contentTarget.id&&g.path===contentTarget.path)||contentTarget;contentControls();
   return result.state==='confirmed'?'本体更新が保存済みであることを確認しました。再更新は不要です。':result.state==='not-saved'?'本体更新は反映されていません。元の本体を保持しています。必要なら手動で更新してください。':result.state==='changed'?'現在の本体設定は確認記録と異なります。他の変更を上書きせず、フォルダーの更新設定を確認してください。':'確認待ちの本体更新はありません。';
 });
-$('#confirmPost').onclick=()=>action(async()=>{
+$('#confirmPost').onclick=()=>writeAction(async()=>{
   await requireLibraryConnection(true);
   if (!root || !editingEnabled) throw new Error('設定で追加・編集を有効にしてください。');
   if(settingsReceipts.some(a=>a.libraryId===localLibrary&&a.kind==='post'))throw new Error('投稿済みの可能性がある作品があります。先に保存結果を確認してください。');
   const selected=[...postSelection];if(!selected.length)throw new Error('追加する作品を選んでください。');
   if(!postCheck?.valid)throw new Error('投稿前チェックを完了してから追加してください。');
   const path=await library.postGame(root, selected, preview,progress=>status(progress.phase==='validate'?'作品の形式を確認しています…':progress.phase==='copy'?`ファイルをコピーしています：${progress.current} / ${progress.total}`:'作品情報を保存しています…'));
+  announceCatalogChange();
   $('#post').close();
   try {await refresh();}catch(error){throw new Error('ゲームの追加は完了しましたが一覧を更新できません。再投稿せず、接続を確認して「再読み込み」を押してください：'+error.message);}
   const posted=games.find(game=>game.path===path);if(posted){editGame(posted);$('#postEditNotice').hidden=false;$('#editHeading').textContent='名前や画像を決める';$('#cancelEdit').textContent='あとで設定';}
@@ -3603,7 +3664,7 @@ $('#clearImage').onchange=()=>{
 };
 $('#editForm').noValidate=true;
 $('#editForm').onsubmit = event => { event.preventDefault();if(busy)return;addEnvironmentTag();if($('#newTag').value.trim()&&!addCustomTag()){selectEditTab('Basic');return;}updateFormCounters();if(imageProcessing||imageError){selectEditTab('Image');status(imageError||'画像の読み込み完了をお待ちください。');return;}if(editing&&pendingSettings(editing.path)){status('再保存せず、先に保存結果を確認してください。');return;}const invalid=[...event.target.elements].find(e=>e.willValidate&&!e.validity.valid);if(invalid){const panel=invalid.closest('[role=tabpanel]');if(panel)selectEditTab(panel.id.replace('panel',''));event.target.reportValidity();return;}
-  const values={title:$('#editTitle').value,tags:library.tagsFrom($('#editTags').value),developmentEnvironment:$('#editEnvironment').value,description:$('#editDescription').value,instructions:$('#editInstructions').value},imageFile=$('#editImage').files[0],clear=$('#clearImage').checked,adjustment={enabled:$('#enableCrop').checked,zoom:$('#cropZoom').value,x:$('#cropX').value,y:$('#cropY').value};action(async () => {
+  const values={title:$('#editTitle').value,tags:library.tagsFrom($('#editTags').value),developmentEnvironment:$('#editEnvironment').value,description:$('#editDescription').value,instructions:$('#editInstructions').value},imageFile=$('#editImage').files[0],clear=$('#clearImage').checked,adjustment={enabled:$('#enableCrop').checked,zoom:$('#cropZoom').value,x:$('#cropX').value,y:$('#cropY').value};writeAction(async () => {
   if (!editingEnabled) throw new Error('設定で追加・編集を有効にしてください。');
   let image = clear ? null : importedInformationThumbnail===undefined?editing.thumbnail:importedInformationThumbnail;
   const file = imageFile;
@@ -3647,7 +3708,7 @@ Promise.all([cacheHandle(),localState.loadSettingsReceipts()]).then(async([previ
   if (previous?.name) $('#settingFolder').textContent = '前回：' + previous.name;
   if(previous?.requiresSelection){folderMemoryBlocked=true;status('前回の保存先を記憶できませんでした。保存先を選び直してください。ゲームとセーブは保持しています。');}
   if(previous?.handle){remembered=previous.handle;$('#reconnect').hidden=false;writeControls();try{const permission=await remembered.queryPermission({mode:'read'});startupAbort.signal.throwIfAborted();if(permission==='granted'){await connect(remembered,false,true,false,startupAbort.signal,{onActivity:startupIdle.pulse,finishReading:startupIdle.stop});}else {syncStatus(reconnectHint);status(reconnectHint);}}catch(error){if(startupAbort.signal.aborted)return;queueFolderRecovery(error);syncStatus('前回の保存先に接続できません。「前回の保存先を開く」から再接続してください：'+error.message);}}
-}).catch(error => {if(nativeBridge&&!root){nativeRetry=true;editingEnabled=false;$('#enableEditing').checked=false;}if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。再試行するか、「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{startupIdle.stop();if(!startupAbort.signal.aborted)initialized();});
+}).catch(error => {if(nativeBridge&&!root)nativeRetry=true;if(!startupAbort.signal.aborted)status((nativeBridge?'自動接続できません。再試行するか、「設定」で保存先を選び直せます：':'このPCの保存機能を確認してください：') + error.message);}).finally(()=>{startupIdle.stop();if(!startupAbort.signal.aborted)initialized();});
 }
 
 
@@ -3663,10 +3724,11 @@ $('#allowFolderEditing').onclick=()=>{
     if(!await folder.isSameEntry(handle))throw Error('現在と同じ保存先フォルダーを選んでください。保存先は変更していません。');
     if(await handle.queryPermission({mode:'readwrite'})!=='granted')throw Error('書き込みの許可が必要です。現在と同じ保存先を選び、許可してください。');
     if(await library.loadLibraryId(handle)!==id)throw Error('保存先のIDが変わりました。再接続してください。');
-    try{editingEnabled=true;await connect(handle,false,false,false,null,{manualSelection:true});}
-    catch(error){editingEnabled=previousEditing;throw error;}
+    const previousPreference=editingPreference;
+    try{editingPreference=editingEnabled=true;await connect(handle,false,false,false,null,{manualSelection:true});}
+    catch(error){editingPreference=previousPreference;editingEnabled=previousEditing;throw error;}
     $('#enableEditing').checked=true;writePermissionRestricted=false;
-    try{localStorage.setItem('game-portal.offline-editing','true');}catch{}
+    saveEditingPreference(true);
     return '同じ保存先への書き込みを許可しました。追加・編集できます。'+(folderMemoryBlocked?' 保存先の記憶は設定から再試行してください。':'');
   });
 };
@@ -3683,7 +3745,7 @@ $('#enableEditing').onchange = () => {
   if(permission){const result=await permission;if(result.error)throw result.error;if(root!==folder)throw new Error('保存先が変わりました。編集モードをもう一度オンにしてください。');if(result.value!=='granted')throw new Error('追加・編集には保管フォルダーの書き込み許可が必要です。');}
   if (requested && root) {await requireLibraryConnection(true);localLibrary = await library.ensureLibraryId(root);await checkLibraryCompatibility();}
   editingEnabled = requested;
-  try { localStorage.setItem('game-portal.offline-editing', String(editingEnabled)); } catch { /* The setting applies for this session. */ }
+  saveEditingPreference(editingEnabled);if(editingEnabled)writePermissionRestricted=false;
   if (root) await render(); writeControls();
   });
 };
@@ -3780,7 +3842,7 @@ $('#historyButton').onclick=()=>action(async()=>{
     $('#historyEntries').append(item);
   }
 });
-$('#restoreHistory').onclick=()=>action(async()=>{
+$('#restoreHistory').onclick=()=>writeAction(async()=>{
   await requireLibraryConnection(true);
   if(!editingEnabled || !selectedHistory || !editing)throw new Error('編集を有効にし、復元する設定を選択してください。');
   if(!confirm('現在の設定と入力中の変更を、この履歴の名前・タグ・画像・開発環境・概要・操作方法に置き換えますか？'))return;
@@ -3793,7 +3855,7 @@ $('#captureButton').onclick=()=>action(async()=>{
   if(activePlay!==session)throw new Error('ゲームが切り替わったため撮影を中止しました。');
   capturedImage={session,data};$('#capturePreview').src=data;$('#capture').showModal();
 });
-$('#saveCapture').onclick=()=>action(async()=>{
+$('#saveCapture').onclick=()=>writeAction(async()=>{
   await requireLibraryConnection(true);
   const captured=capturedImage;
   if(!editingEnabled || !captured || activePlay!==captured.session)throw new Error('もう一度ゲーム画面を撮影してください。');
