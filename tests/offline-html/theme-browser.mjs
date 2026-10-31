@@ -14,6 +14,8 @@ const open=async()=>{const p=await context.newPage();p.on('pageerror',e=>errors.
 try{
  context=await chromium.launchPersistentContext(profile,options);let page=await open();console.log('Display validation browser:',context.browser().version());
  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.locator('#settingsButton').click();await expect(page.locator('#colorTheme')).toHaveValue('dark');
+ // Compare viewing/editing colours by explicitly selecting viewing mode first.
+ await page.locator('#enableEditing').uncheck();await page.waitForFunction(()=>!busy);
  const darkBackground=await page.locator('body').evaluate(e=>getComputedStyle(e).backgroundColor);
  await page.locator('#colorTheme').selectOption('light');await expect(page.locator('html')).toHaveAttribute('data-theme','light');assert.notEqual(await page.locator('body').evaluate(e=>getComputedStyle(e).backgroundColor),darkBackground);
  await expect(page.locator('#chooseFolder')).toHaveCSS('background-color','rgb(115, 231, 209)');await page.locator('#enableEditing').check();await page.waitForFunction(()=>!busy);await expect(page.locator('#chooseFolder')).toHaveCSS('background-color','rgb(243, 189, 121)');await expect(page.locator('#chooseFolder')).toHaveCSS('color','rgb(48, 33, 21)');await mkdir('offline-release/ui-checks',{recursive:true});await page.screenshot({path:'offline-release/ui-checks/settings-light.png'});
