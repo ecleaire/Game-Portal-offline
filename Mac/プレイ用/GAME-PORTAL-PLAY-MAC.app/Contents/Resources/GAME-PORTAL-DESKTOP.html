@@ -176,7 +176,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 [data-performance=low] .cover{background:var(--panel)}
 [data-performance=low] dialog{box-shadow:none}
 #player{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;border-radius:0}#exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}.desktop-path{margin-top:8px}.desktop-path input{flex:1 1 240px;min-width:0;width:100%}</style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.27.1</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.27.2</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><details id="operationErrorDetail" class="settings-detail" hidden><summary>エラーの詳細</summary><p id="operationErrorText" class="hint game-text"></p></details><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -1235,7 +1235,7 @@ function creatorScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope,creatorScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.27.1';
+const LAUNCHER_VERSION = '0.27.2';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -1646,19 +1646,33 @@ async function saveGameSettings(root, game, values, options={}) {
   const attempt={schema:1,id:game.id,gamePath:game.path,historyName:crypto.randomUUID()+'.json',expectedHash:await settingsDigest(text),beforeHash:current.text===null?null:await settingsDigest(current.text),kind:options.kind||'edit',uploadFolder:options.uploadFolder||null};
   const parts = safePath(game.path + '.gameportal.json'); let folder = root;
   for (const part of parts.slice(0, -1)) folder = await folder.getDirectoryHandle(part);
-  const handle = await folder.getFileHandle(parts.at(-1), { create: true });
-  let writer;
-  try { writer = await handle.createWritable({ mode: 'exclusive' }); }
-  catch (error) { if (error.name === 'NoModificationAllowedError') throw new Error('このゲームの設定は別の画面で保存中です。少し待って再読み込みしてください。'); throw error; }
-  let closing=false,tracked=false;
-  try {
-    const live = await handle.getFile(), actual = await live.text();
-    if ((current.text === null ? actual !== '' : actual !== current.text)) throw new Error('このゲームの設定が更新されています。「再読み込み」してから編集してください。');
+  let tracked=false;
+  const track=async()=>{
     const history = { schema: 1, gamePath: game.path, before: current.text, after: text, savedAt: new Date().toISOString() };
     await writeFile(root, `.gameportal/history/${game.id}/${attempt.historyName}`, JSON.stringify(history, null, 2));
     await settingsSaveObserver('started',attempt);tracked=true;
+  };
+  // Creating a file handle can leave an empty file even when opening or writing
+  // its stream fails. Record the initial intent before creating that file so
+  // every ambiguous placeholder has the existing explicit recovery path.
+  const initial=current.text===null;
+  if(initial)await track();
+  let handle,writer;
+  try {
+    handle=await folder.getFileHandle(parts.at(-1), { create: true });
+    writer=await handle.createWritable({ mode: 'exclusive' });
+  } catch (error) {
+    if(initial)throw unconfirmedSettingsSave(attempt,error);
+    if(error.name==='NoModificationAllowedError')throw new Error('このゲームの設定は別の画面で保存中です。少し待って再読み込みしてください。');
+    throw error;
+  }
+  let closing=false;
+  try {
+    const live = await handle.getFile(), actual = await live.text();
+    if ((initial ? actual !== '' : actual !== current.text)) throw new Error('このゲームの設定が更新されています。「再読み込み」してから編集してください。');
+    if(!tracked)await track();
     await writer.write(text);closing=true;await writer.close();
-  } catch (error) { await writer.abort().catch(() => {});if(closing)throw unconfirmedSettingsSave(attempt,error);if(tracked)await settingsSaveObserver('cancelled',attempt).catch(()=>{});throw error; }
+  } catch (error) { await writer.abort().catch(() => {});if(closing||initial)throw unconfirmedSettingsSave(attempt,error);if(tracked)await settingsSaveObserver('cancelled',attempt).catch(()=>{});throw error; }
   try{if(await(await handle.getFile()).text()!==text)throw new Error('保存後の設定が一致しません。');}
   catch(error){throw unconfirmedSettingsSave(attempt,error);}
   await settingsSaveObserver('confirmed',attempt).catch(()=>{});
