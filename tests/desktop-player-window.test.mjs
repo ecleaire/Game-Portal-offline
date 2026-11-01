@@ -34,6 +34,6 @@ test('a failed save leaves the game window open and reports the error',async()=>
 test('desktop page serialization is byte-identical for Windows and Unix function source lines',async()=>{
  const html=await readFile('GAME-PORTAL.html','utf8'),bootstrap=await readFile('desktop/bootstrap.js','utf8');
  const baseline=desktopPage(html,bootstrap,''),original=installDesktopPlayerWindow.toString;
- try{installDesktopPlayerWindow.toString=()=>original.call(installDesktopPlayerWindow).replaceAll('\n','\r\n');assert.equal(desktopPage(html,bootstrap,''),baseline);}
+ try{installDesktopPlayerWindow.toString=()=>original.call(installDesktopPlayerWindow).replaceAll('\r\n','\n').replaceAll('\n','\r\n');assert.equal(desktopPage(html,bootstrap,''),baseline);}
  finally{delete installDesktopPlayerWindow.toString;}
 });
