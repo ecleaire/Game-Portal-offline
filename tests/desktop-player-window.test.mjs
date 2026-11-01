@@ -1,3 +1,5 @@
+import {readFile} from 'node:fs/promises';
+import {desktopPage} from '../desktop/page.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';
 import {installDesktopPlayerWindow} from '../desktop/player-window.js';
 function fixture(){
@@ -27,4 +29,11 @@ test('a stale fullscreen exit cannot close the newly selected player window',asy
 });
 test('a failed save leaves the game window open and reports the error',async()=>{
  const f=fixture();f.nodes.player.open=true;f.nodes.closePlayer.onclick=async()=>{throw Error('save unavailable');};assert.equal(await f.context.window.gamePortalReturnToLibrary(),false);assert.equal(f.nodes.player.open,true);assert(f.nodes.playerStatus.textContent.includes('save unavailable'));
+});
+
+test('desktop page serialization is byte-identical for Windows and Unix function source lines',async()=>{
+ const html=await readFile('GAME-PORTAL.html','utf8'),bootstrap=await readFile('desktop/bootstrap.js','utf8');
+ const baseline=desktopPage(html,bootstrap,''),original=installDesktopPlayerWindow.toString;
+ try{installDesktopPlayerWindow.toString=()=>original.call(installDesktopPlayerWindow).replaceAll('\n','\r\n');assert.equal(desktopPage(html,bootstrap,''),baseline);}
+ finally{delete installDesktopPlayerWindow.toString;}
 });

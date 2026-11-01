@@ -2,7 +2,7 @@ import {installDesktopPlayerWindow} from './player-window.js';
 // Build a separate desktop document. The distributed standalone HTML stays unchanged.
 export function desktopPage(html,bootstrap,licenses=''){
   const replace=(from,to)=>{if(!html.includes(from))throw Error('Desktop integration marker changed: '+from.slice(0,70));html=html.replace(from,to);};
-  replace('const $ = selector => document.querySelector(selector);',bootstrap+'\n'+installDesktopPlayerWindow.toString()+"\ndocument.addEventListener('DOMContentLoaded',()=>installDesktopPlayerWindow(desktopHost),{once:true});\nconst $ = selector => document.querySelector(selector);");
+  replace('const $ = selector => document.querySelector(selector);',bootstrap+'\n'+installDesktopPlayerWindow.toString().replaceAll('\r\n','\n')+"\ndocument.addEventListener('DOMContentLoaded',()=>installDesktopPlayerWindow(desktopHost),{once:true});\nconst $ = selector => document.querySelector(selector);");
   replace('let nativeBridge=null,nativeRetry=false,nativeReadAbort=null;','let nativeBridge={desktop:true},nativeRetry=false,nativeReadAbort=null;');
   const begin=html.indexOf('try{\n  nativeBridge=nativeTools.nativePageConnection('),end=html.indexOf('function rememberNativePageConnection',begin);
   if(begin<0||end<0)throw Error('Desktop connection marker changed');html=html.slice(0,begin)+html.slice(end);
