@@ -175,8 +175,8 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 [data-performance=low] .card,[data-performance=low] .card:hover,[data-performance=low] .card:focus-within{transition:none;transform:none;box-shadow:none}
 [data-performance=low] .cover{background:var(--panel)}
 [data-performance=low] dialog{box-shadow:none}
-#exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}.desktop-path{margin-top:8px}.desktop-path input{flex:1 1 240px;min-width:0;width:100%}</style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.26.1</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+#player{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;border-radius:0}#exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}.desktop-path{margin-top:8px}.desktop-path input{flex:1 1 240px;min-width:0;width:100%}</style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.27.0</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><details id="operationErrorDetail" class="settings-detail" hidden><summary>エラーの詳細</summary><p id="operationErrorText" class="hint game-text"></p></details><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -276,7 +276,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 <details><summary>「保存結果未確認」「更新結果未確認」が出た</summary><p><strong>保存・追加・更新を繰り返さず、結果を確認してください。</strong>設定の保存は「保存結果を確認」、本体更新は「本体を更新」→「更新状態を確認」を使います。追加途中の作品は「設定」→「ゲームを点検」で確認できます。</p><p>情報の一括読み込みを中止した場合は、表示された保存件数を確認します。保存済みの作品は元に戻らず、残りの作品は変更しません。</p></details>
 <details><summary>EXEを起動できない</summary><p>Windowsアプリを使うか、HTMLの「起動補助」→「Windowsで起動.cmd」から開き直します。起動補助でも同じ保管フォルダーを選んでください。DLL・素材とWindowsの実行権限を確認し、ゲームがすでに起動中なら終了してからやり直します。MacではWindows用EXEは起動できません。</p></details>
 </section>
-      <section class="help-section"><h3>Macアプリ（ベータ版）</h3><p>保存先の選択と読み書きはMacアプリが行います。初回に保存先を選び、次回はアプリを開くと前回の保存先へ接続します。セーブはこのアプリ内に保存します。Chromeとは保存場所が異なります。続きを移すときは、対応セーブを同期するか、書き出し・読み込みを使ってください。</p><details><summary>ライセンス</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px">pyodide/LICENSE
+      <section class="help-section"><h3>Macアプリ（ベータ版）</h3><p>保存先の選択と読み書きはMacアプリが行います。ゲームは別ウィンドウに表示します。ランチャー側の「ゲーム一覧へ」も、保存を確認してゲームを終了します。初回に保存先を選び、次回はアプリを開くと前回の保存先へ接続します。セーブはこのアプリ内に保存します。Chromeとは保存場所が異なります。続きを移すときは、対応セーブを同期するか、書き出し・読み込みを使ってください。</p><details><summary>ライセンス</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px">pyodide/LICENSE
 Mozilla Public License Version 2.0
 ==================================
 
@@ -1300,7 +1300,7 @@ function creatorScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope,creatorScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.26.1';
+const LAUNCHER_VERSION = '0.27.0';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -3122,7 +3122,7 @@ const desktopHost=(()=>{
   nativeTools.nativeFolder=async()=> (await current())?.handle||null;
   nativeTools.launchNative=async(connection,libraryId,game)=>rpc('launch',{root:root?.desktopToken,libraryId,gameId:game.id,path:game.path});
   const cancel=()=>{for(const job of [...reads]){const reason=error({name:'NativeReadCancelled',message:'接続待ちを中止しました。もう一度試せます。'});job.cancelled=true;job.cancelWait?.();if(job.controller)job.controller.abort(reason);else{clearTimeout(job.timer);requests.delete(job.id);job.reject(reason);}reads.delete(job);}void rpc('cancelReads').catch(()=>{});notify();};
-  return {current,cancel,sharedInfo:folder=>rpc('sharedConnection',{root:folder.desktopToken}),recoverShared:(folder,revision)=>rpc('recoverSharedConnection',{root:folder.desktopToken,revision}),share:async(folder,revision)=>record(await rpc('shareConnection',{root:folder.desktopToken,revision})),fromPath:async path=>desktopHost.attach(record(await rpc('selectPath',{path})).handle),fromDrop:async files=>desktopHost.attach(record(await rpc('dropFolder',{},files)).handle),get pending(){return reads.size;},attach(h){if(!h)return h;h.cancelReads=cancel;Object.defineProperty(h,'pendingReads',{get:()=>reads.size,configurable:true});return h;}};
+  return {current,cancel,playerWindow:(open,title)=>rpc('playerWindow',{open,title}),playerWindowState:()=>rpc('playerWindowState'),closePlayerWindow:()=>rpc('closePlayerWindow'),sharedInfo:folder=>rpc('sharedConnection',{root:folder.desktopToken}),recoverShared:(folder,revision)=>rpc('recoverSharedConnection',{root:folder.desktopToken,revision}),share:async(folder,revision)=>record(await rpc('shareConnection',{root:folder.desktopToken,revision})),fromPath:async path=>desktopHost.attach(record(await rpc('selectPath',{path})).handle),fromDrop:async files=>desktopHost.attach(record(await rpc('dropFolder',{},files)).handle),get pending(){return reads.size;},attach(h){if(!h)return h;h.cancelReads=cancel;Object.defineProperty(h,'pendingReads',{get:()=>reads.size,configurable:true});return h;}};
 })();
 const desktopOriginalNativeFolder=nativeTools.nativeFolder;
 nativeTools.cancelFolderReads=()=>desktopHost.cancel();
@@ -3158,6 +3158,43 @@ document.getElementById('desktopShareConnection')?.addEventListener('click',()=>
   });
 });
 
+function installDesktopPlayerWindow(host){
+  const dialog=document.getElementById('player'),title=document.getElementById('playerTitle');
+  if(!dialog||!title)return;
+  let last='',revision=0,returning=null;
+  const sync=()=>{
+    const open=dialog.open&&(typeof openedGame==='undefined'||openedGame?.kind!=='exe');
+    const name=title.textContent.trim().slice(0,160)||'ゲーム',key=JSON.stringify([open,name]);
+    if(last===key)return;last=key;const attempt=++revision;
+    Promise.resolve().then(async()=>{
+      if(!open&&document.fullscreenElement)await document.exitFullscreen();
+      if(attempt!==revision)return;
+      return host.playerWindow(open,name);
+    }).catch(error=>{
+      if(attempt!==revision)return;last='';
+      const message='プレイ用ウィンドウを変更できませんでした：'+error.message;
+      const output=document.getElementById('playerStatus');if(output)output.textContent=message;
+    });
+  };
+  window.gamePortalReturnToLibrary=()=>{
+    if(returning)return returning;
+    returning=(async()=>{
+    const other=document.querySelector('dialog[open]:not(#player)');
+    if(other||(typeof hasEditChanges==='function'&&hasEditChanges())){
+      const output=document.getElementById('playerStatus');if(output)output.textContent='開いている操作と未保存の編集を確認してから、ゲーム一覧へ戻ってください。';
+      return false;
+    }
+    if(document.fullscreenElement)await document.exitFullscreen();
+    await document.getElementById('closePlayer').onclick();
+    return !dialog.open;
+    })().catch(error=>{const output=document.getElementById('playerStatus');if(output)output.textContent='一覧へ戻れませんでした：'+error.message;return false;}).finally(()=>{returning=null;});
+    return returning;
+  };
+  const observer=new MutationObserver(sync);
+  observer.observe(dialog,{attributes:true,attributeFilter:['open','hidden'],childList:true,characterData:true,subtree:true});
+  sync();
+}
+document.addEventListener('DOMContentLoaded',()=>installDesktopPlayerWindow(desktopHost),{once:true});
 const $ = selector => document.querySelector(selector);
 // A completed write may restore focus only if no newer interaction superseded it.
 let favoriteFocusRevision=0;
