@@ -7,22 +7,22 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { safePath, tagsFrom, gameId, validatePyxapp, embeddedPyxel, loadMetadata, saveMetadata, loadGameSettings, saveGameSettings, scan, readTree, postGame, loadLibraryId, ensureLibraryId } from '../offline-html/library.js';
 import { validSave, validSaveBackups } from '../offline-html/local-state.js';
-import { libraryViewKey,cardViewKey } from '../offline-html/sync.js';
+import { sameLibraryView,cardViewKey,sameCardView } from '../offline-html/sync.js';
 import { replaceGameContent,restoreGameContent,verifyContentUpdate } from '../offline-html/updates.js';
 
-test('shared library comparison ignores fresh handles but detects settings and identity errors',()=>{
+test('shared library comparison ignores fresh handles but detects settings and identity errors',async()=>{
   const game={path:'a.html',id:'one',title:'A',tags:['tag'],settingsText:null,handle:{},folder:{}};
-  assert.equal(libraryViewKey([game]),libraryViewKey([{...game,handle:{new:true},folder:{new:true}}]));
-  for(const change of [{title:'B'},{tags:['other']},{settingsText:'changed'},{settingsError:'duplicate ID'},{thumbnail:'image'},{description:'overview'}])assert.notEqual(libraryViewKey([game]),libraryViewKey([{...game,...change}]));
-  assert.notEqual(libraryViewKey([game]),libraryViewKey([]));
+  assert.equal(await sameLibraryView([game],[{...game,handle:{new:true},folder:{new:true}}]),true);
+  for(const change of [{title:'B'},{tags:['other']},{settingsText:'changed'},{settingsError:'duplicate ID'},{thumbnail:'image'},{description:'overview'}])assert.equal(await sameLibraryView([game],[{...game,...change}]),false);
+  assert.equal(await sameLibraryView([game],[]),false);
 });
 import { packageWebFiles } from '../assets/zip-upload.js';
 import { unpackPrivateZip } from '../assets/private-preview.js';
 import * as library from '../offline-html/library.js';
 test('card reuse ignores internal revisions and handles but detects visible changes',()=>{
  const game={id:'one',path:'index.html',title:'Game',tags:['2D'],kind:'html',description:'About',thumbnail:null,settingsError:''};
- assert.equal(cardViewKey(game),cardViewKey({...game,handle:{fresh:true},folder:{fresh:true},updatedAt:'later',settingsText:'changed',contentVersion:'new',instructions:'New controls'}));
- for(const change of [{title:'New'},{tags:['3D']},{thumbnail:'data:image/png;base64,abc'},{description:'Changed'},{settingsError:'broken'}])assert.notEqual(cardViewKey(game),cardViewKey({...game,...change}));
+ assert.equal(sameCardView(cardViewKey(game),{...game,handle:{fresh:true},folder:{fresh:true},updatedAt:'later',settingsText:'changed',contentVersion:'new',instructions:'New controls'}),true);
+ for(const change of [{title:'New'},{tags:['3D']},{thumbnail:'data:image/png;base64,abc'},{description:'Changed'},{settingsError:'broken'}])assert.equal(sameCardView(cardViewKey(game),{...game,...change}),false);
 });
 import { inspectLibrary, localResources, loadSettingsHistory, restoreSettingsHistory } from '../offline-html/maintenance.js';
 import * as preview from '../assets/private-preview.js';

@@ -500,7 +500,9 @@ async function syncLibrary({idle=false,automatic=false}={}){
       controller.signal.throwIfAborted();
       if(await read(()=>library.loadLibraryId(folder))!==nextId)throw new Error('読み込み中に保管フォルダーが変わりました。');
       if(root!==folder||busy||document.hidden||document.querySelector('dialog[open]:not(#player)')||idle&&!homeIsIdle()||automatic&&!homeIsQuiet())return;
-      const changed=syncTools.libraryViewKey(games)!==syncTools.libraryViewKey(nextGames)||localLibrary!==nextId;
+      const changed=localLibrary!==nextId||!await read(()=>syncTools.sameLibraryView(games,nextGames,{signal:controller.signal}));
+      controller.signal.throwIfAborted();
+      if(root!==folder||busy||document.hidden||document.querySelector('dialog[open]:not(#player)')||idle&&!homeIsIdle()||automatic&&!homeIsQuiet())return;
       metadata=nextMetadata;games=nextGames;localLibrary=nextId;
       if(changed){await render();updatePlayerInfo();writeControls();}
       if(idle){controller.signal.throwIfAborted();await syncAllSaves(controller.signal);}
@@ -742,7 +744,7 @@ async function render() {
   $('#emptyPost').hidden=!root||games.length>0||!editingEnabled;
   for (const game of matches.slice(0,renderLimit)) {
     const cached=cardCache.get(game.path);
-    if(cached&&!cached.thumbnailFailed&&(cached.game===game||cached.viewKey===syncTools.cardViewKey(game))){cached.game=game;cardCache.delete(game.path);cardCache.set(game.path,cached);const favorite=cached.node.querySelector('.favorite-button');if(favorite)updateFavoriteButton(favorite,game);visibleCards.push(cached.node);continue;}
+    if(cached&&!cached.thumbnailFailed&&syncTools.sameCardView(cached.viewKey,game)){cached.game=game;cardCache.delete(game.path);cardCache.set(game.path,cached);const favorite=cached.node.querySelector('.favorite-button');if(favorite)updateFavoriteButton(favorite,game);visibleCards.push(cached.node);continue;}
     const article = document.createElement('article'); article.className = 'card';
     const cover = document.createElement('div'); cover.className = 'cover'; cover.textContent = '▶\uFE0E';let thumbnailFailed=false;
     if (typeof game.thumbnail === 'string') { const img = document.createElement('img'); img.src = game.thumbnail; img.alt = ''; cover.replaceChildren(img); }

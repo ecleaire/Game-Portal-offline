@@ -15,9 +15,9 @@ try{for(const edition of ['creator','player']){
  await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);
  const identity=await page.evaluate(()=>({library:localLibrary,game:games[0].id}));
  // Each read can stall on a disconnected disk. A play click must stop waiting.
- for(const stage of ['compatibility','loadLibraryId','loadMetadata','scan']){
+ for(const stage of ['compatibility','loadLibraryId','loadMetadata','scan','compare']){
   await page.evaluate(stage=>{
-   window.auditOwner=stage==='compatibility'?compatibilityTools:library;window.auditKey=stage==='compatibility'?'checkCompatibility':stage;window.auditOriginal=auditOwner[auditKey];window.auditRelease=null;
+   window.auditOwner=stage==='compatibility'?compatibilityTools:stage==='compare'?syncTools:library;window.auditKey=stage==='compatibility'?'checkCompatibility':stage==='compare'?'sameLibraryView':stage;window.auditOriginal=auditOwner[auditKey];window.auditRelease=null;
    let stalled=false;auditOwner[auditKey]=async(...args)=>{if(!stalled){stalled=true;await new Promise(resolve=>window.auditRelease=resolve);}return auditOriginal(...args);};
    lastHomeActivity=performance.now()-HOME_IDLE_MS-1;void syncLibrary({idle:true});
   },stage);
@@ -50,6 +50,6 @@ try{for(const edition of ['creator','player']){
  assert.equal(await page.evaluate(()=>manualScanSignal.aborted),true);
  await page.evaluate(()=>{library.scan=originalManualScan;releaseManualScan();});
  assert.deepEqual(await page.evaluate(()=>({library:localLibrary,game:games[0].id})),identity);
- assert.deepEqual(errors,[]);console.log('Sync cancellation passed ('+edition+'): stalled compatibility/identity/metadata/scan/save-directory reads release UI and play locks; manual folder selection forwards its abort signal; late results preserve library identity.');
+ assert.deepEqual(errors,[]);console.log('Sync cancellation passed ('+edition+'): stalled compatibility/identity/metadata/scan/comparison/save-directory reads release UI and play locks; manual folder selection forwards its abort signal; late results preserve library identity.');
  }finally{await context.close();}
 }}finally{await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:200});}
