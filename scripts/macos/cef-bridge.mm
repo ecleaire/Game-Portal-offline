@@ -224,6 +224,7 @@ extern "C" bool portal_cef_open(void* parent, const char* address) {
   return CefBrowserHost::CreateBrowser(window, new PortalClient(), portal_url, settings, extra, nullptr);
 }
 extern "C" void portal_cef_evaluate(const char* text) { if (portal_browser && PortalTrusted(portal_browser->GetMainFrame())) portal_browser->GetMainFrame()->ExecuteJavaScript(text, portal_url, 0); }
+extern "C" void portal_cef_focus() { if (portal_browser) portal_browser->GetHost()->SetFocus(true); }
 extern "C" void portal_cef_resize() { if (portal_browser) { NSView* view = (__bridge NSView*)portal_browser->GetHost()->GetWindowHandle(); [view setFrame:[[view superview] bounds]]; } }
 extern "C" void portal_cef_close() { portal_closing = true; if (portal_browser) portal_browser->GetHost()->CloseBrowser(true); else PortalNotice("closed"); }
 extern "C" void portal_cef_shutdown() { portal_running.store(false); [portal_timer invalidate]; portal_timer = nil; portal_browser = nullptr; CefShutdown(); portal_library.reset(); }

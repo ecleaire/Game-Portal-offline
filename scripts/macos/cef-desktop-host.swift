@@ -15,6 +15,7 @@ let desktopLowResource: Bool = {
 @_silgen_name("portal_cef_initialize") func portal_cef_initialize(_ framework: UnsafePointer<CChar>, _ helper: UnsafePointer<CChar>, _ profile: UnsafePointer<CChar>, _ bundle: UnsafePointer<CChar>, _ callback: @convention(c) (UnsafePointer<CChar>?) -> Void) -> Bool
 @_silgen_name("portal_cef_open") func portal_cef_open(_ parent: UnsafeMutableRawPointer, _ url: UnsafePointer<CChar>) -> Bool
 @_silgen_name("portal_cef_evaluate") func portal_cef_evaluate(_ script: UnsafePointer<CChar>)
+@_silgen_name("portal_cef_focus") func portal_cef_focus()
 @_silgen_name("portal_cef_resize") func portal_cef_resize()
 @_silgen_name("portal_cef_close") func portal_cef_close()
 @_silgen_name("portal_cef_shutdown") func portal_cef_shutdown()
@@ -39,6 +40,9 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var contextReady = false, browserOpening = false
     var hasBundledFramework: Bool { FileManager.default.fileExists(atPath: Bundle.main.bundleURL.appendingPathComponent("Contents/Frameworks/Chromium Embedded Framework.framework/Chromium Embedded Framework").path) }
     var pendingWrites = 0
+    var playerWindow: NSWindow?, playerClosePending = false, playerReturnPending = false, playerFullscreenExiting = false
+    var playerCloseGeneration = 0, playerWindowGeneration = 0
+    var activeWindow: NSWindow { return playerWindow ?? window }
     var fullscreenFromGame = false
     var installedProcess: Process?
     var instanceLease: DesktopInstanceLease?
@@ -142,7 +146,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
         appMenu.addItem(withTitle: "GAME PORTALを終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"); appItem.submenu = appMenu; main.addItem(appItem)
         let editItem = NSMenuItem(), edit = NSMenu(title: "編集")
         for (title, action, key) in [("元に戻す", "undo:", "z"), ("切り取り", "cut:", "x"), ("コピー", "copy:", "c"), ("貼り付け", "paste:", "v"), ("すべて選択", "selectAll:", "a")] { edit.addItem(withTitle: title, action: Selector(action), keyEquivalent: key) }; editItem.submenu = edit; main.addItem(editItem)
-        let windowItem = NSMenuItem(), windowMenu = NSMenu(title: "ウィンドウ"); windowMenu.addItem(withTitle: "最小化", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"); windowItem.submenu = windowMenu; main.addItem(windowItem); NSApplication.shared.mainMenu = main
+        let windowItem = NSMenuItem(), windowMenu = NSMenu(title: "ウィンドウ"); windowMenu.addItem(withTitle: "最小化", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"); windowMenu.addItem(withTitle: "閉じる", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"); windowItem.submenu = windowMenu; main.addItem(windowItem); NSApplication.shared.mainMenu = main; NSApplication.shared.windowsMenu = windowMenu
     }
     func respond(_ id: Int, _ result: Any?, _ error: Error? = nil) {
         var value: [String: Any] = ["id": id, "ok": error == nil, "value": result ?? NSNull()]
@@ -172,15 +176,17 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
             case "closeRequested": requestClose()
             case "folderDrag": droppedFolder = ((data["text"] as? String ?? ""), Date())
             case "fullscreen":
-                let active = window.styleMask.contains(.fullScreen)
-                if data["text"] as? String == "true" { if !active { fullscreenFromGame = true; window.toggleFullScreen(nil) } }
-                else if fullscreenFromGame { fullscreenFromGame = false; if active { window.toggleFullScreen(nil) } }
+                guard let target = playerWindow ?? window else { return }
+                let active = target.styleMask.contains(.fullScreen)
+                if data["text"] as? String == "true" { if !active { fullscreenFromGame = true; target.toggleFullScreen(nil) } }
+                else if fullscreenFromGame { fullscreenFromGame = false; if active { if target === playerWindow { playerFullscreenExiting = true }; target.toggleFullScreen(nil) } }
             case "loadError": if testMode { fail(DesktopError(data["text"] as? String ?? "Load failed")) } else { notice("画面を読み込めませんでした", data["text"] as? String ?? "アプリを開き直してください。") }
             case "consoleError": fputs("GAME PORTAL renderer: \(data["text"] as? String ?? "")\n", stderr)
             default: break
             }; return
         }
         guard let id = data["id"] as? Int, id > 0 else { return }; let op = data["op"] as? String ?? ""
+        if op == "playerCloseSettled" { if data["generation"] as? Int == playerCloseGeneration { playerClosePending = false }; return }
         if op == "testResult", testMode {
             do { if let result = resultFile { try files.atomic(desktopJSON(data["value"] ?? [:]), result) } } catch { fail(error); return }
             closing = true; portal_cef_close(); return
@@ -189,9 +195,12 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
             guard closePending else { return }; closeTimer?.cancel(); closePending = false
             if data["allowed"] as? Bool == true { finishClose() } else { notice("保存を完了してください", "処理中または未保存の内容があります。画面に戻って保存を完了してください。") }; return
         }
+        if op == "playerWindow" { setPlayerWindow(data["open"] as? Bool == true, title: data["title"] as? String ?? "ゲーム"); respond(id, playerWindowState()); return }
+        if op == "playerWindowState" { respond(id, playerWindowState()); return }
+        if op == "closePlayerWindow" { playerWindow?.performClose(nil); respond(id, playerWindowState()); return }
         if op == "select" {
             let panel = NSOpenPanel(); panel.title = "ゲームの保存先を選ぶ"; panel.prompt = "選ぶ"; panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.canCreateDirectories = desktopEdition == "creator"; panel.allowsMultipleSelection = false
-            panel.beginSheetModal(for: window) { response in
+            panel.beginSheetModal(for: activeWindow) { response in
                 guard response == .OK, let url = panel.url else { self.respond(id, NSNull()); return }
                 self.operate(["op": "selectPath", "path": url.path], id: id)
             }; return
@@ -212,10 +221,64 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
             } catch { fail(error) }
         }
     }
+    func playerWindowState() -> [String: Any] {
+        return ["open": playerWindow != nil, "mainViewInPlayer": playerWindow != nil && view?.window === playerWindow, "launcherVisible": window?.isVisible ?? false, "instance": playerWindowGeneration, "closePending": playerClosePending, "fullscreen": playerWindow?.styleMask.contains(.fullScreen) ?? false]
+    }
+    func setPlayerWindow(_ open: Bool, title: String) {
+        guard engineReady, let content = view, window != nil else { return }
+        if open {
+            playerReturnPending = false
+            if playerWindow == nil {
+                let game = NSWindow(contentRect: content.bounds, styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+                game.isReleasedWhenClosed = false; game.minSize = NSSize(width: 640, height: 480); game.delegate = self; game.center()
+                let placeholder = NSView(frame: content.bounds)
+                let label = NSTextField(labelWithString: "ゲームを別ウィンドウで表示しています。")
+                label.font = NSFont.systemFont(ofSize: 16)
+                let focus = NSButton(title: "プレイ画面へ", target: self, action: #selector(focusPlayerWindow))
+                let back = NSButton(title: "ゲーム一覧へ", target: self, action: #selector(returnToLibrary))
+                let stack = NSStackView(views: [label, focus, back]); stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 16
+                stack.frame = NSRect(x: 32, y: max(32, content.bounds.height - 180), width: max(200, content.bounds.width - 64), height: 148); stack.autoresizingMask = [.width, .minYMargin]; placeholder.addSubview(stack)
+                playerWindow = game; playerWindowGeneration += 1; window.contentView = placeholder; game.contentView = content
+                game.makeKeyAndOrderFront(nil); game.makeFirstResponder(content); portal_cef_resize(); portal_cef_focus()
+            }
+            playerWindow?.title = "GAME PORTAL — " + String(title.filter { !$0.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) }.prefix(160))
+        } else if let game = playerWindow {
+            if game.styleMask.contains(.fullScreen) {
+                playerReturnPending = true
+                if !playerFullscreenExiting { playerFullscreenExiting = true; game.toggleFullScreen(nil) }
+                return
+            }
+            finishPlayerReturn()
+        }
+    }
+    func finishPlayerReturn() {
+        guard let game = playerWindow, let content = view else { return }
+        playerReturnPending = false; playerFullscreenExiting = false; fullscreenFromGame = false
+        game.contentView = nil; window.contentView = content; playerWindow = nil
+        game.delegate = nil; game.close(); window.makeKeyAndOrderFront(nil); window.makeFirstResponder(content); portal_cef_resize(); portal_cef_focus()
+    }
+    @objc func focusPlayerWindow() { playerWindow?.deminiaturize(nil); playerWindow?.makeKeyAndOrderFront(nil); if playerWindow != nil { portal_cef_focus() } }
+    @objc func returnToLibrary() { requestPlayerReturn() }
+    func requestPlayerReturn() {
+        guard playerWindow != nil, !playerClosePending, !closing else { return }
+        focusPlayerWindow()
+        if pendingWrites > 0 || files.hasWriters { notice("保存中です", "保存が完了してから一覧へ戻ってください。"); return }
+        playerClosePending = true; playerCloseGeneration += 1; let generation = playerCloseGeneration
+        portal_cef_evaluate("Promise.resolve(window.gamePortalReturnToLibrary?.()).finally(()=>window.__portalSend(JSON.stringify({id:2147483645,op:'playerCloseSettled',generation:\(generation)})))")
+        // A stalled renderer must leave the native game window open.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { if self.playerCloseGeneration == generation { self.playerClosePending = false } }
+    }
     func windowDidResize(_ notification: Notification) { if engineReady { portal_cef_resize() } }
-    func windowWillExitFullScreen(_ notification: Notification) { fullscreenFromGame = false; if engineReady { portal_cef_evaluate("if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});") } }
-    func windowShouldClose(_ sender: NSWindow) -> Bool { if closing { return true }; requestClose(); return false }
+    func windowWillExitFullScreen(_ notification: Notification) {
+        if let sender = notification.object as? NSWindow, sender === playerWindow { playerFullscreenExiting = true }
+        fullscreenFromGame = false; if engineReady { portal_cef_evaluate("if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});") }
+    }
+    func windowDidExitFullScreen(_ notification: Notification) {
+        if let sender = notification.object as? NSWindow, sender === playerWindow { playerFullscreenExiting = false; if playerReturnPending { finishPlayerReturn() } }
+    }
+    func windowShouldClose(_ sender: NSWindow) -> Bool { if closing { return true }; if sender === playerWindow { requestPlayerReturn(); return false }; requestClose(); return false }
     func windowWillClose(_ notification: Notification) {
+        guard let sender = notification.object as? NSWindow, sender === window else { return }
         // CEF owns a child NSView. Tear down the host view hierarchy so that
         // OnBeforeClose can finish before shutting down the rendering engine.
         window?.contentView = nil; view = nil; window = nil
@@ -236,7 +299,7 @@ final class PortalDesktop: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if let process = installedProcess, process.isRunning { NSRunningApplication(processIdentifier: process.processIdentifier)?.activate(options: [.activateIgnoringOtherApps]); return true }
-        window?.makeKeyAndOrderFront(nil); return true
+        if playerWindow != nil { focusPlayerWindow() } else { window?.makeKeyAndOrderFront(nil) }; return true
     }
     func notice(_ title: String, _ message: String) { let alert = NSAlert(); alert.messageText = title; alert.informativeText = message; alert.runModal() }
     func fail(_ error: Error) {

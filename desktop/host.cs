@@ -46,12 +46,15 @@ internal static class DesktopProgram {
 
 internal sealed class DesktopForm : Form {
     readonly WebView2 view=new WebView2();readonly DesktopFiles files;readonly string profile,initialLibrary,ready;readonly int port;readonly bool testing;
+    Form playerHost,fullscreenHost;Panel playerNotice;bool returningPlayer,playerClosePending;int playerCloseGeneration,playerWindowGeneration;System.Windows.Forms.Timer playerCloseTimer;
+    System.Drawing.Rectangle fullscreenBounds;FormBorderStyle fullscreenBorder;FormWindowState fullscreenState;
+    Form ActiveHost {get{return playerHost!=null&&!playerHost.IsDisposed?playerHost:this;}}
     readonly byte[] page=DesktopProgram.Resource("GAME-PORTAL-DESKTOP.html");int nativeGames;
     internal DesktopForm(string profile,string library,int port,string ready,bool testing){
         this.profile=profile;this.initialLibrary=library;this.port=port;this.ready=ready;this.testing=testing;files=new DesktopFiles(profile,AppDomain.CurrentDomain.BaseDirectory);
         Text="GAME PORTAL "+(DesktopProgram.PlayerOnly?"プレイ専用":"クリエイター")+" __DESKTOP_VERSION__";Width=1280;Height=900;MinimumSize=new System.Drawing.Size(640,480);StartPosition=FormStartPosition.CenterScreen;
         if(testing){Opacity=0;ShowInTaskbar=false;}view.Dock=DockStyle.Fill;Controls.Add(view);Shown+=async(sender,eventArgs)=>await Initialize();
-        FormClosing+=OnClosing;
+        FormClosing+=OnClosing;FormClosed+=(sender,e)=>{if(playerCloseTimer!=null)playerCloseTimer.Dispose();if(playerHost!=null){closing=true;playerHost.Close();playerHost.Dispose();playerHost=null;}};
     }
     async Task Initialize(){
         try{
@@ -61,12 +64,13 @@ internal sealed class DesktopForm : Form {
             core.AddWebResourceRequestedFilter("*",CoreWebView2WebResourceContext.All);core.WebResourceRequested+=Resources;core.WebMessageReceived+=Message;
             core.NavigationStarting+=(sender,e)=>{if(e.Uri.Split('#')[0]!=DesktopProgram.AppUrl||files.HasWriters)e.Cancel=true;};
             core.NewWindowRequested+=(sender,e)=>{e.Handled=true;Uri url;if(e.IsUserInitiated&&Uri.TryCreate(e.Uri,UriKind.Absolute,out url)&&(url.Scheme=="https"||url.Scheme=="http"))try{Process.Start(url.AbsoluteUri);}catch(Exception){}};
+            core.ContainsFullScreenElementChanged+=(sender,e)=>SetPlayerFullscreen(core.ContainsFullScreenElement);
             core.PermissionRequested+=(sender,e)=>{e.State=CoreWebView2PermissionState.Deny;};
             core.ProcessFailed+=async(sender,e)=>{if(e.ProcessFailedKind==CoreWebView2ProcessFailedKind.RenderProcessExited||e.ProcessFailedKind==CoreWebView2ProcessFailedKind.BrowserProcessExited)await Task.Run(()=>files.ReleaseUncommitted());};
-            core.DownloadStarting+=(sender,e)=>{if(!e.DownloadOperation.Uri.StartsWith("blob:")){e.Cancel=true;return;}using(var dialog=new SaveFileDialog()){dialog.FileName=Path.GetFileName(e.ResultFilePath);if(dialog.ShowDialog(this)!=DialogResult.OK)e.Cancel=true;else e.ResultFilePath=dialog.FileName;}};
+            core.DownloadStarting+=(sender,e)=>{if(!e.DownloadOperation.Uri.StartsWith("blob:")){e.Cancel=true;return;}using(var dialog=new SaveFileDialog()){dialog.FileName=Path.GetFileName(e.ResultFilePath);if(dialog.ShowDialog(ActiveHost)!=DialogResult.OK)e.Cancel=true;else e.ResultFilePath=dialog.FileName;}};
             if(initialLibrary!=null){var root=await Task.Run(()=>files.Register(initialLibrary));await Task.Run(()=>files.Remember(root,!DesktopProgram.PlayerOnly));}
             core.Navigate(DesktopProgram.AppUrl);if(ready!=null)File.WriteAllText(ready,files.Serialize(new {ready=true,port=port}),new UTF8Encoding(false));
-        }catch(Exception error){MessageBox.Show(this,"起動できませんでした。Microsoft Edge WebView2 Runtimeを確認してください。\n"+error.Message,"GAME PORTAL",MessageBoxButtons.OK,MessageBoxIcon.Error);Close();}
+        }catch(Exception error){MessageBox.Show(ActiveHost,"起動できませんでした。Microsoft Edge WebView2 Runtimeを確認してください。\n"+error.Message,"GAME PORTAL",MessageBoxButtons.OK,MessageBoxIcon.Error);Close();}
     }
     async void Resources(object sender,CoreWebView2WebResourceRequestedEventArgs e){
         var deferral=e.GetDeferral();
@@ -105,10 +109,14 @@ internal sealed class DesktopForm : Form {
         try{
             if(e.WebMessageAsJson.Length>16384)throw new IOException("操作の内容が大きすぎます。");var data=files.Parse(e.WebMessageAsJson);object number;if(!data.TryGetValue("id",out number)||!(number is int)||(int)number<=0)throw new IOException("操作の番号を確認してください。");id=(int)number;
             string op=DesktopFiles.Text(data,"op");object value=null;
-            if(op=="closeReady"&&closePending){closePending=false;if(DesktopFiles.Flag(data,"allowed")){closing=true;Close();}else MessageBox.Show(this,"処理中または未保存の内容があります。保存を完了してから閉じてください。","GAME PORTAL");return;}
+            if(op=="playerCloseSettled"){object generation;if(data.TryGetValue("generation",out generation)&&generation is int&&(int)generation==playerCloseGeneration){playerClosePending=false;if(playerCloseTimer!=null)playerCloseTimer.Stop();}return;}
+            if(op=="closeReady"&&closePending){closePending=false;if(DesktopFiles.Flag(data,"allowed")){closing=true;Close();}else MessageBox.Show(ActiveHost,"処理中または未保存の内容があります。保存を完了してから閉じてください。","GAME PORTAL");return;}
             if(op=="closeWindow"){BeginInvoke(new Action(()=>Close()));return;}
-            if(op=="select"){
-                string chosen=DesktopFolderDialog.Choose(Handle);if(chosen!=null)value=files.Record(await Task.Run(()=>files.Register(chosen)));
+            if(op=="playerWindow"){SetPlayerWindow(DesktopFiles.Flag(data,"open"),DesktopFiles.Text(data,"title"));value=PlayerWindowState();}
+            else if(op=="playerWindowState")value=PlayerWindowState();
+            else if(op=="closePlayerWindow"){if(playerHost!=null)playerHost.Close();value=PlayerWindowState();}
+            else if(op=="select"){
+                string chosen=DesktopFolderDialog.Choose(ActiveHost.Handle);if(chosen!=null)value=files.Record(await Task.Run(()=>files.Register(chosen)));
             }else if(op=="dropFolder"){
                 if(e.AdditionalObjects==null||e.AdditionalObjects.Count!=1||!(e.AdditionalObjects[0] is CoreWebView2File))throw new IOException("保存先フォルダーを1つドラッグしてください。");
                 string chosen=((CoreWebView2File)e.AdditionalObjects[0]).Path;value=files.Record(await Task.Run(()=>files.Register(chosen)));
@@ -150,11 +158,46 @@ internal sealed class DesktopForm : Form {
             }catch(Exception error){result.TrySetException(error);}finally{if(game!=null){game.Dispose();Interlocked.Decrement(ref nativeGames);}if(held)lease.ReleaseMutex();if(lease!=null)lease.Dispose();}
         });thread.IsBackground=true;thread.Start();return result.Task;
     }
+    object PlayerWindowState(){return new {open=playerHost!=null&&!playerHost.IsDisposed,mainViewInPlayer=playerHost!=null&&view.Parent==playerHost,launcherVisible=Visible,instance=playerWindowGeneration,closePending=playerClosePending,fullscreen=playerHost!=null&&fullscreenHost==playerHost};}
+    void SetPlayerFullscreen(bool active){
+        if(active){if(fullscreenHost!=null)return;var target=ActiveHost;fullscreenHost=target;fullscreenBounds=target.WindowState==FormWindowState.Normal?target.Bounds:target.RestoreBounds;fullscreenBorder=target.FormBorderStyle;fullscreenState=target.WindowState;target.WindowState=FormWindowState.Normal;target.FormBorderStyle=FormBorderStyle.None;target.WindowState=FormWindowState.Maximized;}
+        else if(fullscreenHost!=null){var target=fullscreenHost;fullscreenHost=null;if(!target.IsDisposed){target.WindowState=FormWindowState.Normal;target.FormBorderStyle=fullscreenBorder;target.Bounds=fullscreenBounds;target.WindowState=fullscreenState;}}
+    }
+    void SetPlayerWindow(bool open,string title){
+        if(open){
+            if(playerHost==null){
+                var game=new Form {Width=Width,Height=Height,MinimumSize=new System.Drawing.Size(640,480),StartPosition=FormStartPosition.CenterScreen};playerHost=game;playerWindowGeneration++;
+                if(testing){game.Opacity=0;game.ShowInTaskbar=false;}
+                game.FormClosing+=async(sender,e)=>{if(closing||returningPlayer)return;e.Cancel=true;await RequestPlayerReturn();};
+                playerNotice=new Panel {Dock=DockStyle.Fill,Padding=new Padding(32)};
+                var layout=new FlowLayoutPanel {Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false};
+                layout.Controls.Add(new Label {Text="ゲームを別ウィンドウで表示しています。",AutoSize=true,Margin=new Padding(0,0,0,20)});
+                var focus=new Button {Text="プレイ画面へ",AutoSize=true};focus.Click+=(sender,e)=>{if(playerHost!=null){if(playerHost.WindowState==FormWindowState.Minimized)playerHost.WindowState=FormWindowState.Normal;playerHost.Activate();view.Focus();}};layout.Controls.Add(focus);
+                var back=new Button {Text="ゲーム一覧へ",AutoSize=true};back.Click+=async(sender,e)=>{await RequestPlayerReturn();};layout.Controls.Add(back);playerNotice.Controls.Add(layout);
+                Controls.Add(playerNotice);game.Controls.Add(view);view.Dock=DockStyle.Fill;playerNotice.BringToFront();game.Show();view.Focus();
+            }
+            playerHost.Text=String.IsNullOrWhiteSpace(title)?"GAME PORTAL — ゲーム":"GAME PORTAL — "+new String(title.Where(c=>!Char.IsControl(c)).Take(160).ToArray());
+        }else if(playerHost!=null){
+            SetPlayerFullscreen(false);var game=playerHost;returningPlayer=true;
+            try{Controls.Add(view);view.Dock=DockStyle.Fill;view.BringToFront();playerHost=null;if(playerNotice!=null){Controls.Remove(playerNotice);playerNotice.Dispose();playerNotice=null;}game.Close();game.Dispose();Activate();view.Focus();}
+            finally{returningPlayer=false;}
+        }
+    }
+    async Task RequestPlayerReturn(){
+        if(playerHost==null||playerClosePending||closing)return;playerClosePending=true;
+        try{
+            playerHost.Activate();if(files.HasWriters){playerClosePending=false;MessageBox.Show(ActiveHost,"保存処理中です。完了してから一覧へ戻ってください。","GAME PORTAL");return;}
+            int generation=++playerCloseGeneration;
+            if(playerCloseTimer==null){playerCloseTimer=new System.Windows.Forms.Timer {Interval=15000};playerCloseTimer.Tick+=(sender,e)=>{playerCloseTimer.Stop();playerClosePending=false;};}playerCloseTimer.Stop();playerCloseTimer.Start();
+            await view.CoreWebView2.ExecuteScriptAsync("Promise.resolve(window.gamePortalReturnToLibrary?.()).finally(()=>chrome.webview.postMessage({id:2147483645,op:'playerCloseSettled',generation:"+generation+"}))");
+        }
+        catch(Exception error){playerClosePending=false;if(playerCloseTimer!=null)playerCloseTimer.Stop();MessageBox.Show(ActiveHost,"ゲーム一覧へ戻れませんでした。プレイ画面の保存状態を確認してください。\n"+error.Message,"GAME PORTAL");}
+    }
     bool closing,closePending;
     async void OnClosing(object sender,FormClosingEventArgs e){
-        if(closing||view.CoreWebView2==null)return;e.Cancel=true;if(files.HasWriters){MessageBox.Show(this,"保存処理中です。完了してから閉じてください。","GAME PORTAL");return;}if(nativeGames>0){MessageBox.Show(this,"起動中のEXEゲームを終了してから閉じてください。","GAME PORTAL");return;}if(closePending)return;closePending=true;
+        if(closing||view.CoreWebView2==null)return;e.Cancel=true;if(files.HasWriters){MessageBox.Show(ActiveHost,"保存処理中です。完了してから閉じてください。","GAME PORTAL");return;}if(nativeGames>0){MessageBox.Show(ActiveHost,"起動中のEXEゲームを終了してから閉じてください。","GAME PORTAL");return;}if(closePending)return;closePending=true;
         try{
             await view.CoreWebView2.ExecuteScriptAsync("(async()=>{let allowed=false;try{if(typeof busy==='undefined')allowed=true;else if(!busy&&!syncPromise&&!hasEditChanges()&&await flushSave()){stopPlayer();allowed=true;}}finally{chrome.webview.postMessage({id:2147483647,op:'closeReady',allowed});}})()");
-        }catch{closePending=false;if(!files.HasWriters&&MessageBox.Show(this,"画面の保存状態を確認できません。未保存の入力は失われます。終了しますか？","GAME PORTAL",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2)==DialogResult.Yes){closing=true;Close();}}
+        }catch{closePending=false;if(!files.HasWriters&&MessageBox.Show(ActiveHost,"画面の保存状態を確認できません。未保存の入力は失われます。終了しますか？","GAME PORTAL",MessageBoxButtons.YesNo,MessageBoxIcon.Warning,MessageBoxDefaultButton.Button2)==DialogResult.Yes){closing=true;Close();}}
     }
 }
