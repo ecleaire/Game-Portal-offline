@@ -21,12 +21,22 @@ export function installDesktopPlayerWindow(host){
   window.gamePortalReturnToLibrary=()=>{
     if(returning)return returning;
     returning=(async()=>{
-    const other=document.querySelector('dialog[open]:not(#player)');
-    if(other||(typeof hasEditChanges==='function'&&hasEditChanges())){
+    if(!dialog.open)return true;
+    const game=typeof openedGame==='undefined'?null:openedGame;
+    const session=typeof activePlay==='undefined'?null:activePlay;
+    const request=typeof playerRequest==='undefined'?null:playerRequest;
+    const blocked=()=>{
+      if(!document.querySelector('dialog[open]:not(#player)')&&!(typeof hasEditChanges==='function'&&hasEditChanges()))return false;
       const output=document.getElementById('playerStatus');if(output)output.textContent='開いている操作と未保存の編集を確認してから、ゲーム一覧へ戻ってください。';
-      return false;
-    }
+      return true;
+    };
+    if(blocked())return false;
     if(document.fullscreenElement)await document.exitFullscreen();
+    // Leaving native fullscreen is asynchronous. A newer reload, game or edit
+    // must not be replaced by this older close request when the animation ends.
+    if(!dialog.open)return true;
+    if(game!==(typeof openedGame==='undefined'?null:openedGame)||session!==(typeof activePlay==='undefined'?null:activePlay)||request!==(typeof playerRequest==='undefined'?null:playerRequest))return false;
+    if(blocked())return false;
     await document.getElementById('closePlayer').onclick();
     return !dialog.open;
     })().catch(error=>{const output=document.getElementById('playerStatus');if(output)output.textContent='一覧へ戻れませんでした：'+error.message;return false;}).finally(()=>{returning=null;});

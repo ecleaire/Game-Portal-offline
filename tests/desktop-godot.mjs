@@ -19,6 +19,20 @@ try{for(const [role,name]of[['クリエイター用','GAME-PORTAL'],['プレイ�
   await page.locator('#editPlaying').click();const title=await page.locator('#editTitle').inputValue();await page.locator('#editTitle').fill('Unsaved window draft');await page.evaluate(()=>desktopHost.closePlayerWindow());await page.waitForFunction(async()=>!(await desktopHost.playerWindowState()).closePending);await expect(page.locator('#edit')).toBeVisible();await expect(page.locator('#editTitle')).toHaveValue('Unsaved window draft');expect((await page.evaluate(()=>desktopHost.playerWindowState())).open).toBe(true);await page.locator('#editTitle').fill(title);await page.locator('#cancelEdit').click();await expect(page.locator('#edit')).toBeHidden();
  }
 
+ // Hold the native fullscreen exit after the actual transition. A later
+ // reload must win over the earlier OS close request in both shipped roles.
+ await page.locator('#fullscreen').click();await page.waitForFunction(()=>!!document.fullscreenElement);
+ await page.evaluate(()=>{window.normalFullscreenExit=document.exitFullscreen;document.exitFullscreen=async function(){await normalFullscreenExit.call(this);await new Promise(resolve=>window.finishNativeFullscreenExit=resolve);};});
+ try{
+  await page.evaluate(()=>desktopHost.closePlayerWindow());await page.waitForFunction(()=>!!window.finishNativeFullscreenExit&&!document.fullscreenElement);
+  const readyBeforeCloseRace=logs.filter(line=>line.includes('GODOT_FIXTURE_READY')).length;
+  await page.locator('#reloadPlaying').click();await expect.poll(()=>logs.filter(line=>line.includes('GODOT_FIXTURE_READY')).length,{timeout:60000}).toBeGreaterThan(readyBeforeCloseRace);
+  await page.evaluate(()=>{window.retainedReloadSession=activePlay;finishNativeFullscreenExit();});
+  await page.waitForFunction(async()=>!(await desktopHost.playerWindowState()).closePending);
+  await expect(page.locator('#player')).toBeVisible();expect(await page.evaluate(()=>!!activePlay&&activePlay===retainedReloadSession)).toBe(true);
+  console.log('NATIVE FULLSCREEN CLOSE CANNOT OVERRIDE LATER RELOAD:',role);
+ }finally{await page.evaluate(()=>{document.exitFullscreen=normalFullscreenExit;window.finishNativeFullscreenExit?.();delete window.finishNativeFullscreenExit;});}
+
  // Simulate the reported WebView2 response-stream failure on the real EXE,
  // while retaining native filesystem IO and the actual Godot Web export.
  await page.evaluate(()=>{window.normalReadFetch=fetch;window.fallbackAttempts=0;window.fetch=(url,...args)=>{const target=new URL(url,location.href);if(target.pathname==='/io/read'&&target.searchParams.get('path')==='Godot.zip'){fallbackAttempts++;return Promise.reject(new TypeError('Failed to fetch'));}return normalReadFetch(url,...args);};});

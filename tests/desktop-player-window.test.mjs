@@ -37,3 +37,16 @@ test('desktop page serialization is byte-identical for Windows and Unix function
  try{installDesktopPlayerWindow.toString=()=>original.call(installDesktopPlayerWindow).replaceAll('\r\n','\n').replaceAll('\n','\r\n');assert.equal(desktopPage(html,bootstrap,''),baseline);}
  finally{delete installDesktopPlayerWindow.toString;}
 });
+
+for(const change of ['reload','game','dialog'])test('native close rechecks '+change+' after pending fullscreen exit',async()=>{
+ const f=fixture();f.nodes.player.open=true;f.context.playerRequest=null;f.context.activePlay={};
+ let release;f.context.document.fullscreenElement={};f.context.document.exitFullscreen=()=>new Promise(resolve=>release=()=>{f.context.document.fullscreenElement=null;resolve();});
+ const pending=f.context.window.gamePortalReturnToLibrary();
+ if(change==='reload')f.context.playerRequest={kind:'reload'};
+ if(change==='game'){f.context.openedGame={kind:'html',id:'next'};f.context.activePlay={};}
+ if(change==='dialog')f.state.other={id:'edit'};
+ release();assert.equal(await pending,false);assert.equal(f.state.closes,0);assert.equal(f.nodes.player.open,true);
+});
+test('a late native close does not start a save or close operation after returning to the list',async()=>{
+ const f=fixture();assert.equal(await f.context.window.gamePortalReturnToLibrary(),true);assert.equal(f.state.closes,0);
+});
