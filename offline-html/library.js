@@ -154,19 +154,33 @@ export async function saveGameSettings(root, game, values, options={}) {
   const attempt={schema:1,id:game.id,gamePath:game.path,historyName:crypto.randomUUID()+'.json',expectedHash:await settingsDigest(text),beforeHash:current.text===null?null:await settingsDigest(current.text),kind:options.kind||'edit',uploadFolder:options.uploadFolder||null};
   const parts = safePath(game.path + '.gameportal.json'); let folder = root;
   for (const part of parts.slice(0, -1)) folder = await folder.getDirectoryHandle(part);
-  const handle = await folder.getFileHandle(parts.at(-1), { create: true });
-  let writer;
-  try { writer = await handle.createWritable({ mode: 'exclusive' }); }
-  catch (error) { if (error.name === 'NoModificationAllowedError') throw new Error('このゲームの設定は別の画面で保存中です。少し待って再読み込みしてください。'); throw error; }
-  let closing=false,tracked=false;
-  try {
-    const live = await handle.getFile(), actual = await live.text();
-    if ((current.text === null ? actual !== '' : actual !== current.text)) throw new Error('このゲームの設定が更新されています。「再読み込み」してから編集してください。');
+  let tracked=false;
+  const track=async()=>{
     const history = { schema: 1, gamePath: game.path, before: current.text, after: text, savedAt: new Date().toISOString() };
     await writeFile(root, `.gameportal/history/${game.id}/${attempt.historyName}`, JSON.stringify(history, null, 2));
     await settingsSaveObserver('started',attempt);tracked=true;
+  };
+  // Creating a file handle can leave an empty file even when opening or writing
+  // its stream fails. Record the initial intent before creating that file so
+  // every ambiguous placeholder has the existing explicit recovery path.
+  const initial=current.text===null;
+  if(initial)await track();
+  let handle,writer;
+  try {
+    handle=await folder.getFileHandle(parts.at(-1), { create: true });
+    writer=await handle.createWritable({ mode: 'exclusive' });
+  } catch (error) {
+    if(initial)throw unconfirmedSettingsSave(attempt,error);
+    if(error.name==='NoModificationAllowedError')throw new Error('このゲームの設定は別の画面で保存中です。少し待って再読み込みしてください。');
+    throw error;
+  }
+  let closing=false;
+  try {
+    const live = await handle.getFile(), actual = await live.text();
+    if ((initial ? actual !== '' : actual !== current.text)) throw new Error('このゲームの設定が更新されています。「再読み込み」してから編集してください。');
+    if(!tracked)await track();
     await writer.write(text);closing=true;await writer.close();
-  } catch (error) { await writer.abort().catch(() => {});if(closing)throw unconfirmedSettingsSave(attempt,error);if(tracked)await settingsSaveObserver('cancelled',attempt).catch(()=>{});throw error; }
+  } catch (error) { await writer.abort().catch(() => {});if(closing||initial)throw unconfirmedSettingsSave(attempt,error);if(tracked)await settingsSaveObserver('cancelled',attempt).catch(()=>{});throw error; }
   try{if(await(await handle.getFile()).text()!==text)throw new Error('保存後の設定が一致しません。');}
   catch(error){throw unconfirmedSettingsSave(attempt,error);}
   await settingsSaveObserver('confirmed',attempt).catch(()=>{});

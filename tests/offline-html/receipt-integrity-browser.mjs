@@ -22,5 +22,32 @@ try{
  await page.evaluate(()=>Promise.all([localState.trackSettingsReceipt(receipt),localState.trackSettingsReceipt({...receipt,id:'d'.repeat(32),gamePath:'Other.html',historyName:'def.json'})]));assert.equal(await page.evaluate(async()=>(await localState.loadSettingsReceipts()).length),2);
  assert.equal(await page.evaluate(async()=>{const before=await rawReceipt('readonly');let rejected=false;try{await localState.trackSettingsReceipt({...receipt,historyName:'fed.json'},false,{...receipt,historyName:'bad.json'});}catch{rejected=true;}return rejected&&JSON.stringify(before)===JSON.stringify(await rawReceipt('readonly'));}),true);
  assert.equal(await page.evaluate(async()=>{const key=['save-backups',receipt.libraryId,receipt.id];await localState.writeLocalSave(receipt.libraryId,receipt.id,{score:'keep'});await rawReceipt('readwrite',new Array(1),key);let blocked=0;try{await localState.backupLocalSave(receipt.libraryId,receipt.id,'manual');}catch{blocked++;}try{await localState.restoreLocalSaveBackup(receipt.libraryId,receipt.id,'missing');}catch{blocked++;}const after=await rawReceipt('readonly',undefined,key),save=await localState.loadLocalSave(receipt.libraryId,receipt.id);return blocked===2&&after.length===1&&Object.keys(after).length===0&&save.score==='keep';}),true);
- assert.deepEqual(errors,[]);console.log('Receipt integrity passed: malformed/falsy/sparse records preserved on read and write failure, missing storage initializes, repeated writes are idempotent, concurrent records survive, stale replacement preserves existing records.');
+ // Exercise the visible recovery path with actual OPFS files and durable
+ // browser receipts when the very first settings writer cannot be opened.
+ await page.evaluate(async()=>{
+  await rawReceipt('readwrite',undefined);
+  window.initialSettingsRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('initial-settings-recovery',{create:true});
+  const w=await(await initialSettingsRoot.getFileHandle('Fresh.html',{create:true})).createWritable();await w.write('<h1>Original game</h1>');await w.close();
+  window.showDirectoryPicker=async()=>initialSettingsRoot;
+ });
+ await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy&&!!root);await page.locator('.game-title-link').click();await page.waitForFunction(()=>!busy);await page.locator('#editPlaying').click();
+ await page.locator('#editTitle').fill('Recovered first edit');await page.locator('#editEnvironment').fill('HTML');
+ await page.evaluate(()=>{
+  const folder=root,original=folder.getFileHandle.bind(folder);
+  folder.getFileHandle=async(name,options)=>{const handle=await original(name,options);if(name==='Fresh.html.gameportal.json')handle.createWritable=async()=>{throw new DOMException('Initial writer blocked','NotAllowedError');};return handle;};
+  window.restoreInitialSettingsWriter=()=>{folder.getFileHandle=original;};
+ });
+ await page.locator('#saveGameSettings').click();await expect(page.locator('#saveVerification')).toBeVisible();await page.waitForFunction(()=>!busy);
+ assert.equal(await page.evaluate(async()=>(await localState.loadSettingsReceipts()).length),1);
+ assert.equal(await page.evaluate(async()=>await(await(await initialSettingsRoot.getFileHandle('Fresh.html.gameportal.json')).getFile()).text()),'');
+ await page.evaluate(()=>restoreInitialSettingsWriter());
+ // Recovery must survive losing the editor's in-memory values and handles.
+ await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});
+ await page.evaluate(async()=>{window.initialSettingsRoot=await(await navigator.storage.getDirectory()).getDirectoryHandle('initial-settings-recovery');window.showDirectoryPicker=async()=>initialSettingsRoot;});
+ if(!await page.evaluate(()=>!!root)){await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy&&!!root);}
+ await page.locator('#openSaveVerification').click();await page.locator('#verifySettingsSaves').click();await page.waitForFunction(()=>!busy);await expect(page.locator('[data-retry-settings]')).toBeVisible();
+ await page.locator('[data-retry-settings]').click();await page.waitForFunction(()=>!busy);await expect(page.locator('#edit')).toBeHidden();
+ const recovered=await page.evaluate(async()=>({settings:JSON.parse(await(await(await initialSettingsRoot.getFileHandle('Fresh.html.gameportal.json')).getFile()).text()),game:await(await(await initialSettingsRoot.getFileHandle('Fresh.html')).getFile()).text(),receipts:await localState.loadSettingsReceipts()}));
+ assert.equal(recovered.settings.title,'Recovered first edit');assert.equal(recovered.game,'<h1>Original game</h1>');assert.deepEqual(recovered.receipts,[]);
+ assert.deepEqual(errors,[]);console.log('Receipt integrity passed: initial settings writer failure recovered through visible verification/retry without changing game bytes, malformed/falsy/sparse records preserved on read and write failure, missing storage initializes, repeated writes are idempotent, concurrent records survive, stale replacement preserves existing records.');
 }finally{await context.close();await new Promise(r=>server.close(r));await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:200});}

@@ -748,3 +748,36 @@ test('library inspection does not read launcher programs, their sidecars or app 
  const before=[...m.files],report=await inspectLibrary(m.root,library,preview);
  assert.equal(report.checked,1);assert.equal(report.complete,true);assert.deepEqual(report.issues,[]);assert.deepEqual([...m.files],before);
 });
+
+for(const phase of ['handle','open','write'])test('initial settings '+phase+' failure retains a verifiable receipt and can be explicitly recovered',async()=>{
+  let fail=true;const m=memoryFolder({write:async name=>{if(fail&&phase==='write'&&name==='one.html.gameportal.json')throw new DOMException('NAS disconnected','NetworkError');}});
+  m.files.set('one.html','original game');const get=m.root.getFileHandle;
+  m.root.getFileHandle=async(name,options)=>{const handle=await get(name,options);if(name==='one.html.gameportal.json'){
+    if(fail&&phase==='handle'&&options?.create)throw new DOMException('Lost handle response','NetworkError');
+    const open=handle.createWritable;handle.createWritable=async options=>{if(fail&&phase==='open')throw new DOMException('Cannot open writer','NotAllowedError');return open(options);};
+  }return handle;};
+  const [game]=await scan(m.root,{games:{}});let failure;
+  try{await saveGameSettings(m.root,game,{title:'First edit',tags:[],developmentEnvironment:'Godot',thumbnail:null});}catch(error){failure=error;}
+  assert.equal(failure?.code,'SETTINGS_SAVE_UNCONFIRMED');assert.equal(m.files.get('one.html'),'original game');assert.equal(m.files.get('one.html.gameportal.json'),'');
+  assert.equal((await library.verifySettingsSave(m.root,failure.attempt)).state,'not-saved');
+  fail=false;await library.retrySettingsSave(m.root,failure.attempt);assert.equal(JSON.parse(m.files.get('one.html.gameportal.json')).title,'First edit');assert.equal(JSON.parse(m.files.get('one.html.gameportal.json')).id,game.id);
+});
+test('failed initial history storage never creates an empty game settings file',async()=>{
+  const m=memoryFolder({write:async name=>{if(name.endsWith('.json'))throw new DOMException('History disk full','QuotaExceededError');}});m.files.set('one.html','original game');const [game]=await scan(m.root,{games:{}});
+  await assert.rejects(saveGameSettings(m.root,game,{title:'First edit',tags:[],developmentEnvironment:'',thumbnail:null}),/History disk full/);
+  assert.equal(m.files.has('one.html.gameportal.json'),false);assert.equal((await scan(m.root,{games:{}}))[0].settingsError,'');
+});
+test('failed initial receipt storage leaves the game editable and creates no settings placeholder',async()=>{
+  const m=memoryFolder();m.files.set('one.html','original game');const [game]=await scan(m.root,{games:{}});
+  library.setSettingsSaveObserver(async()=>{throw new DOMException('Receipt storage unavailable','QuotaExceededError');});
+  try{await assert.rejects(saveGameSettings(m.root,game,{title:'First edit',tags:[],developmentEnvironment:'',thumbnail:null}),/Receipt storage unavailable/);}
+  finally{library.setSettingsSaveObserver(async()=>{});}
+  assert.equal(m.files.has('one.html.gameportal.json'),false);assert.equal((await scan(m.root,{games:{}}))[0].settingsError,'');
+});
+test('initial settings failure preserves a concurrent edit and recovery never overwrites it',async()=>{
+  let external;const m=memoryFolder({open:async(name,options,files)=>{if(name==='one.html.gameportal.json')files.set(name,external);}});m.files.set('one.html','original game');const [game]=await scan(m.root,{games:{}});
+  external=JSON.stringify({schema:1,id:game.id,title:'Another PC edit',tags:[],developmentEnvironment:'',thumbnail:null});let failure;
+  try{await saveGameSettings(m.root,game,{title:'My edit',tags:[],developmentEnvironment:'',thumbnail:null});}catch(error){failure=error;}
+  assert.equal(failure?.code,'SETTINGS_SAVE_UNCONFIRMED');assert.equal((await library.verifySettingsSave(m.root,failure.attempt)).state,'changed');
+  await assert.rejects(library.retrySettingsSave(m.root,failure.attempt),/上書きしません/);assert.equal(m.files.get('one.html.gameportal.json'),external);assert.equal(m.files.get('one.html'),'original game');
+});
