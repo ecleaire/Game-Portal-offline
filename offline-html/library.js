@@ -223,6 +223,20 @@ export function embeddedPyxel(html) {
   const match = html.match(/base64\s*[:=]\s*(["'])([A-Za-z0-9+/=]+)\1/);
   return match ? match[2] : null;
 }
+export function embeddedPyxelBytes(bytes) {
+  // The required marker is ASCII. Avoid making a full decoded copy of large
+  // single-file HTML games just to discover that they are not Pyxel exports.
+  const marker = 'pyxel.js';
+  for (let dot = bytes.indexOf(46, 5); dot !== -1 && dot + 2 < bytes.length; dot = bytes.indexOf(46, dot + 1)) {
+    let index = 0;
+    for (; index < marker.length; index++) {
+      const byte = bytes[dot - 5 + index];
+      if ((byte >= 65 && byte <= 90 ? byte + 32 : byte) !== marker.charCodeAt(index)) break;
+    }
+    if (index === marker.length) return embeddedPyxel(new TextDecoder().decode(bytes));
+  }
+  return null;
+}
 // Bounded, session-only cache: unchanged paths need no repeated WebCrypto
 // work on periodic NAS scans. IDs and the on-disk format remain identical.
 const pathIds=new Map(),libraryCollator=new Intl.Collator('ja');

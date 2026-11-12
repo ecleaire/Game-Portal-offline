@@ -104,7 +104,8 @@ let inspectionRoot = null, inspectionReport = null, selectedHistory = null, capt
 let usageReport=null,usageController=null,usageLimit=60;
 let postSelection = [], editImageRevision = 0;
 const lowResourceMode=document.documentElement.dataset.performance==='low';
-const cardBatch=lowResourceMode?12:(navigator.deviceMemory>0&&navigator.deviceMemory<=4)||(navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=4)?24:60;
+const limitedHardware=(navigator.deviceMemory>0&&navigator.deviceMemory<=4)||(navigator.hardwareConcurrency>0&&navigator.hardwareConcurrency<=4);
+const cardBatch=lowResourceMode?12:limitedHardware?24:60;
 let postCheck=null,postCheckRevision=0,cropBitmap=null,renderLimit=cardBatch,searchTimer;
 let imageProcessing=false,imageError='',playRevision=0,gameLoading=null;
 let settingsReceipts=[];
@@ -1025,16 +1026,22 @@ async function loadGame(game,task) {
     const file = await read(()=>game.handle.nativeDesktop?game.handle.getFile({signal:loadController.signal}):game.handle.getFile()); let options;
     if(file.size>entryLimit*1024*1024)throw new Error('起動ファイルは'+entryLimit+'MB以内にしてください。ゲームのファイルを確認してください。');
     const htmlBytes = game.kind === 'html' ? new Uint8Array(await read(()=>file.arrayBuffer())) : null;
-    const embedded = htmlBytes ? library.embeddedPyxel(new TextDecoder().decode(htmlBytes)) : null;
+    const embedded = htmlBytes ? library.embeddedPyxelBytes(htmlBytes) : null;
     $('#saveTools').hidden = game.kind === 'pyxapp' || !!embedded;
     if (game.kind === 'pyxapp' || embedded) {
       if (file.size > 50 * 1024 * 1024) throw new Error('PYXAPPは50MB以内にしてください。');
       const bytes = embedded ? player.decodeBase64(embedded) : new Uint8Array(await read(()=>file.arrayBuffer())); library.validatePyxapp(bytes);
       pyxelRuntime ||= JSON.parse($('#runtime').textContent);
-      options = { kind: 'pyxapp', app: player.encodeBase64(bytes), runtime: pyxelRuntime };
+      options = { kind: 'pyxapp', app: embedded || player.encodeBase64(bytes), runtime: pyxelRuntime };
     } else {
       const [files,saved]=await readTasks.prepareTogether([
-        signal=>game.kind==='zip'?readTasks.readWithSignal(async()=>preview.unpackPrivateZip(await readTasks.readWithSignal(()=>file.arrayBuffer(),signal),()=>{},{signal}),signal):readTasks.readWithSignal(()=>library.readTree(game.folder,new Map([[game.entry,htmlBytes]]),{fileBacked:true,signal}),signal),
+        async signal=>{
+          if(game.kind!=='zip')return readTasks.readWithSignal(()=>library.readTree(game.folder,new Map([[game.entry,htmlBytes]]),{fileBacked:true,signal}),signal);
+          const buffer=await readTasks.readWithSignal(()=>file.arrayBuffer(),signal);
+          loadingStage(task,'ZIPを展開中');
+          try{return await readTasks.readWithSignal(()=>preview.unpackPrivateZip(buffer,()=>{},{signal,concurrency:lowResourceMode||limitedHardware?2:4}),signal);}
+          finally{loadingStage(task,'ZIPを展開中',false);}
+        },
         async signal=>{
           loadingStage(task,'セーブを確認中');
           const shared=root.nativeReadOnly?{state:'local'}:await sharedSaves.syncSave(root,session.libraryId,game.id,library,localState,{pullOnly:true,signal});

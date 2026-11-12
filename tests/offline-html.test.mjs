@@ -5,7 +5,7 @@ import {checkCompatibility,ensureCompatibility,LAUNCHER_VERSION} from '../offlin
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { safePath, tagsFrom, gameId, validatePyxapp, embeddedPyxel, loadMetadata, saveMetadata, loadGameSettings, saveGameSettings, scan, readTree, postGame, loadLibraryId, ensureLibraryId } from '../offline-html/library.js';
+import { safePath, tagsFrom, gameId, validatePyxapp, embeddedPyxel, embeddedPyxelBytes, loadMetadata, saveMetadata, loadGameSettings, saveGameSettings, scan, readTree, postGame, loadLibraryId, ensureLibraryId } from '../offline-html/library.js';
 import { validSave, validSaveBackups } from '../offline-html/local-state.js';
 import { sameLibraryView,cardViewKey,sameCardView } from '../offline-html/sync.js';
 import { replaceGameContent,restoreGameContent,verifyContentUpdate } from '../offline-html/updates.js';
@@ -705,11 +705,25 @@ test('HTML relocation inherits only its known previous filename scope',()=>{
  for(const path of ['/Portal/other/プレイ用/GAME-PORTAL.html','/Portal/HTML/other/GAME-PORTAL.html','/Portal/HTML/プレイ用/other.html','/Portal/HTML/%ZZ/GAME-PORTAL.html'])assert.equal(legacyScope(path),null);
 });
 
+test('plain HTML avoids full decoding; Pyxel detection still uses the complete document',()=>{
+ const encode=html=>new TextEncoder().encode(html);
+ assert.equal(embeddedPyxelBytes(encode('<h1>通常のゲーム</h1>'+'.abcdefgh'.repeat(250000))),null);
+ assert.equal(embeddedPyxelBytes(encode('pyxel.j')),null);
+ const pyxel='日本語'.repeat(45000)+'<script src="https://cdn.example/PyXeL.Js"></script><script>launchPyxel({base64:"YWJjZA=="})</script>';
+ assert.equal(embeddedPyxelBytes(encode(pyxel)),'YWJjZA==');
+ assert.equal(embeddedPyxelBytes(encode('<script src="pyxel.js"></script><script>other({base64:"YWJjZA=="})</script>')),null);
+});
+
 test('ZIP cancellation interrupts stalled inflaters and prevents queued entries',async()=>{
  const zip=await packageWebFiles([new File(['<h1>Game</h1>'],'index.html'),...Array.from({length:10},(_,i)=>new File(['asset'],i+'.js'))]);const bytes=Buffer.from(await zip.arrayBuffer()),end=bytes.length-22;let at=bytes.readUInt32LE(end+16);
  for(let i=0;i<11;i++){const local=bytes.readUInt32LE(at+42);bytes.writeUInt16LE(8,at+10);bytes.writeUInt16LE(8,local+8);at+=46+bytes.readUInt16LE(at+28)+bytes.readUInt16LE(at+30)+bytes.readUInt16LE(at+32);}
  const original=globalThis.DecompressionStream;let started=0,canceled=0;globalThis.DecompressionStream=class{constructor(){started++;this.readable=new ReadableStream({pull(){return new Promise(()=>{});},cancel(){canceled++;}});this.writable=new WritableStream();}};
- try{const controller=new AbortController(),work=unpackPrivateZip(bytes,()=>{},{signal:controller.signal});while(started<4)await new Promise(resolve=>setImmediate(resolve));controller.abort();await assert.rejects(work,{name:'AbortError'});assert.equal(started,4);assert.equal(canceled,4);}
+ try{for(const [concurrency,expected] of [[undefined,4],[2,2]]){
+  started=0;canceled=0;
+  const controller=new AbortController(),work=unpackPrivateZip(bytes,()=>{},{signal:controller.signal,concurrency});
+  await new Promise(resolve=>setImmediate(resolve));controller.abort();
+  await assert.rejects(work,{name:'AbortError'});assert.equal(started,expected);assert.equal(canceled,expected);
+ }}
  finally{globalThis.DecompressionStream=original;}
 });
 

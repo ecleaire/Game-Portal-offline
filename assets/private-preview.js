@@ -74,7 +74,7 @@ async function inflate(raw, expected,signal) {
   return result;
 }
 
-export async function unpackPrivateZip(buffer, onProgress = () => {}, {signal} = {}) {
+export async function unpackPrivateZip(buffer, onProgress = () => {}, {signal,concurrency=4} = {}) {
   signal?.throwIfAborted();
   const data = new Uint8Array(buffer);
   if (data.length > MAX_ZIP || data.length < 22) throw new Error('invalid_preview');
@@ -112,7 +112,8 @@ export async function unpackPrivateZip(buffer, onProgress = () => {}, {signal} =
   // Bound concurrent inflation so large exports do not open hundreds of streams.
   const contents = new Array(entries.length); let cursor = 0, completed = 0,failure;
   onProgress(0,entries.length);
-  await Promise.all(Array.from({ length: Math.min(4, entries.length) }, async () => {
+  const workers=Number.isInteger(concurrency)?Math.max(1,Math.min(4,concurrency)):4;
+  await Promise.all(Array.from({ length: Math.min(workers, entries.length) }, async () => {
     while (!failure&&!signal?.aborted&&cursor < entries.length) {
       const index = cursor++, entry = entries[index];
       const raw = data.subarray(entry.start, entry.start + entry.packed);
