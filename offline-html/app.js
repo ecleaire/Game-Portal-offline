@@ -69,7 +69,6 @@ function queueFolderRecovery(error){
   const handle=root||remembered;
   if(automaticConnectionPaused||!handle||compatibilityProblem||!transientFolderError(error)||settingsReceipts.length)return;
   if(folderRecovery?.handle!==handle)folderRecovery={handle,root,libraryId:localLibrary,next:performance.now()+15000,delay:15000};
-  if(root){syncPaused=true;syncStatus('保存先との接続を確認しています。前回確認した一覧を表示し、接続が戻ると自動で再開します。');}
 }
 async function recoverFolderConnection(){
   const job=folderRecovery;
