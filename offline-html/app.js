@@ -1037,9 +1037,8 @@ async function loadGame(game,task) {
       const [files,saved]=await readTasks.prepareTogether([
         async signal=>{
           if(game.kind!=='zip')return readTasks.readWithSignal(()=>library.readTree(game.folder,new Map([[game.entry,htmlBytes]]),{fileBacked:true,signal}),signal);
-          const buffer=await readTasks.readWithSignal(()=>file.arrayBuffer(),signal);
           loadingStage(task,'ZIPを展開中');
-          try{return await readTasks.readWithSignal(()=>preview.unpackPrivateZip(buffer,()=>{},{signal,concurrency:lowResourceMode||limitedHardware?2:4}),signal);}
+          try{return await readTasks.readWithSignal(()=>preview.unpackPrivateZip(file,()=>{},{signal,concurrency:lowResourceMode||limitedHardware?2:4,fileBacked:true}),signal);}
           finally{loadingStage(task,'ZIPを展開中',false);}
         },
         async signal=>{

@@ -1,12 +1,12 @@
 # GAME PORTAL
 
-バージョン：**0.27.6**
+バージョン：**0.27.7**
 
 フォルダーに保存したゲームを、オフラインで探して遊ぶランチャーです。ゲームの追加、名前・サムネイル・タグなどの編集にも対応しています。アカウント登録は不要で、保存先にはPC内のフォルダーやNASを指定できます。
 
 Windows・Mac・Mojaveのアプリでは、ゲームを別ウィンドウで表示します。HTML版はGoogle Chromeのページ内で遊べます。ゲーム本体やセーブを移すときは、下の保存・バックアップの案内を確認してください。
 
-v0.27.6では、検索語を入力し続けるときに前の検索結果を使い、作品数が多いフォルダーでも入力に追いつきやすくしました。
+v0.27.7では、大きなZIPゲームを開く際、WASMなどの素材を何重にもコピーしないようにして、起動時のメモリー負荷を抑えます。
 
 Intel Macは **macOS 10.14以降**、AppleシリコンはmacOS 11以降に対応します。アプリや起動補助の内部ファイルは取り出さず、一式で使用してください。
 
@@ -14,11 +14,11 @@ Intel Macは **macOS 10.14以降**、AppleシリコンはmacOS 11以降に対応
 
 ## ダウンロードして使う
 
-**[v0.27.6のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.27.6.zip)**
+**[v0.27.7のZIPをダウンロード](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.27.7.zip)**
 
-展開すると **`Game-Portal-offline-0.27.6`** フォルダーになります。
+展開すると **`Game-Portal-offline-0.27.7`** フォルダーになります。
 
-GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.27.6`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
+GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.27.7`** を選んでください。[リリース情報](https://github.com/ecleaire/Game-Portal-offline/releases/latest)で変更内容を確認できます。インストール・ビルド・Actionsの操作は不要です。Mac用エンジンを含むためZIPは約800MBあります。ダウンロード完了後、**ZIP全体を展開してから**起動してください。
 
 **ゲーム本体はZIPに含まれていません。** 遊ぶゲームを保存したフォルダーを用意してください。
 

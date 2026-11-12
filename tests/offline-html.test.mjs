@@ -676,6 +676,31 @@ test('deflated ZIP output is exact across chunks and refuses declared size misma
   assert.equal(new TextDecoder().decode((await unpackPrivateZip(archive(0))).get('index.html')),text);
   await assert.rejects(unpackPrivateZip(archive(-1)),/invalid_preview/);await assert.rejects(unpackPrivateZip(archive(1)),/invalid_preview/);
 });
+test('playing ZIPs keeps large binary assets in Blob storage and checks streamed sizes',async()=>{
+ const {deflateRawSync}=await import('node:zlib');
+ const body='<h1>Offline ZIP</h1>',asset=Buffer.alloc(2*1024*1024,57),stored=Buffer.from([0,1,2,255]);
+ const original=Buffer.from(await (await packageWebFiles([new File([body],'index.html'),new File([stored],'stored.bin'),new File([asset],'game.pck')])).arrayBuffer());
+ const endAt=original.length-22,centralAt=original.readUInt32LE(endAt+16),packed=deflateRawSync(asset);
+ const centralTemplate=original.subarray(centralAt,endAt);
+ let record=0;for(let i=0;i<2;i++)record+=46+centralTemplate.readUInt16LE(record+28)+centralTemplate.readUInt16LE(record+30)+centralTemplate.readUInt16LE(record+32);
+ const local=centralTemplate.readUInt32LE(record+42),start=local+30+original.readUInt16LE(local+26)+original.readUInt16LE(local+28);
+ function archive(delta){
+  const header=Buffer.from(original.subarray(0,start)),central=Buffer.from(centralTemplate),end=Buffer.from(original.subarray(endAt));
+  header.writeUInt16LE(8,local+8);header.writeUInt32LE(packed.length,local+18);header.writeUInt32LE(asset.length+delta,local+22);
+  central.writeUInt16LE(8,record+10);central.writeUInt32LE(packed.length,record+20);central.writeUInt32LE(asset.length+delta,record+24);
+  end.writeUInt32LE(start+packed.length,16);
+  return new Blob([header,packed,central,end]);
+ }
+ const files=await unpackPrivateZip(archive(0),undefined,{fileBacked:true,concurrency:2});
+ assert.equal(new TextDecoder().decode(files.get('index.html')),body);
+ for(const [name,expected] of [['stored.bin',stored],['game.pck',asset]]){
+  assert(files.get(name) instanceof Blob);assert.equal(files.get(name).type,'application/octet-stream');
+  assert.deepEqual(Buffer.from(await files.get(name).arrayBuffer()),expected);
+ }
+ for(const delta of [-1,1])await assert.rejects(unpackPrivateZip(archive(delta),undefined,{fileBacked:true}),/invalid_preview/);
+ const normal=await unpackPrivateZip(await archive(0).arrayBuffer());
+ assert(normal.get('game.pck') instanceof Uint8Array);assert.deepEqual(Buffer.from(normal.get('game.pck')),asset);
+});
 test('ZIP and extracted folders share nested wrapper detection without treating macOS metadata as games',async()=>{
   const paths=['Outer/Build/jump.html','Outer/Build/jump.js','Outer/Build/assets/data.bin','.DS_Store','__MACOSX/Outer/._jump.html'];
   assert.deepEqual(preview.webArchiveLayout(paths),{root:'Outer/Build/',entry:'jump.html'});

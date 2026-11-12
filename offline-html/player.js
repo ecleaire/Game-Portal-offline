@@ -70,7 +70,7 @@ function webBootstrap(nonce) {
       const decoder = new TextDecoder();
       const mime = name => ({html:'text/html',js:'text/javascript',mjs:'text/javascript',css:'text/css',json:'application/json',wasm:'application/wasm',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',svg:'image/svg+xml',webp:'image/webp',ogg:'audio/ogg',mp3:'audio/mpeg',wav:'audio/wav',woff:'font/woff',woff2:'font/woff2'})[name.split('.').pop().toLowerCase()] || 'application/octet-stream';
       const fn = window.offlinePreview;
-      const html = fn(event.data.files, (bytes, type) => URL.createObjectURL(new Blob([bytes], { type })), ';window.offlineStorage();addEventListener("load",()=>window.offlineReady(),{once:true});');
+      const html = fn(event.data.files, (bytes, type) => URL.createObjectURL(bytes instanceof Blob ? bytes.slice(0, bytes.size, type) : new Blob([bytes], { type })), ';window.offlineStorage();addEventListener("load",()=>window.offlineReady(),{once:true});');
       document.open(); document.write(html); document.close();
     } catch (e) { port.postMessage({ type: 'error', message: e.message }); }
   }, { once: true });

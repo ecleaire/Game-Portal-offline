@@ -15,6 +15,7 @@ try{for(const role of ['creator','player']){
  const parentCapability=await page.evaluate(()=> 'serviceWorker' in navigator);
  await page.evaluate(async()=>{const folder=await(await navigator.storage.getDirectory()).getDirectoryHandle('actual-godot',{create:true}),metadata=await folder.getDirectoryHandle('.gameportal',{create:true});for(const [dir,name,bytes]of[[metadata,'library-id.json',JSON.stringify({schema:1,id:'a'.repeat(32)})],[folder,'Godot.zip',await(await fetch('/fixture.zip')).arrayBuffer()]]){const w=await(await dir.getFileHandle(name,{create:true})).createWritable();await w.write(bytes);await w.close();}window.showDirectoryPicker=async()=>folder;});
  await page.locator('#setupFolder').click();await page.waitForFunction(()=>!busy);await expect(page.locator('.card')).toHaveCount(1);page.on('request',r=>{if(/^https?:/.test(r.url()))external.push(r.url());});
+ await page.evaluate(()=>{const start=player.startPlayer;player.startPlayer=(frame,options,...rest)=>{const wasm=[...options.files].find(([name])=>name.endsWith('.wasm'))?.[1];if(!(wasm instanceof Blob)||wasm.type!=='application/wasm'||!(options.files.get('index.html') instanceof Uint8Array))throw Error('ZIP must hand off large WASM as a typed Blob and HTML as bytes');return start(frame,options,...rest);};});
  for(let cycle=0;cycle<2;cycle++){
   logs.length=0;if(cycle)await page.locator('#reloadPlaying').click();else await page.locator('.game-title-link').click();
   await expect.poll(()=>logs.some(line=>line.includes('GODOT_FIXTURE_READY')),{timeout:60000}).toBe(true);

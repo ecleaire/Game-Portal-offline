@@ -59,7 +59,7 @@ export async function checkWebGameZip(file) {
 async function inflate(raw, expected,signal) {
   signal?.throwIfAborted();
   if (typeof DecompressionStream !== 'function') throw new Error('preview_unsupported');
-  const reader = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const reader = (raw instanceof Blob ? raw : new Blob([raw])).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
   const abort=()=>{void reader.cancel(signal.reason).catch(()=>{});};
   if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
   const result = new Uint8Array(expected); let size = 0;
@@ -74,9 +74,30 @@ async function inflate(raw, expected,signal) {
   return result;
 }
 
-export async function unpackPrivateZip(buffer, onProgress = () => {}, {signal,concurrency=4} = {}) {
+async function inflateAsset(raw, expected, type, signal) {
   signal?.throwIfAborted();
-  const data = new Uint8Array(buffer);
+  if (typeof DecompressionStream !== 'function') throw new Error('preview_unsupported');
+  let size = 0;
+  const checked = new TransformStream({
+    transform(chunk, controller) {
+      size += chunk.length;
+      if (size > expected || size > MAX_UNPACKED) throw new Error('invalid_preview');
+      controller.enqueue(chunk);
+    },
+    flush() { if (size !== expected) throw new Error('invalid_preview'); }
+  });
+  const stream = raw.stream().pipeThrough(new DecompressionStream('deflate-raw')).pipeThrough(checked, { signal });
+  const blob = await new Response(stream, { headers: { 'Content-Type': type } }).blob();
+  signal?.throwIfAborted();
+  return blob;
+}
+
+export async function unpackPrivateZip(buffer, onProgress = () => {}, {signal,concurrency=4,fileBacked=false} = {}) {
+  signal?.throwIfAborted();
+  const archive = buffer instanceof Blob ? buffer : null;
+  if (archive && (archive.size > MAX_ZIP || archive.size < 22)) throw new Error('invalid_preview');
+  const data = new Uint8Array(archive ? await archive.arrayBuffer() : buffer);
+  signal?.throwIfAborted();
   if (data.length > MAX_ZIP || data.length < 22) throw new Error('invalid_preview');
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const u16 = at => view.getUint16(at, true);
@@ -116,8 +137,15 @@ export async function unpackPrivateZip(buffer, onProgress = () => {}, {signal,co
   await Promise.all(Array.from({ length: Math.min(workers, entries.length) }, async () => {
     while (!failure&&!signal?.aborted&&cursor < entries.length) {
       const index = cursor++, entry = entries[index];
-      const raw = data.subarray(entry.start, entry.start + entry.packed);
-      try{contents[index] = entry.method === 0 ? raw : await inflate(raw, entry.size,signal);signal?.throwIfAborted();onProgress(++completed,entries.length);}catch(error){failure??=error;}
+      const backed = fileBacked && archive;
+      const asset = backed && !/\.(?:html?|css)$/i.test(entry.name);
+      const raw = backed ? archive.slice(entry.start, entry.start + entry.packed, mime(entry.name)) : data.subarray(entry.start, entry.start + entry.packed);
+      try {
+        if (entry.method === 0) contents[index] = asset ? raw : backed ? data.slice(entry.start, entry.start + entry.packed) : raw;
+        else if (asset && entry.size >= 1024 * 1024) contents[index] = await inflateAsset(raw, entry.size, mime(entry.name), signal);
+        else contents[index] = await inflate(raw, entry.size,signal);
+        signal?.throwIfAborted();onProgress(++completed,entries.length);
+      } catch(error){failure??=error;}
     }
   }));
   signal?.throwIfAborted();if(failure)throw failure;
