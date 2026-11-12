@@ -48,6 +48,8 @@ try{await context.addInitScript(()=>{if(top!==window)return;FileSystemDirectoryH
   await expect(page.locator('.card').filter({hasText:'Alpha'}).locator('img')).toHaveCount(1);
   await page.evaluate(()=>{resetCards();window.releaseThumbnail=null;library.getFile=async(...args)=>{if(args[1].startsWith('.gameportal/thumbnails/'))return new Promise(r=>window.releaseThumbnail=()=>r(new File(['old'],'thumbnail.webp')));return normalThumbnailRead(...args);};window.stalledRender=render();});
   await page.waitForFunction(()=>!!releaseThumbnail);
+  await expect(page.locator('.game-title-link')).toHaveText(['Alpha','Beta'],{timeout:2000});
+  await expect(page.locator('.card').filter({hasText:'Alpha'}).locator('img')).toHaveCount(0);
   await page.locator('#search').fill('Beta');await expect(page.locator('.game-title-link')).toHaveText(['Beta']);
   await page.evaluate(async()=>{await stalledRender;releaseThumbnail();library.getFile=normalThumbnailRead;});
   await expect(page.locator('.game-title-link')).toHaveText('Beta');
@@ -55,6 +57,15 @@ try{await context.addInitScript(()=>{if(top!==window)return;FileSystemDirectoryH
   await page.evaluate(()=>{document.querySelector('#search').value='';resetCards();library.getFile=async(...args)=>args[1].startsWith('.gameportal/thumbnails/')?new Promise(()=>{}):normalThumbnailRead(...args);window.timedRender=render();});
   await page.clock.fastForward(8100);await page.evaluate(()=>timedRender);await expect(page.locator('.card')).toHaveCount(2);
   await page.evaluate(async()=>{library.getFile=normalThumbnailRead;games.find(g=>g.title==='Alpha').thumbnail=false;await render();});await page.clock.resume();
+  // Unchanged cards should not recalculate every tag's layout on every refresh.
+  assert.equal(await page.evaluate(async()=>{
+    games=games.map(game=>({...game,tags:['アクション','アドベンチャー','スコアアタック']}));
+    await render();
+    const original=Element.prototype.getBoundingClientRect;let measurements=0;
+    Element.prototype.getBoundingClientRect=function(){if(this.matches('.game-tag,.game-tags-more'))measurements++;return original.call(this);};
+    try{await render();await render();return measurements;}
+    finally{Element.prototype.getBoundingClientRect=original;}
+  }),0);
   await page.evaluate(()=>action(async()=>{throw new DOMException('A write was interrupted','AbortError');}));
   await expect(page.locator('#status')).toContainText('処理が中断');await expect(page.locator('#status')).not.toContainText('選択をキャンセル');await expect(page.locator('#operationErrorDetail')).toBeVisible();await expect(page.locator('#operationErrorText')).toContainText('OPERATION_ABORTED');
   await page.evaluate(()=>action(async()=>{throw new DOMException('Disk quota reached','QuotaExceededError');}));await expect(page.locator('#status')).toContainText('領域が不足');await expect(page.locator('#operationErrorText')).toContainText('STORAGE_FULL');

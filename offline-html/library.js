@@ -31,10 +31,16 @@ export function uploadPaths(input) {
   }
   return paths;
 }
-export async function getFile(root, path) {
+export async function getFile(root, path, {signal}={}) {
   const parts = safePath(path); let folder = root;
-  for (const part of parts.slice(0, -1)) folder = await folder.getDirectoryHandle(part);
-  return (await folder.getFileHandle(parts.at(-1))).getFile();
+  for (const part of parts.slice(0, -1)) {
+    signal?.throwIfAborted();
+    folder = await folder.getDirectoryHandle(part);
+  }
+  signal?.throwIfAborted();
+  const handle=await folder.getFileHandle(parts.at(-1));
+  signal?.throwIfAborted();
+  return handle.nativeDesktop?handle.getFile({signal}):handle.getFile();
 }
 export async function writeFile(root, path, content) {
   const parts = safePath(path); let folder = root;

@@ -202,7 +202,7 @@ $('#verifySettingsSaves').onclick=()=>{
   return '現在の設定との比較が完了しました。結果を確認してください。';
 });};
 const cardCache=new Map();
-function resetCards(){for(const url of imageURLs)URL.revokeObjectURL(url);imageURLs=[];cardCache.clear();renderLimit=cardBatch;}
+function resetCards(){renderReadAbort?.abort();for(const url of imageURLs)URL.revokeObjectURL(url);imageURLs=[];cardCache.clear();renderLimit=cardBatch;}
 let editBaseline = '';
 function editValues() {
   return JSON.stringify([...['editTitle','editEnvironment','editTags','editDescription','editInstructions','cropZoom','cropX','cropY'].map(id=>$('#'+id).value),$('#clearImage').checked,$('#enableCrop').checked,[...$('#editImage').files].map(f=>[f.name,f.size,f.lastModified]),$('#newTag').value,informationImageRevision]);
@@ -607,9 +607,12 @@ function gameTagButton(tag){
   const button=document.createElement('button');button.type='button';button.className='tag game-tag';button.textContent=tag;button.setAttribute('aria-label',tag+'で絞り込む');
   button.onclick=event=>{event.stopPropagation();void filterByGameTag(tag).catch(error=>status(error.message));};return button;
 }
+const fittedTagWidths=new WeakMap();
 function fitCardTags(){
+  const size=$('#games').dataset.size;
   for(const row of document.querySelectorAll('#games .tags')){
-    const items=[...row.querySelectorAll('.game-tag')],more=row.querySelector('.game-tags-more'),width=row.clientWidth;if(!items.length||!more||!width)continue;
+    const width=row.clientWidth,key=size+':'+width;if(!width||fittedTagWidths.get(row)===key)continue;
+    const items=[...row.querySelectorAll('.game-tag')],more=row.querySelector('.game-tags-more');if(!items.length||!more)continue;
     for(const item of items)item.hidden=false;more.hidden=false;
     const gap=parseFloat(getComputedStyle(row).columnGap)||0;
     const sizes=items.map(item=>Math.max(item.getBoundingClientRect().width,item.scrollWidth+2)),sum=[0];for(const size of sizes)sum.push(sum.at(-1)+size);
@@ -617,6 +620,7 @@ function fitCardTags(){
     if(sum.at(-1)+gap*(count-1)>width){for(count=items.length-1;count>=0;count--){more.textContent='＋'+(items.length-count);if(sum[count]+gap*count+more.getBoundingClientRect().width<=width)break;}count=Math.max(0,count);}
     items.forEach((item,index)=>item.hidden=index>=count);more.hidden=count===items.length;
     more.textContent='＋'+(items.length-count);more.setAttribute('aria-label','残り'+(items.length-count)+'件のタグをゲーム情報で見る');
+    fittedTagWidths.set(row,key);
   }
 }
 let cardTagWidth=-1;
@@ -652,7 +656,7 @@ function toggleFavorite(button,game){
  });
 }
 try{const size=localStorage.getItem('game-portal.card-size');if(['normal','compact','large'].includes(size))$('#cardSize').value=size;}catch{}
-$('#cardSize').onchange=()=>{const size=$('#cardSize').value;$('#games').dataset.size=size;try{localStorage.setItem('game-portal.card-size',size);}catch{status('表示サイズはこの画面に適用しました。このPCへの記憶はできませんでした。');}};
+$('#cardSize').onchange=()=>{const size=$('#cardSize').value;$('#games').dataset.size=size;requestAnimationFrame(fitCardTags);try{localStorage.setItem('game-portal.card-size',size);}catch{status('表示サイズはこの画面に適用しました。このPCへの記憶はできませんでした。');}};
 $('#libraryView').onchange=()=>{if($('#libraryView').value==='recent')$('#sortGames').value='played';else if($('#sortGames').value==='played')$('#sortGames').value='name-asc';renderLimit=cardBatch;render().catch(e=>status(e.message));};
 window.addEventListener('focus',()=>{if(root&&!busy&&!$('#player').open){viewsLibrary=null;void render().catch(e=>status(e.message));}});
 function showLocalSave(state,message){$('#playSaveStatus').hidden=false;$('#playSaveStatus').dataset.state=state;$('#playSaveText').textContent=message;$('#retryLocalSave').hidden=state!=='failed';}
@@ -708,6 +712,26 @@ function renderCatalogueFilters(){
 }
 $('#filterDetails').addEventListener('toggle',()=>{if($('#filterDetails').open)render().catch(error=>status(error.message));});
 $('#tagMore').onclick=()=>{tagLimit+=120;render().catch(error=>status(error.message));};
+function showCardImage(cover,src){
+  const img=document.createElement('img');img.loading='lazy';img.decoding='async';img.alt='';img.src=src;cover.replaceChildren(img);
+}
+async function loadCardThumbnails(jobs,folder,controller){
+  for(const {game,cover} of jobs){
+    if(controller.signal.aborted||root!==folder)return;
+    // Legacy image files can live on an unavailable NAS. Keep the cards
+    // usable during the wait, and stop the queue if the storage stalls.
+    const timeout=setTimeout(()=>controller.abort(uiError('サムネイルの読み込みが応答しません。','TimeoutError')),8000);
+    try{
+      const path=`.gameportal/thumbnails/${game.id}.webp`;
+      const file=await readTasks.readWithSignal(()=>library.getFile(folder,path,{signal:controller.signal}),controller.signal);
+      if(controller.signal.aborted||root!==folder)return;
+      if(file.size<=2*1024*1024){
+        const url=URL.createObjectURL(file);imageURLs.push(url);showCardImage(cover,url);
+      }
+    }catch{/* Keep the placeholder and retry on a later render. */}
+    finally{clearTimeout(timeout);}
+  }
+}
 async function render() {
   const revision = ++renderRevision, folder = root,viewLibrary=localLibrary;
   renderReadAbort?.abort();const thumbnailRead=new AbortController();renderReadAbort=thumbnailRead;
@@ -731,7 +755,7 @@ async function render() {
   if(view==='recent')matches=matches.filter(g=>gameViews.get(g.id)?.lastPlayed>0).sort((a,b)=>gameViews.get(b.id).lastPlayed-gameViews.get(a.id).lastPlayed||a.title.localeCompare(b.title,'ja')).slice(0,30);
   $('#count').textContent = String(matches.length); $('#emptyState').hidden = matches.length > 0;
   $('#loadMore').hidden=matches.length<=renderLimit;$('#loadMore').textContent=`さらに表示（残り${Math.max(0,matches.length-renderLimit)}件）`;
-  const visibleCards=[];
+  const visibleCards=[],thumbnailJobs=[];
   $('#clearFilters').hidden = !keyword && !selectedTags.size && !$('#tagSearch').value && !$('#tagCategory').value && !$('#kindFilter').value && !$('#environmentFilter').value && $('#searchScope').value==='all' && $('#tagMatch').value==='all' && $('#sortGames').value==='name-asc' && $('#libraryView').value==='all';
   $('#searchSummary').textContent=`${games.length}件中 ${matches.length}件を表示`+(matches.length>renderLimit?`・先頭${renderLimit}件（続きは「さらに表示」）`:'')+(selectedTags.size?`・選択タグ ${selectedTags.size}件（${$('#tagMatch').value==='any'?'いずれか一致':'すべて一致'}）`:'');
   $('#count').setAttribute('aria-label',matches.length+'件');
@@ -744,17 +768,11 @@ async function render() {
   $('#emptyPost').hidden=!root||games.length>0||!editingEnabled;
   for (const game of matches.slice(0,renderLimit)) {
     const cached=cardCache.get(game.path);
-    if(cached&&!cached.thumbnailFailed&&syncTools.sameCardView(cached.viewKey,game)){cached.game=game;cardCache.delete(game.path);cardCache.set(game.path,cached);const favorite=cached.node.querySelector('.favorite-button');if(favorite)updateFavoriteButton(favorite,game);visibleCards.push(cached.node);continue;}
+    if(cached&&syncTools.sameCardView(cached.viewKey,game)){cached.game=game;cardCache.delete(game.path);cardCache.set(game.path,cached);const favorite=cached.node.querySelector('.favorite-button');if(favorite)updateFavoriteButton(favorite,game);if(game.thumbnail===true&&!cached.cover.firstElementChild)thumbnailJobs.push({game,cover:cached.cover});visibleCards.push(cached.node);continue;}
     const article = document.createElement('article'); article.className = 'card';
-    const cover = document.createElement('div'); cover.className = 'cover'; cover.textContent = '▶\uFE0E';let thumbnailFailed=false;
-    if (typeof game.thumbnail === 'string') { const img = document.createElement('img'); img.src = game.thumbnail; img.alt = ''; cover.replaceChildren(img); }
-    else if (game.thumbnail) try {
-      const timeout=setTimeout(()=>thumbnailRead.abort(uiError('サムネイルの読み込みが応答しません。','TimeoutError')),8000);
-      let file;try{file=await readTasks.readWithSignal(()=>library.getFile(folder, `.gameportal/thumbnails/${game.id}.webp`),thumbnailRead.signal);}finally{clearTimeout(timeout);}
-      if (revision !== renderRevision) return;
-      if (file.size <= 2 * 1024 * 1024) { const url = URL.createObjectURL(file); imageURLs.push(url); const img = document.createElement('img'); img.src = url; img.alt = ''; cover.replaceChildren(img); }
-    } catch { thumbnailFailed=true; /* Retry transient image failures on the next render. */ }
-    if (revision !== renderRevision) return;
+    const cover = document.createElement('div'); cover.className = 'cover'; cover.textContent = '▶\uFE0E';
+    if (typeof game.thumbnail === 'string') showCardImage(cover,game.thumbnail);
+    else if(game.thumbnail===true)thumbnailJobs.push({game,cover});
     const body = document.createElement('div'); body.className = 'cardbody';
     const title = document.createElement('h2'); title.textContent = game.title;
     const type = document.createElement('p'); type.className = 'type'; type.textContent = game.developmentEnvironment || (game.kind === 'pyxapp' ? 'Pyxel' : game.kind === 'exe' ? 'Windowsゲーム' : 'Webゲーム');
@@ -764,14 +782,13 @@ async function render() {
     if(game.tags.length){const more=document.createElement('button');more.type='button';more.className='tag game-tags-more';more.textContent='＋'+game.tags.length;more.setAttribute('aria-label','すべてのタグをゲーム情報で見る');more.onclick=playCurrent;tags.append(more);}
     const open=document.createElement('a');open.href='#player';open.className='game-title-link';const titleText=document.createElement('span');titleText.className='game-title-text';titleText.textContent=game.title;open.append(titleText);open.onclick=event=>{event.preventDefault();playCurrent();};title.replaceChildren(open);
     const thumb=document.createElement('a');thumb.href='#player';thumb.className='game-thumb-link';thumb.tabIndex=-1;thumb.setAttribute('aria-label',game.title+'の画面を開く');thumb.onclick=open.onclick;thumb.append(cover);
-    for(const img of cover.querySelectorAll('img')){img.loading='lazy';img.decoding='async';}
     const favorite=document.createElement('button');favorite.type='button';favorite.className='secondary favorite-button';favorite.dataset.gameId=game.id||'';favorite.dataset.gamePath=game.path;updateFavoriteButton(favorite,game);favorite.onclick=event=>{event.stopPropagation();toggleFavorite(favorite,game);};
     body.append(type,title,tags);
     if(game.description){const summary=document.createElement('p');summary.className='game-summary';summary.textContent=game.description.slice(0,100)+(game.description.length>100?'…':'');body.append(summary);}
     if(game.settingsError){const warning=document.createElement('p');warning.className='hint';warning.textContent='設定の確認が必要です：'+game.settingsError;body.append(warning);}
     body.append(favorite);
     article.onclick=event=>{if(!event.target.closest('a,button,input,select,textarea'))open.onclick(event);};
-    article.append(thumb,body);cardCache.set(game.path,{game,viewKey:syncTools.cardViewKey(game),node:article,thumbnailFailed});visibleCards.push(article);
+    article.append(thumb,body);cardCache.set(game.path,{game,viewKey:syncTools.cardViewKey(game),node:article,cover});visibleCards.push(article);
   }
   if(revision!==renderRevision)return;
   const wanted=new Set(visibleCards);for(const card of [...$('#games').children])if(!wanted.has(card))card.remove();
@@ -781,6 +798,7 @@ async function render() {
   for(const [path]of offscreen.slice(0,Math.max(0,offscreen.length-cardBatch)))cardCache.delete(path);
   const retained=new Set([...cardCache.values()].flatMap(({node})=>[...node.querySelectorAll('img')].map(img=>img.src)));
   imageURLs=imageURLs.filter(url=>{if(retained.has(url))return true;URL.revokeObjectURL(url);return false;});
+  void loadCardThumbnails(thumbnailJobs,folder,thumbnailRead);
 }
 function editGame(game) {
   if (!editingEnabled || game.settingsError) return;
