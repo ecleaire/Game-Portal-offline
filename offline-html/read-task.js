@@ -1,4 +1,6 @@
 // Only for reads: stopping the wait must never interrupt a write or its verification.
+export const isTransientFolderReadError=error=>typeof error?.code!=='string'&&['NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(error?.name);
+
 export function readWithSignal(operation,signal) {
   if(!signal)return Promise.resolve().then(operation);
   return new Promise((resolve,reject)=>{

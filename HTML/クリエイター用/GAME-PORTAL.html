@@ -176,7 +176,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 [data-performance=low] .cover{background:var(--panel)}
 [data-performance=low] dialog{box-shadow:none}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.27.7</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.27.8</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><details id="operationErrorDetail" class="settings-detail" hidden><summary>エラーの詳細</summary><p id="operationErrorText" class="hint game-text"></p></details><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -575,6 +575,8 @@ function mountPrivatePreview(frame, files, shellUrl) {
 
 return {unpackPrivateZip,webArchiveLayout,privatePreviewDocument};})();
 const readTasks=(()=>{// Only for reads: stopping the wait must never interrupt a write or its verification.
+const isTransientFolderReadError=error=>typeof error?.code!=='string'&&['NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(error?.name);
+
 function readWithSignal(operation,signal) {
   if(!signal)return Promise.resolve().then(operation);
   return new Promise((resolve,reject)=>{
@@ -607,7 +609,7 @@ function readIdleDeadline(milliseconds,onTimeout){
  pulse();return {pulse,stop};
 }
 
-return {readWithSignal,prepareTogether,readIdleDeadline};})();
+return {isTransientFolderReadError,readWithSignal,prepareTogether,readIdleDeadline};})();
 const folderSharing=(()=>{// Portable hints contain no browser handle, permission or personal save.
 function connectionInfo(value) {
   if(value===null||value===undefined)return null;
@@ -649,7 +651,7 @@ function creatorScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope,creatorScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.27.7';
+const LAUNCHER_VERSION = '0.27.8';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -714,6 +716,7 @@ async function ensureCompatibility(root,{extendedTags=false}={}) {
 return {LAUNCHER_VERSION,checkCompatibility,ensureCompatibility};})();
 const updateTools=(()=>{// Publish a complete hidden release by changing one small selector file.
 // Original game bytes and all earlier releases remain available for recovery.
+const {isTransientFolderReadError}=readTasks;
 const selector='.gameportal-content.json',pendingName='.gameportal-content-pending.json';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const digest=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -740,7 +743,7 @@ async function resolveGameContent(root,path,tools){
   try{const owner=await ownerOf(root,path,tools);pending=await optionalText(owner,pendingName)!==null;const state=await selectedState(owner,path,null,tools);
     if(!state.value)return {contentRevision:null,contentPending:pending,contentWarning:state.text===''?'本体更新の設定が空のため、最初の本体を使用しています。更新状態・バックアップを確認してください。':''};
     return {...await location(owner,state.value.active,tools),contentRevision:state.value.revision,contentPrevious:true,contentPending:pending,contentGameId:state.value.gameId};
-  }catch(error){return {contentError:'ゲーム本体の更新設定を確認してください：'+error.message,contentPending:pending};}
+  }catch(error){if(isTransientFolderReadError(error))throw error;return {contentError:'ゲーム本体の更新設定を確認してください：'+error.message,contentPending:pending};}
 }
 async function validateIdentity(root,game,libraryId,tools){if(await tools.loadLibraryId(root)!==libraryId)throw new Error('保管フォルダーのIDが変わりました。再接続してください。');const settings=await tools.loadGameSettings(root,game.path);if(settings.data?.id!==game.id)throw new Error('更新対象の作品ID・設定が変わりました。再読み込みしてください。');}
 async function verifyRelease(owner,release,tools){
@@ -907,7 +910,7 @@ return {isLauncherEntry,nativeLayout,validateExe,nativeConnection,nativePageConn
 const library=(()=>{const {checkCompatibility,ensureCompatibility}=compatibilityTools;
 const {resolveGameContent}=updateTools;
 const {nativeLayout,validateExe,isLauncherEntry}=nativeTools;
-const {readWithSignal}=readTasks;
+const {isTransientFolderReadError,readWithSignal}=readTasks;
 const MAX_FILES = 500, MAX_BYTES = 200 * 1024 * 1024;
 // These belong to launcher metadata, not the game's resource tree. A failed
 // Windows/SMB replacement can leave an RF file that another PC cannot read.
@@ -1159,7 +1162,10 @@ async function scan(root, metadata, {signal,onProgress} = {}) {
   async function add(path, title, kind, handle, folder, entry) {
     let settings, settingsError = '';
     try { settings = await read(()=>loadGameSettings(root, path)); }
-    catch (error) { settings = { data: null, text: null }; settingsError = error.message; }
+    catch (error) {
+      if(isTransientFolderReadError(error))throw error;
+      settings = { data: null, text: null }; settingsError = error.message;
+    }
     signal?.throwIfAborted();
     const saved = settings.data || (Object.hasOwn(metadata.games, path) ? metadata.games[path] : {});
     const replacement=await read(()=>resolveGameContent(root,path,{safePath,getFile})),id=settings.data?.id||await gameId(path);
@@ -2547,11 +2553,12 @@ function cancelFolderConnection(){
   pauseAutomaticConnection();if(starting)startupConnection?.abort(reason);nativeReadAbort?.abort(reason);manualConnection?.abort(reason);root?.cancelReads?.();nativeTools.cancelFolderReads?.();
   if(starting)initialized();status('接続待ちを中止しました。設定から保存先を選び直せます。');
 }
-const transientFolderError=error=>typeof error.code!=='string'&&['NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(error.name);
+const transientFolderError=readTasks.isTransientFolderReadError;
 function queueFolderRecovery(error){
   const handle=root||remembered;
   if(automaticConnectionPaused||!handle||compatibilityProblem||!transientFolderError(error)||settingsReceipts.length)return;
   if(folderRecovery?.handle!==handle)folderRecovery={handle,root,libraryId:localLibrary,next:performance.now()+15000,delay:15000};
+  if(root){syncPaused=true;syncStatus('保存先との接続を確認しています。前回確認した一覧を表示し、接続が戻ると自動で再開します。');}
 }
 async function recoverFolderConnection(){
   const job=folderRecovery;
@@ -2768,11 +2775,14 @@ async function checkSharedFolder(){
       if(root&&await read(()=>root.isSameEntry(record.handle))){lastFolderRevision=record.revision;return;}
       if(!available()||root!==watchRoot)return;
       await (async()=>{
-        if(await read(()=>record.handle.queryPermission({mode:'read'}))!=='granted'){
+        const permission=await read(()=>record.handle.queryPermission({mode:'read'}));
+        controller.signal.throwIfAborted();if(!available()||root!==watchRoot)return;
+        if(permission!=='granted'){
           remembered=record.handle;automaticPermissionAttempted=false;lastFolderRevision=record.revision;$('#reconnect').hidden=false;status('保存先へのアクセス許可が必要です。「保存先に再接続する」を押してください。');return;
         }
-        controller.signal.throwIfAborted();if(root!==watchRoot)return '';
-        lastFolderRevision=record.revision;await connectRememberedRead(record.handle,true,{signal:controller.signal,onActivity:idle.pulse,finishReading:idle.stop});return '';
+        await connectRememberedRead(record.handle,true,{signal:controller.signal,onActivity:idle.pulse,finishReading:idle.stop});
+        // Only acknowledge a shared selection once it has been opened.
+        if(root===record.handle&&!controller.signal.aborted)lastFolderRevision=record.revision;
       })();
     }catch(error){if(root!==watchRoot||controller.signal.aborted&&controller.signal.reason?.name!=='TimeoutError')return;watchFailed=true;folderWatchRetryAt=performance.now()+folderWatchRetryDelay;folderWatchRetryDelay=Math.min(folderWatchRetryDelay*2,60000);lastFolderRevision='';folderWatchErrorMessage='保存先の共有を確認できません。ホームで間隔をあけて再確認します。設定から選び直すこともできます：'+error.message;status(folderWatchErrorMessage);}
   })();

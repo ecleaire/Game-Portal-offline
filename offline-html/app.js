@@ -64,11 +64,12 @@ function cancelFolderConnection(){
   pauseAutomaticConnection();if(starting)startupConnection?.abort(reason);nativeReadAbort?.abort(reason);manualConnection?.abort(reason);root?.cancelReads?.();nativeTools.cancelFolderReads?.();
   if(starting)initialized();status('接続待ちを中止しました。設定から保存先を選び直せます。');
 }
-const transientFolderError=error=>typeof error.code!=='string'&&['NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(error.name);
+const transientFolderError=readTasks.isTransientFolderReadError;
 function queueFolderRecovery(error){
   const handle=root||remembered;
   if(automaticConnectionPaused||!handle||compatibilityProblem||!transientFolderError(error)||settingsReceipts.length)return;
   if(folderRecovery?.handle!==handle)folderRecovery={handle,root,libraryId:localLibrary,next:performance.now()+15000,delay:15000};
+  if(root){syncPaused=true;syncStatus('保存先との接続を確認しています。前回確認した一覧を表示し、接続が戻ると自動で再開します。');}
 }
 async function recoverFolderConnection(){
   const job=folderRecovery;
@@ -285,11 +286,14 @@ async function checkSharedFolder(){
       if(root&&await read(()=>root.isSameEntry(record.handle))){lastFolderRevision=record.revision;return;}
       if(!available()||root!==watchRoot)return;
       await (async()=>{
-        if(await read(()=>record.handle.queryPermission({mode:'read'}))!=='granted'){
+        const permission=await read(()=>record.handle.queryPermission({mode:'read'}));
+        controller.signal.throwIfAborted();if(!available()||root!==watchRoot)return;
+        if(permission!=='granted'){
           remembered=record.handle;automaticPermissionAttempted=false;lastFolderRevision=record.revision;$('#reconnect').hidden=false;status('保存先へのアクセス許可が必要です。「保存先に再接続する」を押してください。');return;
         }
-        controller.signal.throwIfAborted();if(root!==watchRoot)return '';
-        lastFolderRevision=record.revision;await connectRememberedRead(record.handle,true,{signal:controller.signal,onActivity:idle.pulse,finishReading:idle.stop});return '';
+        await connectRememberedRead(record.handle,true,{signal:controller.signal,onActivity:idle.pulse,finishReading:idle.stop});
+        // Only acknowledge a shared selection once it has been opened.
+        if(root===record.handle&&!controller.signal.aborted)lastFolderRevision=record.revision;
       })();
     }catch(error){if(root!==watchRoot||controller.signal.aborted&&controller.signal.reason?.name!=='TimeoutError')return;watchFailed=true;folderWatchRetryAt=performance.now()+folderWatchRetryDelay;folderWatchRetryDelay=Math.min(folderWatchRetryDelay*2,60000);lastFolderRevision='';folderWatchErrorMessage='保存先の共有を確認できません。ホームで間隔をあけて再確認します。設定から選び直すこともできます：'+error.message;status(folderWatchErrorMessage);}
   })();

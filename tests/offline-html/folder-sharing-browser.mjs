@@ -18,6 +18,23 @@ try{
  const legacyCache=async name=>a.evaluate(async name=>{const dir=name==='Alpha'?alpha:beta;await library.ensureLibraryId(dir);const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('game-portal-offline-folder-v1');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});await new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite');tx.objectStore('settings').put({name:dir.name,handle:dir},'folder');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});db.close();},name);
  await legacyCache('Beta');await peer.evaluate(()=>checkSharedFolder());await expect(peer.locator('#folderName')).toHaveText('Beta');await legacyCache('Alpha');await peer.evaluate(()=>checkSharedFolder());await expect(peer.locator('#folderName')).toHaveText('Alpha');
 
+ // An interrupted switch must not consume the observed revision.
+ await peer.evaluate(async()=>{
+  window.normalSharedCache=cacheHandle;window.normalSharedMetadata=library.loadMetadata;
+  const beta=await(await navigator.storage.getDirectory()).getDirectoryHandle('Beta');
+  cacheHandle=async()=>({handle:beta,scope:folderScope,revision:'interrupted-beta'});
+  library.loadMetadata=async handle=>{if(handle.name==='Beta')await new Promise(resolve=>window.releaseSharedRead=resolve);return normalSharedMetadata(handle);};
+  void checkSharedFolder();
+ });
+ await peer.waitForFunction(()=>!!window.releaseSharedRead);
+ await peer.locator('body').dispatchEvent('pointermove');await peer.waitForFunction(()=>!folderWatchPromise);
+ await expect(peer.locator('#folderName')).toHaveText('Alpha');
+ assert.notEqual(await peer.evaluate(()=>lastFolderRevision),'interrupted-beta');
+ await peer.evaluate(async()=>{library.loadMetadata=normalSharedMetadata;releaseSharedRead();await checkSharedFolder();});
+ await expect(peer.locator('#folderName')).toHaveText('Beta');
+ await peer.evaluate(async()=>{cacheHandle=normalSharedCache;await checkSharedFolder();});
+ await expect(peer.locator('#folderName')).toHaveText('Alpha');
+
  await peer.locator('.game-title-link').click();await peer.waitForFunction(()=>!busy);await expect(peer.frameLocator('#frame').locator('h1')).toHaveText('Alpha');
  await a.evaluate(()=>window.nextFolder=beta);await choose();await peer.bringToFront();await peer.evaluate(()=>checkSharedFolder());await expect(peer.locator('#folderName')).toHaveText('Alpha');await expect(peer.frameLocator('#frame').locator('h1')).toHaveText('Alpha');
  await peer.locator('#closePlayer').click();await peer.waitForFunction(()=>!closingPlayer);await peer.evaluate(()=>checkSharedFolder());await expect(peer.locator('#folderName')).toHaveText('Beta');assert.equal(await peer.evaluate(async id=>(await localState.loadLocalSave(id,await library.gameId('game.html')))?.level,alphaId),'PERSONAL_SAVE_ONLY');

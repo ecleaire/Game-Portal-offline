@@ -1,5 +1,6 @@
 // Publish a complete hidden release by changing one small selector file.
 // Original game bytes and all earlier releases remain available for recovery.
+import {isTransientFolderReadError} from './read-task.js';
 const selector='.gameportal-content.json',pendingName='.gameportal-content-pending.json';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const digest=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -26,7 +27,7 @@ export async function resolveGameContent(root,path,tools){
   try{const owner=await ownerOf(root,path,tools);pending=await optionalText(owner,pendingName)!==null;const state=await selectedState(owner,path,null,tools);
     if(!state.value)return {contentRevision:null,contentPending:pending,contentWarning:state.text===''?'本体更新の設定が空のため、最初の本体を使用しています。更新状態・バックアップを確認してください。':''};
     return {...await location(owner,state.value.active,tools),contentRevision:state.value.revision,contentPrevious:true,contentPending:pending,contentGameId:state.value.gameId};
-  }catch(error){return {contentError:'ゲーム本体の更新設定を確認してください：'+error.message,contentPending:pending};}
+  }catch(error){if(isTransientFolderReadError(error))throw error;return {contentError:'ゲーム本体の更新設定を確認してください：'+error.message,contentPending:pending};}
 }
 async function validateIdentity(root,game,libraryId,tools){if(await tools.loadLibraryId(root)!==libraryId)throw new Error('保管フォルダーのIDが変わりました。再接続してください。');const settings=await tools.loadGameSettings(root,game.path);if(settings.data?.id!==game.id)throw new Error('更新対象の作品ID・設定が変わりました。再読み込みしてください。');}
 async function verifyRelease(owner,release,tools){

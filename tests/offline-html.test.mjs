@@ -445,6 +445,22 @@ async function postedFixture(hooks={}){
  const memory=memoryFolder(hooks),id=await ensureLibraryId(memory.root);await postGame(memory.root,[new File(['<h1>Original</h1>'],'old.html')],preview);const [game]=await scan(memory.root,{games:{}});return {...memory,game,id,owner:memory.folders.get(game.path.split('/')[0])};
 }
 const updateCheck=(files,tools,packages)=>checkUpload(files,tools,packages,localResources);
+
+test('a temporary read failure in one game aborts the list; corrupt settings still identify that game',async()=>{
+ let blocked='',writes=0;
+ const failure=new DOMException('NAS temporarily unavailable','NetworkError');
+ const m=await postedFixture({read:async name=>{if(blocked&&name===blocked)throw failure;},write:async()=>writes++});
+ const existingWrites=writes,settings=m.game.path.split('/').at(-1)+'.gameportal.json';
+ blocked=settings;
+ await assert.rejects(scan(m.root,{games:{}}),error=>error===failure);
+ blocked='.gameportal-content.json';
+ m.owner.files.set(blocked,'{');
+ await assert.rejects(scan(m.root,{games:{}}),error=>error===failure);
+ blocked='';
+ const [game]=await scan(m.root,{games:{}});
+ assert.equal(game.id,m.game.id);assert.match(game.settingsError,/ゲーム本体の更新設定/);
+ assert.equal(writes,existingWrites);
+});
 test('content release publishes changed filename without changing information or IDs and restores original bytes',async()=>{
  const m=await postedFixture(),before=m.owner.files.get('old.html.gameportal.json');
  await replaceGameContent(m.root,m.game,[new File(['<h1>New</h1>'],'new.html')],m.id,library,preview,updateCheck);

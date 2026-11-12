@@ -1,7 +1,7 @@
 import { checkCompatibility, ensureCompatibility } from './compatibility.js';
 import { resolveGameContent } from './updates.js';
 import {nativeLayout,validateExe,isLauncherEntry} from './native-tools.js';
-import {readWithSignal} from './read-task.js';
+import {isTransientFolderReadError,readWithSignal} from './read-task.js';
 const MAX_FILES = 500, MAX_BYTES = 200 * 1024 * 1024;
 // These belong to launcher metadata, not the game's resource tree. A failed
 // Windows/SMB replacement can leave an RF file that another PC cannot read.
@@ -253,7 +253,10 @@ export async function scan(root, metadata, {signal,onProgress} = {}) {
   async function add(path, title, kind, handle, folder, entry) {
     let settings, settingsError = '';
     try { settings = await read(()=>loadGameSettings(root, path)); }
-    catch (error) { settings = { data: null, text: null }; settingsError = error.message; }
+    catch (error) {
+      if(isTransientFolderReadError(error))throw error;
+      settings = { data: null, text: null }; settingsError = error.message;
+    }
     signal?.throwIfAborted();
     const saved = settings.data || (Object.hasOwn(metadata.games, path) ? metadata.games[path] : {});
     const replacement=await read(()=>resolveGameContent(root,path,{safePath,getFile})),id=settings.data?.id||await gameId(path);
