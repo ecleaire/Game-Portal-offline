@@ -44,6 +44,24 @@ test('large searches yield to interaction and abort obsolete results',async()=>{
  assert.deepEqual(searchGames(games,{query:'Ａlpha',scope:'title'}),reference(games,{query:'Ａlpha',scope:'title'}));
 });
 
+test('typing more characters searches prior matches; broader or edited results remain complete',async t=>{
+ const games=catalogue(4000),scope='description';
+ games[10].description+=' raretarget';games[11].description+=' rareother';
+ assert.equal((await searchGamesAsync(games,{query:'rare',scope})).length,2);
+ const includes=String.prototype.includes;let checked=0;
+ t.mock.method(String.prototype,'includes',function(term,...args){
+  if(term==='raretarget'&&String(this).startsWith('normalization-marker'))checked++;
+  return includes.call(this,term,...args);
+ });
+ assert.deepEqual(await searchGamesAsync(games,{query:'raretarget',scope}),[games[10]]);
+ assert.equal(checked,2);
+ assert.deepEqual(await searchGamesAsync(games,{query:'rare',scope}),reference(games,{query:'rare',scope}));
+ assert.deepEqual(await searchGamesAsync(games,{query:'rare',scope,sort:'name-desc'}),reference(games,{query:'rare',scope,sort:'name-desc'}));
+ assert.deepEqual(await searchGamesAsync(games,{query:'rare',scope:'title'}),[]);
+ games[31].title='raretarget';
+ assert.deepEqual(await searchGamesAsync(games,{query:'raretarget',scope:'title'}),[games[31]]);
+});
+
 
 test('repeated folder scans reuse deterministic IDs and retry failed hashes',async t=>{
  const digest=crypto.subtle.digest.bind(crypto.subtle);let calls=0,fail=true;

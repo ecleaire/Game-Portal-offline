@@ -12,7 +12,7 @@ function recordFor(game){
 function catalogueFor(games,records){
  const old=catalogues.get(games);
  if(old&&old.records.length===records.length&&old.records.every((record,i)=>record===records[i]))return old;
- const index={records,orders:new Map()};catalogues.set(games,index);return index;
+ const index={records,orders:new Map(),lastQuery:null};catalogues.set(games,index);return index;
 }
 const timeFor=record=>record.time??(record.time=Date.parse(record.updatedAt)||0);
 const byTitle=(a,b)=>collator.compare(a.title,b.title)||collator.compare(a.path,b.path);
@@ -24,6 +24,17 @@ function ordered(index,sort){
 function optionsFor(options){
  const words=normalized(options.query).trim().split(/\s+/).filter(Boolean),tags=[...(options.tags||[])];
  return {...options,words,tags,scope:options.scope||'all'};
+}
+function queryShape(options){
+ return JSON.stringify([options.scope,options.kind,options.environment,options.tags,options.tagMatch,options.sort]);
+}
+function candidatesFor(index,query,shape){
+ const previous=index.lastQuery;
+ // If every previous term is still required (possibly as part of a longer
+ // term), any new match had to be in the previous result. A backspace, changed
+ // filter or replaced catalogue uses the full ordered list again.
+ if(previous?.shape===shape&&previous.words.every(word=>query.words.some(next=>next.includes(word))))return previous.matches;
+ return ordered(index,query.sort);
 }
 function matches(record,options){
  if(options.kind&&record.kind!==options.kind||options.environment&&record.environment!==options.environment)return false;
@@ -50,12 +61,13 @@ export async function searchGamesAsync(games,options={}, {signal}={}){
  signal?.throwIfAborted();
  if(games.length>1000){await new Promise(resolve=>setTimeout(resolve,0));signal?.throwIfAborted();}
  const query=optionsFor(options),records=[];let deadline=performance.now()+8;
- async function checkpoint(i){
-  signal?.throwIfAborted();
-  if((i&31)===31&&performance.now()>=deadline){await new Promise(resolve=>setTimeout(resolve,0));signal?.throwIfAborted();deadline=performance.now()+8;}
+ async function yieldToInput(){
+  await new Promise(resolve=>setTimeout(resolve,0));signal?.throwIfAborted();deadline=performance.now()+8;
  }
- for(let i=0;i<games.length;i++){records.push(recordFor(games[i]));if((i&31)===31)await checkpoint(i);}
- const index=catalogueFor(games,records),sorted=ordered(index,query.sort),result=[];
- for(let i=0;i<sorted.length;i++){const record=sorted[i];if(matches(record,query))result.push(record.game);if((i&31)===31)await checkpoint(i);}
- signal?.throwIfAborted();return result;
+ for(let i=0;i<games.length;i++){records.push(recordFor(games[i]));if((i&31)===31&&performance.now()>=deadline)await yieldToInput();}
+ const index=catalogueFor(games,records),shape=queryShape(query),candidates=candidatesFor(index,query,shape),matched=[];
+ for(let i=0;i<candidates.length;i++){const record=candidates[i];if(matches(record,query))matched.push(record);if((i&31)===31&&performance.now()>=deadline)await yieldToInput();}
+ signal?.throwIfAborted();
+ index.lastQuery=query.words.length?{shape,words:query.words,matches:matched}:null;
+ return matched.map(record=>record.game);
 }
