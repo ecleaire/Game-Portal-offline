@@ -30,10 +30,11 @@ GitHubの **Code → Download ZIP** を使う場合は、先にタグ **`v0.27.3
 | 環境 | プレイ用 | クリエイター用 |
 | --- | --- | --- |
 | Windows 10 / 11（64bit） | `GAME-PORTAL-PLAY.exe` | `GAME-PORTAL.exe` |
-| Mac（Intel：10.14以降／Appleシリコン：11以降） | `GAME-PORTAL-PLAY-MAC.app` | `GAME-PORTAL-MAC.app` |
+| Mac（Intel：10.15以降／Appleシリコン：11以降） | `GAME-PORTAL-PLAY-MAC.app` | `GAME-PORTAL-MAC.app` |
+| Mac（Intel：Mojave 10.14） | `GAME-PORTAL-PLAY-MOJAVE.app` | `GAME-PORTAL-MOJAVE.app` |
 | HTML（Windows・MacのGoogle Chrome） | `GAME-PORTAL-PLAY.html` | `GAME-PORTAL.html` |
 
-Windows・Macアプリはベータ版です。Mac版はエンジンを同梱し、Chromeの別インストールは不要です。初回は起動の準備に時間がかかります。2回目以降は準備済みのデータを利用します。Intel向け互換版の `*-MOJAVE.app` については[Macの案内](docs/MAC.md)を確認してください。HTML版はGoogle Chromeで開き、保存先へのアクセスを許可します。
+Windows・Macアプリはベータ版です。Mac版はエンジンを同梱し、Chromeの別インストールは不要です。初回は起動の準備に時間がかかります。2回目以降は準備済みのデータを利用します。Mojaveで使う場合は、上の表の `*-MOJAVE.app` を選んでください。詳しくは[Macの案内](docs/MAC.md)を確認してください。HTML版はGoogle Chromeで開き、保存先へのアクセスを許可します。
 
 ## プレイ用とクリエイター用の違い
 

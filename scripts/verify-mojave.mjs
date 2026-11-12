@@ -3,6 +3,12 @@ import {materializeDistribution} from './distribution.mjs';
 await materializeDistribution();
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {verifyMojaveDistributions} from './verify-mojave-runtime.mjs';
+await verifyMojaveDistributions(async (path,max)=>{
+ const bytes=await readFile(path);
+ if(bytes.length>max)throw Error('Oversized Mojave distribution file: '+path);
+ return bytes;
+});
 const bytes=await readFile('GAME-PORTAL-MOJAVE'),{version}=JSON.parse(await readFile('package.json','utf8'));
 if(bytes.length<32||bytes.readUInt32LE(0)!==0xfeedfacf||bytes.readUInt32LE(4)!==0x01000007||!bytes.includes(Buffer.from(version)))throw Error('Mojave helper must be a matching Intel x86_64 Mach-O binary.');
 let at=32,minimum=null;
