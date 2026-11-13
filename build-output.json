@@ -1,0 +1,758 @@
+{
+  "schema": 1,
+  "source_commit": "edd3f9a2fa07ee981dd4e34ac7860a2fee76623f",
+  "version": "0.27.9",
+  "kind": "modern",
+  "files": [
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftCore.dylib",
+      "mode": "100755",
+      "blob": "6abab7399c61f815291b085c07602150a300c866"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftCoreFoundation.dylib",
+      "mode": "100755",
+      "blob": "51ba1fe5869856aede04c7d675197318c04d9d86"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftCoreGraphics.dylib",
+      "mode": "100755",
+      "blob": "5bc9b2604c93305b5c40ceabed0b3c6131f85f5c"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftCoreImage.dylib",
+      "mode": "100755",
+      "blob": "05dfc194ce0bc39ad098aedd5222de2a1f002a41"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftDarwin.dylib",
+      "mode": "100755",
+      "blob": "4a2187f570db64ff6405c5c4a90fbb61380c0c12"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftDispatch.dylib",
+      "mode": "100755",
+      "blob": "6bc94929645468c3be4b1540d12ef4a053d08b6a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftFoundation.dylib",
+      "mode": "100755",
+      "blob": "d6b0df8756d5afa692338fc5898969239cba208c"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftIOKit.dylib",
+      "mode": "100755",
+      "blob": "ed1743f8953fc94df1060c29cfb61a8384cc215a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftMetal.dylib",
+      "mode": "100755",
+      "blob": "6436feee1f7460bdd5f5bc6219178d82c658c4c3"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftObjectiveC.dylib",
+      "mode": "100755",
+      "blob": "3eebd61c146af918c3b35784714fce140216f1f8"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftQuartzCore.dylib",
+      "mode": "100755",
+      "blob": "3628fac60e87542e2ab43619d5a3c2a1ab4031f0"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftXPC.dylib",
+      "mode": "100755",
+      "blob": "4c30475da9eda0646c6a84b0b9f71fd36e1af6a7"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Frameworks/libswiftos.dylib",
+      "mode": "100755",
+      "blob": "cbd3e9c630f71cba8aea80c558491a4141cd9e15"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Info.plist",
+      "mode": "100644",
+      "blob": "8e1acc5eac94f3f006d2671e381ea2e5e585e3ad"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/MacOS/GAME-PORTAL-MAC",
+      "mode": "100755",
+      "blob": "1e4b06eb6b0927610fc537154da05cf8511b77e5"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/GAME-PORTAL-DESKTOP.html",
+      "mode": "100644",
+      "blob": "7e111136b64f8d8edaa90ee9228035248787cc73"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/GAME-PORTAL.html",
+      "mode": "100644",
+      "blob": "cce3820c77edd56a5a4032b576ac3e64b921b26a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/MAC-DESKTOP-LICENSES.txt",
+      "mode": "100644",
+      "blob": "1e6382a01d5aa3ede62d12b3068474b3fe22885d"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/SwiftRuntime/SWIFT-RUNTIME-LICENSE.txt",
+      "mode": "100644",
+      "blob": "61b0c78195f2d00acaf658000eeca6ad406a3a29"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/SwiftRuntime/runtime.json",
+      "mode": "100644",
+      "blob": "56c7edc715f4829387cf511c26dcd8bdb2af61c8"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/build.json",
+      "mode": "100644",
+      "blob": "da037a9eadc129fe827d6a4dec868bc16ad56f84"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/arm64/engine.part00",
+      "mode": "100644",
+      "blob": "87de0de860f16bf214b89b2fcc99cc61eed1bf36"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/arm64/engine.part01",
+      "mode": "100644",
+      "blob": "32fcd5c9bfa3c8d83c6ab539fee32051b21be0df"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/arm64/engine.part02",
+      "mode": "100644",
+      "blob": "c539dd6b59b70136994a9da6062973860802e5eb"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/x86_64/engine.part00",
+      "mode": "100644",
+      "blob": "8707d4f3c07b135affd5c3fe1ff4b6b1b36279b7"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/x86_64/engine.part01",
+      "mode": "100644",
+      "blob": "3bed744e11aa65964b490fec475a31b098be6952"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine/x86_64/engine.part02",
+      "mode": "100644",
+      "blob": "5cd1ba6567882be3917519bc15294492bfd72454"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/Resources/engine.json",
+      "mode": "100644",
+      "blob": "6e5c94cf40e68329baf497c676956aa96f8cd6ab"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MAC.app/Contents/_CodeSignature/CodeResources",
+      "mode": "100644",
+      "blob": "c98570062cdf3839e7afeccf8ff0370829af06d7"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftCore.dylib",
+      "mode": "100755",
+      "blob": "6abab7399c61f815291b085c07602150a300c866"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftCoreFoundation.dylib",
+      "mode": "100755",
+      "blob": "51ba1fe5869856aede04c7d675197318c04d9d86"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftCoreGraphics.dylib",
+      "mode": "100755",
+      "blob": "5bc9b2604c93305b5c40ceabed0b3c6131f85f5c"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftCoreImage.dylib",
+      "mode": "100755",
+      "blob": "05dfc194ce0bc39ad098aedd5222de2a1f002a41"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftDarwin.dylib",
+      "mode": "100755",
+      "blob": "4a2187f570db64ff6405c5c4a90fbb61380c0c12"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftDispatch.dylib",
+      "mode": "100755",
+      "blob": "6bc94929645468c3be4b1540d12ef4a053d08b6a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftFoundation.dylib",
+      "mode": "100755",
+      "blob": "d6b0df8756d5afa692338fc5898969239cba208c"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftIOKit.dylib",
+      "mode": "100755",
+      "blob": "ed1743f8953fc94df1060c29cfb61a8384cc215a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftMetal.dylib",
+      "mode": "100755",
+      "blob": "6436feee1f7460bdd5f5bc6219178d82c658c4c3"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftObjectiveC.dylib",
+      "mode": "100755",
+      "blob": "3eebd61c146af918c3b35784714fce140216f1f8"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftQuartzCore.dylib",
+      "mode": "100755",
+      "blob": "3628fac60e87542e2ab43619d5a3c2a1ab4031f0"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftXPC.dylib",
+      "mode": "100755",
+      "blob": "4c30475da9eda0646c6a84b0b9f71fd36e1af6a7"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Frameworks/libswiftos.dylib",
+      "mode": "100755",
+      "blob": "cbd3e9c630f71cba8aea80c558491a4141cd9e15"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Info.plist",
+      "mode": "100644",
+      "blob": "07ff9a26569715980e85e0b97a658eb3dc1f7c20"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/MacOS/GAME-PORTAL-MOJAVE",
+      "mode": "100755",
+      "blob": "9caf6fd927c69c1e5f26eee7f81c53e8fbb780fd"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/GAME-PORTAL-DESKTOP.html",
+      "mode": "100644",
+      "blob": "7e111136b64f8d8edaa90ee9228035248787cc73"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/GAME-PORTAL.html",
+      "mode": "100644",
+      "blob": "cce3820c77edd56a5a4032b576ac3e64b921b26a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/MAC-DESKTOP-LICENSES.txt",
+      "mode": "100644",
+      "blob": "1e6382a01d5aa3ede62d12b3068474b3fe22885d"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/SwiftRuntime/SWIFT-RUNTIME-LICENSE.txt",
+      "mode": "100644",
+      "blob": "61b0c78195f2d00acaf658000eeca6ad406a3a29"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/SwiftRuntime/runtime.json",
+      "mode": "100644",
+      "blob": "56c7edc715f4829387cf511c26dcd8bdb2af61c8"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/build.json",
+      "mode": "100644",
+      "blob": "da037a9eadc129fe827d6a4dec868bc16ad56f84"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part00",
+      "mode": "100644",
+      "blob": "8707d4f3c07b135affd5c3fe1ff4b6b1b36279b7"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part01",
+      "mode": "100644",
+      "blob": "3bed744e11aa65964b490fec475a31b098be6952"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part02",
+      "mode": "100644",
+      "blob": "5cd1ba6567882be3917519bc15294492bfd72454"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/Resources/engine.json",
+      "mode": "100644",
+      "blob": "8da7e0a939786529560c4c9ff404562956461edb"
+    },
+    {
+      "path": "Mac/クリエイター用/GAME-PORTAL-MOJAVE.app/Contents/_CodeSignature/CodeResources",
+      "mode": "100644",
+      "blob": "6178c05f1c8f6c91051391bad5211d3a244dbb88"
+    },
+    {
+      "path": "Mac/クリエイター用/_内部ファイル/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftCore.dylib",
+      "mode": "100755",
+      "blob": "6abab7399c61f815291b085c07602150a300c866"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftCoreFoundation.dylib",
+      "mode": "100755",
+      "blob": "51ba1fe5869856aede04c7d675197318c04d9d86"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftCoreGraphics.dylib",
+      "mode": "100755",
+      "blob": "5bc9b2604c93305b5c40ceabed0b3c6131f85f5c"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftCoreImage.dylib",
+      "mode": "100755",
+      "blob": "05dfc194ce0bc39ad098aedd5222de2a1f002a41"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftDarwin.dylib",
+      "mode": "100755",
+      "blob": "4a2187f570db64ff6405c5c4a90fbb61380c0c12"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftDispatch.dylib",
+      "mode": "100755",
+      "blob": "6bc94929645468c3be4b1540d12ef4a053d08b6a"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftFoundation.dylib",
+      "mode": "100755",
+      "blob": "d6b0df8756d5afa692338fc5898969239cba208c"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftIOKit.dylib",
+      "mode": "100755",
+      "blob": "ed1743f8953fc94df1060c29cfb61a8384cc215a"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftMetal.dylib",
+      "mode": "100755",
+      "blob": "6436feee1f7460bdd5f5bc6219178d82c658c4c3"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftObjectiveC.dylib",
+      "mode": "100755",
+      "blob": "3eebd61c146af918c3b35784714fce140216f1f8"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftQuartzCore.dylib",
+      "mode": "100755",
+      "blob": "3628fac60e87542e2ab43619d5a3c2a1ab4031f0"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftXPC.dylib",
+      "mode": "100755",
+      "blob": "4c30475da9eda0646c6a84b0b9f71fd36e1af6a7"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Frameworks/libswiftos.dylib",
+      "mode": "100755",
+      "blob": "cbd3e9c630f71cba8aea80c558491a4141cd9e15"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Info.plist",
+      "mode": "100644",
+      "blob": "8530ef19a4b8086ce12ea1d116ce2f0c5bd3b1f9"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/MacOS/GAME-PORTAL-MAC",
+      "mode": "100755",
+      "blob": "8779359b783460cdc432630125af0eb93689f635"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/GAME-PORTAL-DESKTOP.html",
+      "mode": "100644",
+      "blob": "963935332ee9934412d08cee982bc018a0a778ce"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/GAME-PORTAL.html",
+      "mode": "100644",
+      "blob": "d134212e9a5ae414270373f1ec13fdf7b3089bda"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/MAC-DESKTOP-LICENSES.txt",
+      "mode": "100644",
+      "blob": "1e6382a01d5aa3ede62d12b3068474b3fe22885d"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/SwiftRuntime/SWIFT-RUNTIME-LICENSE.txt",
+      "mode": "100644",
+      "blob": "61b0c78195f2d00acaf658000eeca6ad406a3a29"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/SwiftRuntime/runtime.json",
+      "mode": "100644",
+      "blob": "56c7edc715f4829387cf511c26dcd8bdb2af61c8"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/build.json",
+      "mode": "100644",
+      "blob": "2d62f0d7615bc44262469b65ef15c202bdc8f6d4"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/arm64/engine.part00",
+      "mode": "100644",
+      "blob": "87de0de860f16bf214b89b2fcc99cc61eed1bf36"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/arm64/engine.part01",
+      "mode": "100644",
+      "blob": "32fcd5c9bfa3c8d83c6ab539fee32051b21be0df"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/arm64/engine.part02",
+      "mode": "100644",
+      "blob": "c539dd6b59b70136994a9da6062973860802e5eb"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/x86_64/engine.part00",
+      "mode": "100644",
+      "blob": "8707d4f3c07b135affd5c3fe1ff4b6b1b36279b7"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/x86_64/engine.part01",
+      "mode": "100644",
+      "blob": "3bed744e11aa65964b490fec475a31b098be6952"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine/x86_64/engine.part02",
+      "mode": "100644",
+      "blob": "5cd1ba6567882be3917519bc15294492bfd72454"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/Resources/engine.json",
+      "mode": "100644",
+      "blob": "6e5c94cf40e68329baf497c676956aa96f8cd6ab"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MAC.app/Contents/_CodeSignature/CodeResources",
+      "mode": "100644",
+      "blob": "177ea9606ae9916bcf272d01207f71d9ec2481f9"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftCore.dylib",
+      "mode": "100755",
+      "blob": "6abab7399c61f815291b085c07602150a300c866"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftCoreFoundation.dylib",
+      "mode": "100755",
+      "blob": "51ba1fe5869856aede04c7d675197318c04d9d86"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftCoreGraphics.dylib",
+      "mode": "100755",
+      "blob": "5bc9b2604c93305b5c40ceabed0b3c6131f85f5c"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftCoreImage.dylib",
+      "mode": "100755",
+      "blob": "05dfc194ce0bc39ad098aedd5222de2a1f002a41"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftDarwin.dylib",
+      "mode": "100755",
+      "blob": "4a2187f570db64ff6405c5c4a90fbb61380c0c12"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftDispatch.dylib",
+      "mode": "100755",
+      "blob": "6bc94929645468c3be4b1540d12ef4a053d08b6a"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftFoundation.dylib",
+      "mode": "100755",
+      "blob": "d6b0df8756d5afa692338fc5898969239cba208c"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftIOKit.dylib",
+      "mode": "100755",
+      "blob": "ed1743f8953fc94df1060c29cfb61a8384cc215a"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftMetal.dylib",
+      "mode": "100755",
+      "blob": "6436feee1f7460bdd5f5bc6219178d82c658c4c3"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftObjectiveC.dylib",
+      "mode": "100755",
+      "blob": "3eebd61c146af918c3b35784714fce140216f1f8"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftQuartzCore.dylib",
+      "mode": "100755",
+      "blob": "3628fac60e87542e2ab43619d5a3c2a1ab4031f0"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftXPC.dylib",
+      "mode": "100755",
+      "blob": "4c30475da9eda0646c6a84b0b9f71fd36e1af6a7"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Frameworks/libswiftos.dylib",
+      "mode": "100755",
+      "blob": "cbd3e9c630f71cba8aea80c558491a4141cd9e15"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Info.plist",
+      "mode": "100644",
+      "blob": "fbf3208111a8d947c9235e3213948c5d7e38887f"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/MacOS/GAME-PORTAL-MOJAVE",
+      "mode": "100755",
+      "blob": "26fe08586400bdb0fa21cff2f079755069fef6ab"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/GAME-PORTAL-DESKTOP.html",
+      "mode": "100644",
+      "blob": "963935332ee9934412d08cee982bc018a0a778ce"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/GAME-PORTAL.html",
+      "mode": "100644",
+      "blob": "d134212e9a5ae414270373f1ec13fdf7b3089bda"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/MAC-DESKTOP-LICENSES.txt",
+      "mode": "100644",
+      "blob": "1e6382a01d5aa3ede62d12b3068474b3fe22885d"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/SwiftRuntime/SWIFT-RUNTIME-LICENSE.txt",
+      "mode": "100644",
+      "blob": "61b0c78195f2d00acaf658000eeca6ad406a3a29"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/SwiftRuntime/runtime.json",
+      "mode": "100644",
+      "blob": "56c7edc715f4829387cf511c26dcd8bdb2af61c8"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/build.json",
+      "mode": "100644",
+      "blob": "2d62f0d7615bc44262469b65ef15c202bdc8f6d4"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part00",
+      "mode": "100644",
+      "blob": "8707d4f3c07b135affd5c3fe1ff4b6b1b36279b7"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part01",
+      "mode": "100644",
+      "blob": "3bed744e11aa65964b490fec475a31b098be6952"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/engine/x86_64/engine.part02",
+      "mode": "100644",
+      "blob": "5cd1ba6567882be3917519bc15294492bfd72454"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/Resources/engine.json",
+      "mode": "100644",
+      "blob": "8da7e0a939786529560c4c9ff404562956461edb"
+    },
+    {
+      "path": "Mac/プレイ用/GAME-PORTAL-PLAY-MOJAVE.app/Contents/_CodeSignature/CodeResources",
+      "mode": "100644",
+      "blob": "86478bbb9308c4ff961e644a4ba5c3451141df12"
+    },
+    {
+      "path": "Mac/プレイ用/_内部ファイル/THIRD-PARTY-LICENSES.txt",
+      "mode": "100644",
+      "blob": "673175590a8ea31ae57cf961ce78b6012a5eba8a"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/GAME-PORTAL-MAC",
+      "mode": "100755",
+      "blob": "c4c4059167191d8a2da8b19e7928d3a60374e56b"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/SWIFT-RUNTIME-LICENSE.txt",
+      "mode": "100644",
+      "blob": "61b0c78195f2d00acaf658000eeca6ad406a3a29"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftCore.dylib",
+      "mode": "100755",
+      "blob": "6abab7399c61f815291b085c07602150a300c866"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftCoreFoundation.dylib",
+      "mode": "100755",
+      "blob": "51ba1fe5869856aede04c7d675197318c04d9d86"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftCoreGraphics.dylib",
+      "mode": "100755",
+      "blob": "5bc9b2604c93305b5c40ceabed0b3c6131f85f5c"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftCoreImage.dylib",
+      "mode": "100755",
+      "blob": "05dfc194ce0bc39ad098aedd5222de2a1f002a41"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftDarwin.dylib",
+      "mode": "100755",
+      "blob": "4a2187f570db64ff6405c5c4a90fbb61380c0c12"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftDispatch.dylib",
+      "mode": "100755",
+      "blob": "6bc94929645468c3be4b1540d12ef4a053d08b6a"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftFoundation.dylib",
+      "mode": "100755",
+      "blob": "d6b0df8756d5afa692338fc5898969239cba208c"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftIOKit.dylib",
+      "mode": "100755",
+      "blob": "ed1743f8953fc94df1060c29cfb61a8384cc215a"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftMetal.dylib",
+      "mode": "100755",
+      "blob": "6436feee1f7460bdd5f5bc6219178d82c658c4c3"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftNetwork.dylib",
+      "mode": "100755",
+      "blob": "ab4f69d55ec53d5f230a0ab7a9f3b6eef36fc9b4"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftObjectiveC.dylib",
+      "mode": "100755",
+      "blob": "3eebd61c146af918c3b35784714fce140216f1f8"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftQuartzCore.dylib",
+      "mode": "100755",
+      "blob": "3628fac60e87542e2ab43619d5a3c2a1ab4031f0"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftXPC.dylib",
+      "mode": "100755",
+      "blob": "4c30475da9eda0646c6a84b0b9f71fd36e1af6a7"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/libswiftos.dylib",
+      "mode": "100755",
+      "blob": "cbd3e9c630f71cba8aea80c558491a4141cd9e15"
+    },
+    {
+      "path": "HTML/プレイ用/起動補助/_runtime/Swift-MAC/runtime.json",
+      "mode": "100644",
+      "blob": "780f2cf3310b5b0a20b0539efe5d450f9ac6231c"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/GAME-PORTAL-MAC",
+      "mode": "100755",
+      "blob": "c4c4059167191d8a2da8b19e7928d3a60374e56b"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/SWIFT-RUNTIME-LICENSE.txt",
+      "mode": "100644",
+      "blob": "61b0c78195f2d00acaf658000eeca6ad406a3a29"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftCore.dylib",
+      "mode": "100755",
+      "blob": "6abab7399c61f815291b085c07602150a300c866"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftCoreFoundation.dylib",
+      "mode": "100755",
+      "blob": "51ba1fe5869856aede04c7d675197318c04d9d86"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftCoreGraphics.dylib",
+      "mode": "100755",
+      "blob": "5bc9b2604c93305b5c40ceabed0b3c6131f85f5c"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftCoreImage.dylib",
+      "mode": "100755",
+      "blob": "05dfc194ce0bc39ad098aedd5222de2a1f002a41"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftDarwin.dylib",
+      "mode": "100755",
+      "blob": "4a2187f570db64ff6405c5c4a90fbb61380c0c12"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftDispatch.dylib",
+      "mode": "100755",
+      "blob": "6bc94929645468c3be4b1540d12ef4a053d08b6a"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftFoundation.dylib",
+      "mode": "100755",
+      "blob": "d6b0df8756d5afa692338fc5898969239cba208c"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftIOKit.dylib",
+      "mode": "100755",
+      "blob": "ed1743f8953fc94df1060c29cfb61a8384cc215a"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftMetal.dylib",
+      "mode": "100755",
+      "blob": "6436feee1f7460bdd5f5bc6219178d82c658c4c3"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftNetwork.dylib",
+      "mode": "100755",
+      "blob": "ab4f69d55ec53d5f230a0ab7a9f3b6eef36fc9b4"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftObjectiveC.dylib",
+      "mode": "100755",
+      "blob": "3eebd61c146af918c3b35784714fce140216f1f8"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftQuartzCore.dylib",
+      "mode": "100755",
+      "blob": "3628fac60e87542e2ab43619d5a3c2a1ab4031f0"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftXPC.dylib",
+      "mode": "100755",
+      "blob": "4c30475da9eda0646c6a84b0b9f71fd36e1af6a7"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/libswiftos.dylib",
+      "mode": "100755",
+      "blob": "cbd3e9c630f71cba8aea80c558491a4141cd9e15"
+    },
+    {
+      "path": "HTML/クリエイター用/起動補助/_runtime/Swift-MAC/runtime.json",
+      "mode": "100644",
+      "blob": "780f2cf3310b5b0a20b0539efe5d450f9ac6231c"
+    }
+  ]
+}
