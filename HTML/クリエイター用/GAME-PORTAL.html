@@ -176,7 +176,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 [data-performance=low] .cover{background:var(--panel)}
 [data-performance=low] dialog{box-shadow:none}
 </style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.27.9</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.27.10</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><details id="operationErrorDetail" class="settings-detail" hidden><summary>エラーの詳細</summary><p id="operationErrorText" class="hint game-text"></p></details><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -651,7 +651,7 @@ function creatorScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope,creatorScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.27.9';
+const LAUNCHER_VERSION = '0.27.10';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -2625,13 +2625,25 @@ async function checkLibraryCompatibility(handle=root,signal=null){
   }catch(error){if(!signal?.aborted)compatibilityFailure(error);throw error;}
 }
 const syncStatus=message=>{$('#syncStatus').textContent=message;$('#syncStatus').hidden=!syncPaused||!!compatibilityProblem;};
+function libraryIdentityError(){
+  const error=new Error('保管フォルダーのIDが変わりました。設定からフォルダーを指定し直してください。');
+  error.code='LIBRARY_ID_CHANGED';
+  return error;
+}
+function pauseForLibraryIdentityChange(error){
+  if(error.code!=='LIBRARY_ID_CHANGED'||!root)return;
+  folderRecovery=null;
+  syncPaused=true;
+  $('#reconnect').hidden=false;
+  syncStatus(error.message);
+}
 async function requireLibraryConnection(forWrite=false,signal=null){
   if(forWrite&&launcherEdition==='player')throw new Error('ゲームの追加・変更はクリエイター版で行ってください。');
   if(!root||syncPaused)throw new Error(compatibilityProblem||'保管フォルダーへの接続を確認し、再読み込み・再接続してください。');
   const folder=root,id=localLibrary;await checkLibraryCompatibility(folder,signal);signal?.throwIfAborted();
   const found=await library.loadLibraryId(folder);signal?.throwIfAborted();
   if(root!==folder||localLibrary!==id)throw uiError('保存先が変わりました。','AbortError');
-  if(id&&found!==id){syncPaused=true;$('#reconnect').hidden=false;syncStatus('保管フォルダーのIDが変わりました。設定からフォルダーを指定し直してください。');throw new Error('保管フォルダーのIDが変わりました。フォルダーを指定し直してください。');}
+  if(id&&found!==id){const error=libraryIdentityError();pauseForLibraryIdentityChange(error);throw error;}
 }
 
 try{localStorage.setItem('game-portal.remember-folder','true');localStorage.setItem('game-portal.auto-sync','true');}catch{}
@@ -2878,7 +2890,7 @@ async function action(fn, reconnecting = false, prioritizePlay = false) {
     if(syncPromise){try{await syncPromise;}catch(error){if(!reconnecting)throw error;}}
     const result=await fn();status(typeof result==='string'?result:'');
   }
-  catch (e) { compatibilityFailure(e);if(e.code==='LIBRARY_ID_CHANGED')syncPaused=true;if(nativeBridge&&root?.nativeReadOnly&&transientFolderError(e))nativeRetry=true;queueFolderRecovery(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;reportError(e);if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
+  catch (e) { compatibilityFailure(e);pauseForLibraryIdentityChange(e);if(nativeBridge&&root?.nativeReadOnly&&transientFolderError(e))nativeRetry=true;queueFolderRecovery(e);if(remembered&&(['NotAllowedError','NotReadableError','NetworkError','InvalidStateError','TimeoutError'].includes(e.name)||['SETTINGS_SAVE_UNCONFIRMED','CONTENT_UPDATE_UNCONFIRMED'].includes(e.code)))$('#reconnect').hidden=false;reportError(e);if(e.code==='SETTINGS_SAVE_UNCONFIRMED'){if($('#player').open)$('#playerStatus').textContent=e.message;openSaveVerification();}if(e.code==='CONTENT_UPDATE_UNCONFIRMED'){contentTarget={...contentTarget,contentPending:true};if($('#player').open)$('#playerStatus').textContent=e.message;} }
   finally { busy = false;document.body.setAttribute('aria-busy','false');document.body.classList.remove('working'); document.querySelectorAll('button').forEach(b => b.disabled = false);document.querySelectorAll('#post input,#updateContent input').forEach(input=>input.disabled=false);try{writeControls();}finally{if(actionCompletion===completion)actionCompletion=null;finishAction();} }
 }
 function writeAction(fn){
@@ -2902,11 +2914,12 @@ async function refresh({signal}={}) {
   const folder=root,id=localLibrary;await checkLibraryCompatibility(folder,signal);signal?.throwIfAborted();
   const nextLibrary=await library.loadLibraryId(folder);
   signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw uiError('保存先が変わりました。','AbortError');
-  if(id&&nextLibrary!==id){syncPaused=true;writeControls();throw new Error('保管フォルダーのIDが変わりました。設定からフォルダーを指定し直してください。');}
+  if(id&&nextLibrary!==id){const error=libraryIdentityError();pauseForLibraryIdentityChange(error);throw error;}
   const nextMetadata=await library.loadMetadata(folder),nextGames=await library.scan(folder,nextMetadata,{signal});
   signal?.throwIfAborted();
-  if(await library.loadLibraryId(folder)!==nextLibrary)throw new Error('読み込み中に保管フォルダーのIDが変わりました。再接続してください。');
+  const verifiedLibrary=await library.loadLibraryId(folder);
   signal?.throwIfAborted();if(root!==folder||localLibrary!==id)throw uiError('保存先が変わりました。','AbortError');
+  if(verifiedLibrary!==nextLibrary){const error=libraryIdentityError();pauseForLibraryIdentityChange(error);throw error;}
   localLibrary=nextLibrary;syncPaused=false;folderRecovery=null;$('#reconnect').hidden=true;syncStatus('ゲーム一覧を定期的に自動確認します。セーブの確認はホームで3分操作がないときに行います。');
   metadata=nextMetadata;games=nextGames;renderLimit=cardBatch;
   // Keep unchanged cards after edits or manual refresh, as background sync does.
@@ -2995,13 +3008,13 @@ async function syncLibrary({idle=false,automatic=false}={}){
       await read(()=>checkLibraryCompatibility(folder,controller.signal));
       controller.signal.throwIfAborted();
       const nextId=await read(()=>library.loadLibraryId(folder));
-      if(libraryId&&nextId!==libraryId)throw new Error('保管フォルダーのIDが変わりました。フォルダーを指定し直してください。');
+      if(libraryId&&nextId!==libraryId)throw libraryIdentityError();
       const nextMetadata=await read(()=>library.loadMetadata(folder));
       onProgress();
       const nextGames=await read(()=>library.scan(folder,nextMetadata,{signal:controller.signal,onProgress}));
       onProgress();
       controller.signal.throwIfAborted();
-      if(await read(()=>library.loadLibraryId(folder))!==nextId)throw new Error('読み込み中に保管フォルダーが変わりました。');
+      if(await read(()=>library.loadLibraryId(folder))!==nextId)throw libraryIdentityError();
       if(root!==folder||busy||document.hidden||document.querySelector('dialog[open]:not(#player)')||idle&&!homeIsIdle()||automatic&&!homeIsQuiet())return;
       const changed=localLibrary!==nextId||!await read(()=>syncTools.sameLibraryView(games,nextGames,{signal:controller.signal}));
       controller.signal.throwIfAborted();
@@ -3085,6 +3098,10 @@ async function connect(handle, request = false, restoring = false, shared = fals
   const nextLocalLibrary = initialize ? await library.ensureLibraryId(handle) : scannedLibrary;
   await checkLibraryCompatibility(handle,signal);
   signal?.throwIfAborted();
+  if(scannedLibrary&&scannedLibrary!==nextLocalLibrary){
+    if(handle===root)throw libraryIdentityError();
+    throw new Error('読み込み中に選んだフォルダーのIDが変わりました。もう一度選び直してください。');
+  }
   editingEnabled=!handle.nativeReadOnly&&editingPreference;$('#enableEditing').checked=editingEnabled;
   resetCards();root = handle; localLibrary = nextLocalLibrary; remembered = handle; automaticPermissionAttempted=false; if(!preserveSearch){resetSearch();sharedSaveIssues.clear();saveSyncRows();}folderRecovery=null;
   nextCatalogSync=performance.now()+catalogSyncDelay();

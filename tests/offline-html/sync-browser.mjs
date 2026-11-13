@@ -73,6 +73,23 @@ try{
  await expect(page.locator('#postButton')).toBeEnabled();assert.equal(await page.evaluate(()=>localLibrary),id);
  // Permission prompts do not run on startup; reconnect requires a user click.
  await page.evaluate(()=>localStorage.setItem('test-permission','prompt'));await page.reload();await expect(page.locator('html')).toHaveAttribute('data-ready','true',{timeout:15000});await expect(page.locator('#folderName')).toHaveText('未選択');await page.locator('#settingsButton').click();await expect(page.locator('#reconnect')).toBeVisible();await mkdir('offline-release/ui-checks',{recursive:true});await page.screenshot({path:'offline-release/ui-checks/shared-folder-settings.png',fullPage:true});await page.locator('#reconnect').click();await expect(page.locator('#folderName')).toHaveText('shared');
+ // A replacement during a manual scan must pause operations just like a
+ // replacement detected by a periodic scan. The first identity read still succeeds.
+ await page.evaluate(()=>{
+  window.realScan=library.scan;
+  library.scan=async(folder,meta,options)=>{
+   const result=await realScan(folder,meta,options);
+   await library.writeFile(folder,'.gameportal/library-id.json',JSON.stringify({schema:1,id:'b'.repeat(32)}));
+   return result;
+  };
+ });
+ await page.locator('#refresh').click();await page.waitForFunction(()=>!busy);
+ await expect(page.locator('#postButton')).toBeDisabled();
+ await expect(page.locator('#syncStatus')).toContainText('IDが変わりました');
+ assert.equal(await page.evaluate(()=>localLibrary),id);
+ await expect(page.getByRole('heading',{name:'Changed elsewhere',exact:true})).toBeVisible();
+ await page.evaluate(async()=>{library.scan=realScan;await library.writeFile(root,'.gameportal/library-id.json',JSON.stringify({schema:1,id:localLibrary}));});
+ await page.locator('#refresh').click();await expect(page.locator('#postButton')).toBeEnabled();
  // ID replacement must block editing without overwriting the current list or save scope.
  await page.evaluate(async()=>{window.oldId=localLibrary;await library.writeFile(root,'.gameportal/library-id.json',JSON.stringify({schema:1,id:'a'.repeat(32)}));});await page.evaluate(()=>syncLibrary());await expect(page.locator('#syncStatus')).toContainText('IDが変わりました');assert.equal(await page.evaluate(()=>localLibrary),id);await expect(page.locator('#postButton')).toBeDisabled();await page.locator('.game-title-link').first().click();await page.waitForFunction(()=>!busy);await expect(page.locator('#player')).toBeHidden();await expect(page.locator('#status')).toContainText('接続');
  await page.evaluate(async()=>{await library.writeFile(root,'.gameportal/library-id.json',JSON.stringify({schema:1,id:window.oldId}));});await page.locator('#refresh').click();
