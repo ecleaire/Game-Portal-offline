@@ -37,6 +37,20 @@ try{
  const patch=await open('/patch');await patch.locator('#settingsButton').click();await patch.locator('#chooseFolder').click();await expect(patch.locator('#folderName')).toHaveText('shared');
  await patch.locator('#settingsButton').click();await expect(patch.locator('#compatibilityStatus')).toContainText('v'+patchVersion);await patch.locator('#settings [data-close]').click();
  assert.equal(await patch.evaluate(async()=>await(await library.getFile(root,'.gameportal/compatibility.json')).text()),snapshot.marker);
+ // A rejected candidate must not disable the previously connected library.
+ await page.evaluate(async()=>{
+  const candidate=await(await navigator.storage.getDirectory()).getDirectoryHandle('incompatible-candidate',{create:true});
+  await library.writeFile(candidate,'.gameportal/compatibility.json',JSON.stringify({schema:1,minLauncherVersion:'9.0.0',requiredFeatures:[]}));
+  window.originalPicker=window.showDirectoryPicker;
+  window.showDirectoryPicker=async()=>candidate;
+ });
+ await page.bringToFront();await page.locator('#settingsButton').click();await page.locator('#chooseFolder').click();await page.waitForFunction(()=>!busy);
+ await expect(page.locator('#status')).toContainText('v9.0.0');
+ await expect(page.locator('#folderName')).toHaveText('shared');
+ await expect(page.locator('#compatibilityNotice')).toBeHidden();
+ await expect(page.locator('#postButton')).toBeEnabled();
+ await page.evaluate(()=>window.showDirectoryPicker=originalPicker);
+ await page.locator('#settings [data-close]').click();
  await page.bringToFront();await page.locator('.game-title-link').click();await expect(page.locator('#frame')).toBeVisible();await page.waitForFunction(()=>!busy);const session=await page.evaluate(()=>activePlay.frameToken='same-session');
  // Simulate a peer requiring a future reader while this page has an old list.
  await patch.evaluate(async()=>{const marker=JSON.parse(await(await library.getFile(root,'.gameportal/compatibility.json')).text());await library.writeFile(root,'.gameportal/compatibility.json',JSON.stringify({...marker,minLauncherVersion:'9.0.0'}));});

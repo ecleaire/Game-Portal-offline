@@ -34,6 +34,15 @@ try{
   await b.evaluate(()=>{localState.commitSaveSync=originalCommit;window.finishImport();});await b.waitForFunction(()=>!busy);
   await b.locator('.game-title-link').click();await b.waitForFunction(()=>!busy);await expect(b.frameLocator('#frame').locator('body')).toHaveAttribute('data-level','1');await b.locator('#closePlayer').click();await b.waitForFunction(()=>!closingPlayer);assert.deepEqual(await data(b),{level:'1'});
   await editSave(a,'2');await editSave(b,'B');await sync(a);await copy(a,b);await sync(b);await expect(b.locator('#sharedSaveResults')).toContainText('別々のPC');assert.deepEqual(await data(b),{level:'B'});
+  // Moving the game out of the catalogue must remove its old conflict controls.
+  await b.locator('#settings [data-close]').click();
+  await b.evaluate(()=>root.removeEntry('game.html'));
+  await b.locator('#refresh').click();await b.waitForFunction(()=>!busy);
+  await expect(b.locator('#sharedSaveNotice')).toBeHidden();
+  await expect(b.locator('#sharedSaveResults .maintenance-item')).toHaveCount(0);
+  assert.deepEqual(await b.evaluate(({library,game})=>localState.loadLocalSave(library,game),ids),{level:'B'});
+  await copy(a,b);await b.locator('#refresh').click();await b.waitForFunction(()=>!busy);
+  await sync(b);await expect(b.locator('#sharedSaveResults')).toContainText('別々のPC');
   // The panel remains open while another tab/import changes the local save.
   const sharedBefore=await files(b);await editSave(b,'new local progress');
   b.once('dialog',dialog=>dialog.accept());await b.getByRole('button',{name:/共有セーブ 1 を使う/}).click();await b.waitForFunction(()=>!busy);
