@@ -151,3 +151,29 @@ test('a shared folder missing the local branch cannot silently replace a previou
   assert.equal((await f.run(b)).state,'downloaded');
   assert.deepEqual(b.peek().data,{v:'local branch'});
 });
+
+test('read-only play can verify a committed save without publishing a missing or different snapshot',async()=>{
+  const f=fixture(),a=client('1'.repeat(32),{v:'keep'});
+  f.setHook(()=>{throw new DOMException('Disconnected','NetworkError');});
+  await assert.rejects(f.run(a),/共有結果/);
+  const before=a.peek(),name=before.state.pending.revision+'.json';
+  const text=JSON.stringify(before.state.pending);
+  f.root.queryPermission=async()=> 'denied';
+  f.setHook(()=>{assert.fail('Read-only confirmation must never write');});
+
+  await assert.rejects(f.run(a,{pullOnly:true}),/前回のセーブ共有/);
+  assert.equal(f.dir().files.size,0);
+  assert.deepEqual(a.peek(),before);
+
+  f.dir().files.set(name,'different');
+  await assert.rejects(f.run(a,{pullOnly:true}),/確認記録が一致しません/);
+  assert.equal(f.dir().files.get(name),'different');
+  assert.deepEqual(a.peek(),before);
+
+  f.dir().files.set(name,text);
+  assert.equal((await f.run(a,{pullOnly:true})).state,'unchanged');
+  assert.equal(a.peek().state.pending,null);
+  assert.deepEqual(a.peek().data,{v:'keep'});
+  assert.deepEqual([...f.dir().files],[[name,text]]);
+  assert.deepEqual(a.backups,[]);
+});

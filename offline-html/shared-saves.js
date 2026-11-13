@@ -37,20 +37,34 @@ export async function syncSave(root,libraryId,gameId,tools,local,{signal,pullOnl
   const read=operation=>readWithSignal(operation,signal);
   cancelled(signal);await checkRoot(root,libraryId,tools,signal);
   let current=await read(()=>local.loadSaveSync(libraryId,gameId)),dir=await read(()=>directory(root,gameId));
-  const finish=async()=>{
+  const finish=async({verifyOnly=false}={})=>{
     // Persisted intent makes an uncertain close retry the SAME snapshot only.
     const record=current.state.pending,text=JSON.stringify(record),name=record.revision+'.json';
-    if(await root.queryPermission({mode:'readwrite'})!=='granted')throw Error('セーブを共有する保存許可が必要です。設定の「今すぐセーブを同期」を押してください。');
-    await checkRoot(root,libraryId,tools);dir||=await directory(root,gameId,true);
-    let existing=null;try{existing=await(await(await dir.getFileHandle(name)).getFile()).text();}catch(error){if(error.name!=='NotFoundError')throw error;}
+    const wait=verifyOnly?read:operation=>operation();
+    if(!verifyOnly){
+      if(await root.queryPermission({mode:'readwrite'})!=='granted')throw Error('セーブを共有する保存許可が必要です。設定の「今すぐセーブを同期」を押してください。');
+      await checkRoot(root,libraryId,tools);dir||=await directory(root,gameId,true);
+    }
+    let existing=null;
+    if(dir)try{
+      const handle=await wait(()=>dir.getFileHandle(name));
+      const file=await wait(()=>handle.getFile());
+      existing=await wait(()=>file.text());
+    }catch(error){if(error.name!=='NotFoundError')throw error;}
     if(existing&&existing!==text)throw Error('共有セーブの確認記録が一致しません。元データを保持しています。');
-    if(!existing){try{await tools.writeFile(dir,name,text);}catch(cause){throw Error('セーブの共有結果を確認できません。このPCのデータと確認記録を残しました。同じPCで同期を再試行してください。',{cause});}}
-    if(await(await(await dir.getFileHandle(name)).getFile()).text()!==text)throw Error('共有セーブの保存結果が一致しません。再試行してください。');
-    await checkRoot(root,libraryId,tools);
+    if(verifyOnly){
+      if(existing!==text)throw Error('前回のセーブ共有を確認できていません。設定から同期を再試行してください。');
+      await checkRoot(root,libraryId,tools,signal);
+      cancelled(signal);
+    }else{
+      if(!existing){try{await tools.writeFile(dir,name,text);}catch(cause){throw Error('セーブの共有結果を確認できません。このPCのデータと確認記録を残しました。同じPCで同期を再試行してください。',{cause});}}
+      if(await(await(await dir.getFileHandle(name)).getFile()).text()!==text)throw Error('共有セーブの保存結果が一致しません。再試行してください。');
+      await checkRoot(root,libraryId,tools);
+    }
     await local.commitSaveSync(libraryId,gameId,current,{schema:1,base:saveText(record.data),clock:record.clock,pending:null});
     current=await local.loadSaveSync(libraryId,gameId);
   };
-  if(current.state.pending){if(pullOnly)throw Error('前回のセーブ共有を確認できていません。設定から同期を再試行してください。');await finish();}
+  if(current.state.pending)await finish({verifyOnly:pullOnly});
   cancelled(signal);
   const records=await readRecords(dir,libraryId,gameId,local,signal),heads=saveHeads(records),remoteClock=combine(records),clock=combine([...records,{clock:current.state.clock}]),dataText=saveText(current.data),base=current.state.base;
   // A choice describes both sides. Another tab or a save import can change
