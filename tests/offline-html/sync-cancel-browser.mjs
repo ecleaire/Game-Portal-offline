@@ -34,6 +34,28 @@ try{for(const edition of ['creator','player']){
  await page.evaluate(()=>{FileSystemDirectoryHandle.prototype.getDirectoryHandle=auditOriginalDirectory;auditRelease();});await expect(page.locator('#settings')).toBeVisible();await expect(page.locator('#chooseFolder')).toBeEnabled();
  assert.equal(await page.evaluate(async()=>{const release=await localState.acquirePlaySession(localLibrary,games[0].id);release();return true;}),true);
  await page.locator('#settings [data-close]').click();await page.clock.install();
+ // Healthy progress can span more than one timeout window on a slow share.
+ await page.evaluate(()=>{
+  window.auditOriginalScan=library.scan;
+  window.releaseSlowScan=null;
+  library.scan=async(folder,metadata,options)=>{
+   await new Promise(resolve=>{
+    window.releaseSlowScan=resolve;
+    const pulse=()=>options.onProgress?.({visited:1,prepared:0,total:1});
+    setTimeout(pulse,15000);
+    setTimeout(pulse,30000);
+   });
+   return auditOriginalScan(folder,metadata,options);
+  };
+  nextCatalogSync=Infinity;lastHomeSync=performance.now();lastHomeActivity=performance.now()-3000;
+  void syncLibrary({automatic:true});
+ });
+ await page.waitForFunction(()=>!!window.releaseSlowScan);
+ await page.clock.runFor(31000);
+ assert.equal(await page.evaluate(()=>!!syncPromise&&!syncPaused),true,'a progressing catalogue scan must survive 30 seconds');
+ await page.evaluate(()=>{library.scan=auditOriginalScan;releaseSlowScan();});
+ await page.waitForFunction(()=>!syncPromise);
+ assert.equal(await page.evaluate(()=>syncPaused),false);
  await page.evaluate(()=>{window.auditOriginal=library.loadMetadata;window.auditRelease=null;library.loadMetadata=async(...args)=>{await new Promise(resolve=>window.auditRelease=resolve);return auditOriginal(...args);};lastHomeActivity=performance.now()-HOME_IDLE_MS-1;void syncLibrary({idle:true});});
  await page.waitForFunction(()=>!!window.auditRelease);await page.clock.fastForward(31000);await page.waitForFunction(()=>!syncPromise);await expect(page.locator('#syncStatus')).toContainText('応答しません');await expect(page.locator('#settingsButton')).toBeEnabled();
  await page.evaluate(()=>{pauseAutomaticConnection();library.loadMetadata=auditOriginal;auditRelease();});

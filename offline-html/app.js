@@ -451,13 +451,14 @@ function requestSaveSync(operation){
   if(busy)return;const folder=root,permission=(folder?requestFolderPermission(folder,'readwrite').catch(error=>({error})):null);
   void action(async()=>{const granted=await permission;if(granted?.error)throw granted.error;if(!folder||granted!=='granted')throw Error('セーブ共有にはフォルダーへの保存許可が必要です。');await requireLibraryConnection();if(root!==folder)throw Error('フォルダーが変わりました。');return operation();},false,true);
 }
-async function syncAllSaves(signal){
+async function syncAllSaves(signal,onProgress){
   if(root?.nativeReadOnly)return '';
   if(activePlay||openedGame||pendingSave||flushing)throw Error('ゲームを終了してホームに戻ってからセーブを同期してください。');
   const folder=root,libraryId=localLibrary;let count=0;
   for(const game of games){
     signal?.throwIfAborted();if(root!==folder||localLibrary!==libraryId)return;
     if(game.settingsError||game.kind==='exe'||game.kind==='pyxapp')continue;
+    onProgress?.();
     let release;
     try{
       release=await localState.acquirePlaySession(libraryId,game.id);signal?.throwIfAborted();
@@ -492,7 +493,13 @@ async function syncLibrary({idle=false,automatic=false}={}){
   if(automatic&&!homeIsQuiet())return;
   const folder=root,libraryId=localLibrary,controller=new AbortController();syncController=controller;
   const read=operation=>readTasks.readWithSignal(operation,controller.signal);
-  const deadline=setTimeout(()=>controller.abort(uiError('自動確認の読み取りが応答しません。接続を確認し、保存先を選び直してください。','TimeoutError')),30000);
+  const idleDeadline=readTasks.readIdleDeadline(30000,()=>controller.abort(uiError('自動確認の読み取りが応答しません。接続を確認し、保存先を選び直してください。','TimeoutError')));
+  let lastProgress=-Infinity;
+  const onProgress=()=>{
+    const now=performance.now();
+    if(now-lastProgress<1000)return;
+    lastProgress=now;idleDeadline.pulse();
+  };
   if(idle||automatic)idleSyncController=controller;
   syncPromise=(async()=>{
     try{
@@ -500,7 +507,10 @@ async function syncLibrary({idle=false,automatic=false}={}){
       controller.signal.throwIfAborted();
       const nextId=await read(()=>library.loadLibraryId(folder));
       if(libraryId&&nextId!==libraryId)throw new Error('保管フォルダーのIDが変わりました。フォルダーを指定し直してください。');
-      const nextMetadata=await read(()=>library.loadMetadata(folder)),nextGames=await read(()=>library.scan(folder,nextMetadata,{signal:controller.signal}));
+      const nextMetadata=await read(()=>library.loadMetadata(folder));
+      onProgress();
+      const nextGames=await read(()=>library.scan(folder,nextMetadata,{signal:controller.signal,onProgress}));
+      onProgress();
       controller.signal.throwIfAborted();
       if(await read(()=>library.loadLibraryId(folder))!==nextId)throw new Error('読み込み中に保管フォルダーが変わりました。');
       if(root!==folder||busy||document.hidden||document.querySelector('dialog[open]:not(#player)')||idle&&!homeIsIdle()||automatic&&!homeIsQuiet())return;
@@ -509,11 +519,11 @@ async function syncLibrary({idle=false,automatic=false}={}){
       if(root!==folder||busy||document.hidden||document.querySelector('dialog[open]:not(#player)')||idle&&!homeIsIdle()||automatic&&!homeIsQuiet())return;
       metadata=nextMetadata;games=nextGames;localLibrary=nextId;
       if(changed){await render();updatePlayerInfo();writeControls();}
-      if(idle){controller.signal.throwIfAborted();await syncAllSaves(controller.signal);}
+      if(idle){controller.signal.throwIfAborted();await syncAllSaves(controller.signal,onProgress);}
       syncStatus('共有フォルダー確認済み：'+new Date().toLocaleTimeString('ja-JP')+(changed?'（変更を反映しました）':''));
     }catch(error){if(root!==folder||controller.signal.aborted&&error===controller.signal.reason&&error?.name!=='TimeoutError')return;compatibilityFailure(error);syncPaused=true;queueFolderRecovery(error);$('#reconnect').hidden=false;syncStatus((folderRecovery?'保存先との接続を確認しています。接続が戻ると自動で再開します：':'自動確認を停止しました。再読み込み・再接続で再開：')+error.message);if(!busy)writeControls();}
   })();
-  try{await syncPromise;}finally{clearTimeout(deadline);syncPromise=null;if(syncController===controller)syncController=null;if(idleSyncController===controller)idleSyncController=null;}
+  try{await syncPromise;}finally{idleDeadline.stop();syncPromise=null;if(syncController===controller)syncController=null;if(idleSyncController===controller)idleSyncController=null;}
 }
 async function syncWhenHomeIdle(){
   if(folderWatchPromise||folderRecovery)return;
@@ -753,7 +763,7 @@ async function render() {
   let matches;
   try{matches=await searchTools.searchGamesAsync(games,{query:keyword,scope:$('#searchScope').value,kind:$('#kindFilter').value,environment:$('#environmentFilter').value,tags:selectedTags,tagMatch:$('#tagMatch').value,sort:$('#sortGames').value},{signal:thumbnailRead.signal});}
   catch(error){if(thumbnailRead.signal.aborted)return;throw error;}
-  if(revision!==renderRevision||root!==folder||localLibrary!==viewLibrary)return;
+  if(thumbnailRead.signal.aborted||revision!==renderRevision||root!==folder||localLibrary!==viewLibrary)return;
   $('#libraryView').disabled=!viewPreferencesReady;const view=viewPreferencesReady?$('#libraryView').value:'all';$('#sortGames').disabled=view==='recent';$('#sortGames option[value=played]').hidden=view!=='recent';
   if(view==='favorites')matches=matches.filter(g=>gameViews.get(g.id)?.favorite);
   if(view==='recent')matches=matches.filter(g=>gameViews.get(g.id)?.lastPlayed>0).sort((a,b)=>gameViews.get(b.id).lastPlayed-gameViews.get(a.id).lastPlayed||a.title.localeCompare(b.title,'ja')).slice(0,30);
@@ -1250,7 +1260,12 @@ document.addEventListener('pointerdown',requestRememberedFromHome,{capture:true}
 document.addEventListener('keydown',requestRememberedFromHome,{capture:true});
 $('#homeReconnect').onclick=()=>$('#reconnect').onclick();
 $('#refresh').onclick = () => action(async()=>{await refresh();return '一覧を更新しました。';});
-$('#search').oninput = () => {clearTimeout(searchTimer);renderLimit=cardBatch;searchTimer=setTimeout(()=>render().catch(e=>status(e.message)),100);};
+$('#search').oninput = () => {
+  clearTimeout(searchTimer);
+  renderReadAbort?.abort();
+  renderLimit=cardBatch;
+  searchTimer=setTimeout(()=>render().catch(e=>status(e.message)),100);
+};
 $('#tagSearch').oninput=()=>{tagLimit=120;render().catch(e=>status(e.message));};$('#tagCategory').onchange=()=>{tagLimit=120;render().catch(e=>status(e.message));};
 $('#loadMore').onclick=()=>{renderLimit+=cardBatch;render().catch(e=>status(e.message));};
 function updatePostSelection() {
