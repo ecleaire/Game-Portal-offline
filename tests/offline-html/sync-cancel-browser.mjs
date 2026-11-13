@@ -33,7 +33,36 @@ try{for(const edition of ['creator','player']){
  await page.waitForFunction(()=>!!window.auditRelease);await page.locator('#settingsButton').click();await page.waitForFunction(()=>!syncPromise,{},{timeout:2500});
  await page.evaluate(()=>{FileSystemDirectoryHandle.prototype.getDirectoryHandle=auditOriginalDirectory;auditRelease();});await expect(page.locator('#settings')).toBeVisible();await expect(page.locator('#chooseFolder')).toBeEnabled();
  assert.equal(await page.evaluate(async()=>{const release=await localState.acquirePlaySession(localLibrary,games[0].id);release();return true;}),true);
- await page.locator('#settings [data-close]').click();await page.clock.install();
+ await page.locator('#settings [data-close]').click();
+ // A pending retry may stall before its first write. Opening settings must
+ // cancel the check and leave the original receipt available for another retry.
+ await page.evaluate(async()=>{
+  const current=await localState.loadSaveSync(localLibrary,games[0].id);
+  const deviceId=await localState.saveDeviceId();
+  const pending={schema:1,libraryId:localLibrary,gameId:games[0].id,revision:'c'.repeat(32),
+   deviceId,clock:{[deviceId]:1},createdAt:new Date().toISOString(),data:{level:'keep'}};
+  await localState.commitSaveSync(localLibrary,games[0].id,current,{...current.state,pending},pending.data);
+  window.originalQueryPermission=FileSystemDirectoryHandle.prototype.queryPermission;
+  window.releaseRetryPermission=null;
+  FileSystemDirectoryHandle.prototype.queryPermission=async function(options){
+   if(options?.mode==='readwrite')await new Promise(resolve=>window.releaseRetryPermission=resolve);
+   return originalQueryPermission.call(this,options);
+  };
+  lastHomeActivity=performance.now()-HOME_IDLE_MS-1;void syncLibrary({idle:true});
+ });
+ await page.waitForFunction(()=>!!window.releaseRetryPermission);
+ await page.locator('#settingsButton').click();await page.waitForFunction(()=>!syncPromise,{},{timeout:2500});
+ await page.evaluate(()=>{
+  FileSystemDirectoryHandle.prototype.queryPermission=originalQueryPermission;
+  releaseRetryPermission();
+ });
+ assert.equal(await page.evaluate(async()=>{
+  const {data,state}=await localState.loadSaveSync(localLibrary,games[0].id);
+  return data.level==='keep'&&state.pending?.revision==='c'.repeat(32);
+ }),true);
+ await expect(page.locator('#settings')).toBeVisible();
+ await page.locator('#settings [data-close]').click();
+ await page.clock.install();
  // Healthy progress can span more than one timeout window on a slow share.
  await page.evaluate(()=>{
   window.auditOriginalScan=library.scan;

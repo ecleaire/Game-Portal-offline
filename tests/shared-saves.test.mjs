@@ -177,3 +177,35 @@ test('read-only play can verify a committed save without publishing a missing or
   assert.deepEqual([...f.dir().files],[[name,text]]);
   assert.deepEqual(a.backups,[]);
 });
+
+test('canceling a pending retry stops stalled preflight without touching the receipt or shared files',async()=>{
+  for(const stage of ['permission','identity','snapshot']){
+    const f=fixture(),a=client('1'.repeat(32),{v:'keep'});
+    f.setHook(()=>{throw new DOMException('Disconnected','NetworkError');});
+    await assert.rejects(f.run(a),/共有結果/);
+    const before=a.peek();
+    f.setHook(()=>{assert.fail('Canceled retry must never write');});
+    let enter,release;
+    const entered=new Promise(resolve=>enter=resolve),gate=new Promise(resolve=>release=resolve);
+    const stall=async()=>{enter();await gate;};
+    if(stage==='permission')f.root.queryPermission=async()=>{await stall();return 'granted';};
+    if(stage==='identity'){
+      let reads=0;
+      f.tools.loadLibraryId=async()=>{if(++reads===2)await stall();return libraryId;};
+    }
+    if(stage==='snapshot'){
+      const dir=f.dir(),get=dir.getFileHandle;
+      dir.getFileHandle=async name=>{await stall();return get.call(dir,name);};
+    }
+    const controller=new AbortController();
+    const work=f.run(a,{signal:controller.signal}).then(()=>false,error=>error.name==='AbortError');
+    await entered;
+    controller.abort();
+    const stopped=await Promise.race([work,new Promise(resolve=>setTimeout(()=>resolve(false),100))]);
+    release();
+    await work;
+    assert.equal(stopped,true,stage+' preflight must cancel promptly');
+    assert.deepEqual(a.peek(),before);
+    assert.equal(f.dir().files.size,0);
+  }
+});
