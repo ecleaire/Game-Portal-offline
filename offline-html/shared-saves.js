@@ -62,9 +62,13 @@ export async function syncSave(root,libraryId,gameId,tools,local,{signal,pullOnl
   cancelled(signal);
   if(resolution&&resolution.fingerprint!==fingerprint){const error=Error('共有先またはこのPCのセーブが変わりました。「今すぐセーブを同期」で最新の内容を確認し、選び直してください。');error.code='STALE_SAVE_CHOICE';throw error;}
   const distinct=new Set(heads.map(r=>saveText(r.data))),remote=heads[0],dirty=base===null?Object.keys(current.data).length>0:dataText!==base;
-  const rolledBack=!!remote&&dataText!==saveText(remote.data)&&covers(current.state.clock,remoteClock)&&!covers(remoteClock,current.state.clock);
-  const conflict=distinct.size>1||rolledBack||!remote&&base!==null&&Object.keys(current.data).length>0||!!remote&&dirty&&dataText!==saveText(remote.data)&&!covers(current.state.clock,remoteClock);
-  if(conflict&&!resolution)return {state:'conflict',heads,fingerprint,reason:rolledBack||!remote?'共有セーブが見つからないか、このPCより古くなっています。このPCのデータを残し、使うセーブを確認してください。':null};
+  // Different contents may replace this PC's save only if the shared history
+  // includes its last synchronized version. A restored share can contain a
+  // concurrent branch while missing this version entirely.
+  const different=!!remote&&dataText!==saveText(remote.data);
+  const missingLocalHistory=different&&!covers(remoteClock,current.state.clock);
+  const conflict=distinct.size>1||missingLocalHistory||!remote&&base!==null&&Object.keys(current.data).length>0||different&&dirty&&!covers(current.state.clock,remoteClock);
+  if(conflict&&!resolution)return {state:'conflict',heads,fingerprint,reason:missingLocalHistory||!remote?'共有先に、このPCで最後に同期した履歴がありません。このPCのデータを残し、使うセーブを確認してください。':null};
   let chosen=current.data;
   if(resolution){
     if(resolution.revision!=='local'){const selected=heads.find(r=>r.revision===resolution.revision);if(!selected)throw Error('選択したセーブが変わりました。');chosen=selected.data;}

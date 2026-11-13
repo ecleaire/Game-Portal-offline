@@ -132,3 +132,22 @@ test('local save key ordering alone does not invalidate a conflict choice',async
  const f=fixture(),a=client('1'.repeat(32),{v:'remote'}),b=client('2'.repeat(32),{alpha:'A',beta:'B'});await f.run(a);const conflict=await f.run(b);
  b.edit({beta:'B',alpha:'A'});await f.run(b,{resolution:{revision:'local',fingerprint:conflict.fingerprint}});assert.deepEqual(b.peek().data,{alpha:'A',beta:'B'});
 });
+
+test('a shared folder missing the local branch cannot silently replace a previously synced save',async()=>{
+  const f=fixture(),a=client('1'.repeat(32),{v:'base'}),b=client('2'.repeat(32));
+  await f.run(a);await f.run(b);
+  a.edit({v:'local branch'});await f.run(a);
+  const localBranch=[...f.dir().files].find(([,text])=>JSON.parse(text).data.v==='local branch');
+  assert(localBranch);
+  f.dir().files.delete(localBranch[0]);
+  b.edit({v:'other branch'});await f.run(b);
+  const before=a.peek(),shared=[...f.dir().files];
+  const conflict=await f.run(a,{pullOnly:true});
+  assert.equal(conflict.state,'conflict');
+  assert.deepEqual(a.peek(),before);
+  assert.deepEqual([...f.dir().files],shared);
+  await f.run(a,{resolution:{revision:'local',fingerprint:conflict.fingerprint}});
+  assert.deepEqual(a.peek().data,{v:'local branch'});
+  assert.equal((await f.run(b)).state,'downloaded');
+  assert.deepEqual(b.peek().data,{v:'local branch'});
+});
