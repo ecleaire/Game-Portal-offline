@@ -176,7 +176,7 @@ html[data-edition="player"] :is(#informationTools,#information,#gameInformationT
 [data-performance=low] .cover{background:var(--panel)}
 [data-performance=low] dialog{box-shadow:none}
 #player{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;border-radius:0}#exportSharedLauncher,#downloadFolderConfig,#downloadFolderConfig+p{display:none!important}.desktop-path{margin-top:8px}.desktop-path input{flex:1 1 240px;min-width:0;width:100%}</style><script id="themeBootstrap">try{document.documentElement.dataset.theme=localStorage.getItem("game-portal.offline-theme")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}</script></head><body>
-<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.27.12</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
+<header><a id="homeLink" class="brand" href="#main" aria-label="GAME PORTAL ホームへ戻る"><strong>GAME<span>PORTAL</span></strong><span id="appVersion" class="app-version" aria-label="バージョン">v0.27.13</span></a><nav aria-label="メインメニュー"><button id="helpButton" class="secondary">ヘルプ</button><button id="settingsButton" class="secondary">設定</button></nav></header>
 <a class="skip-link" href="#libraryTitle">ゲーム一覧へ移動</a><main><div class="toolbar"><div><span id="editingIndicator" hidden class="editing-indicator" role="status">追加・編集 オフ</span><h1 id="libraryTitle" tabindex="-1">ゲーム <small id="count" aria-label="表示件数">0</small></h1></div><div class="buttons"><button id="refresh" class="secondary">一覧を更新</button><button id="postButton" hidden disabled>＋ ゲームを追加</button></div></div>
 <p id="postReason" hidden class="control-reason" role="status"></p><div id="libraryInfo" class="library-info" hidden><div><span class="info-label">フォルダー</span><p id="folderName" class="muted">未選択</p></div><span id="modeLabel" class="mode-label">あそぶ</span></div>
 <p id="compatibilityNotice" class="notice" role="alert" hidden></p><p id="syncStatus" hidden class="hint" role="status" aria-live="polite"></p><p id="storageNotice" class="notice" hidden>はじめに「設定」で追加・編集をオンにしてください。</p><div id="saveVerificationNotice" class="notice" hidden><span id="saveVerificationNoticeText"></span><button id="openSaveVerification" class="secondary">保存結果を確認</button></div><div id="sharedSaveNotice" class="notice" hidden><span>セーブの共有に確認が必要です。</span> <button id="openSharedSaves" class="secondary">確認する</button></div><div id="reconnectNotice" class="notice" hidden><button id="homeReconnect">保存先に再接続する</button></div><p id="status" tabindex="-1" role="status" aria-live="polite"></p><details id="operationErrorDetail" class="settings-detail" hidden><summary>エラーの詳細</summary><p id="operationErrorText" class="hint game-text"></p></details><button id="cancelConnection" class="secondary" hidden>接続待ちを中止</button>
@@ -1266,7 +1266,7 @@ function creatorScope(path){
 
 return {connectionInfo,portableLauncher,legacyScope,creatorScope};})();
 const compatibilityTools=(()=>{// Raise the floor only when a library format requires new reader/writer behavior.
-const LAUNCHER_VERSION = '0.27.12';
+const LAUNCHER_VERSION = '0.27.13';
 const MINIMUM_VERSION = '0.14.0';
 const BASE_FEATURES = ['per-game-settings-v1', 'content-selector-v1'];
 const FEATURES = [...BASE_FEATURES,'extended-tags-v1'];
@@ -2731,20 +2731,34 @@ async function syncSave(root,libraryId,gameId,tools,local,{signal,pullOnly=false
   const read=operation=>readWithSignal(operation,signal);
   cancelled(signal);await checkRoot(root,libraryId,tools,signal);
   let current=await read(()=>local.loadSaveSync(libraryId,gameId)),dir=await read(()=>directory(root,gameId));
-  const finish=async()=>{
+  const finish=async({verifyOnly=false}={})=>{
     // Persisted intent makes an uncertain close retry the SAME snapshot only.
     const record=current.state.pending,text=JSON.stringify(record),name=record.revision+'.json';
-    if(await root.queryPermission({mode:'readwrite'})!=='granted')throw Error('セーブを共有する保存許可が必要です。設定の「今すぐセーブを同期」を押してください。');
-    await checkRoot(root,libraryId,tools);dir||=await directory(root,gameId,true);
-    let existing=null;try{existing=await(await(await dir.getFileHandle(name)).getFile()).text();}catch(error){if(error.name!=='NotFoundError')throw error;}
+    const wait=verifyOnly?read:operation=>operation();
+    if(!verifyOnly){
+      if(await root.queryPermission({mode:'readwrite'})!=='granted')throw Error('セーブを共有する保存許可が必要です。設定の「今すぐセーブを同期」を押してください。');
+      await checkRoot(root,libraryId,tools);dir||=await directory(root,gameId,true);
+    }
+    let existing=null;
+    if(dir)try{
+      const handle=await wait(()=>dir.getFileHandle(name));
+      const file=await wait(()=>handle.getFile());
+      existing=await wait(()=>file.text());
+    }catch(error){if(error.name!=='NotFoundError')throw error;}
     if(existing&&existing!==text)throw Error('共有セーブの確認記録が一致しません。元データを保持しています。');
-    if(!existing){try{await tools.writeFile(dir,name,text);}catch(cause){throw Error('セーブの共有結果を確認できません。このPCのデータと確認記録を残しました。同じPCで同期を再試行してください。',{cause});}}
-    if(await(await(await dir.getFileHandle(name)).getFile()).text()!==text)throw Error('共有セーブの保存結果が一致しません。再試行してください。');
-    await checkRoot(root,libraryId,tools);
+    if(verifyOnly){
+      if(existing!==text)throw Error('前回のセーブ共有を確認できていません。設定から同期を再試行してください。');
+      await checkRoot(root,libraryId,tools,signal);
+      cancelled(signal);
+    }else{
+      if(!existing){try{await tools.writeFile(dir,name,text);}catch(cause){throw Error('セーブの共有結果を確認できません。このPCのデータと確認記録を残しました。同じPCで同期を再試行してください。',{cause});}}
+      if(await(await(await dir.getFileHandle(name)).getFile()).text()!==text)throw Error('共有セーブの保存結果が一致しません。再試行してください。');
+      await checkRoot(root,libraryId,tools);
+    }
     await local.commitSaveSync(libraryId,gameId,current,{schema:1,base:saveText(record.data),clock:record.clock,pending:null});
     current=await local.loadSaveSync(libraryId,gameId);
   };
-  if(current.state.pending){if(pullOnly)throw Error('前回のセーブ共有を確認できていません。設定から同期を再試行してください。');await finish();}
+  if(current.state.pending)await finish({verifyOnly:pullOnly});
   cancelled(signal);
   const records=await readRecords(dir,libraryId,gameId,local,signal),heads=saveHeads(records),remoteClock=combine(records),clock=combine([...records,{clock:current.state.clock}]),dataText=saveText(current.data),base=current.state.base;
   // A choice describes both sides. Another tab or a save import can change
