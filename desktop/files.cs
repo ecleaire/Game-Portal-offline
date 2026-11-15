@@ -76,9 +76,15 @@ internal sealed class DesktopFiles {
     internal bool HasWriters {get{lock(gate)return leases.Count>0;}}
     internal object BeginWrite(Root root,string path){
         Full(root,path);string lockDirectory=Full(root,".gameportal/desktop-locks");Directory.CreateDirectory(lockDirectory);
-        string key;using(var hash=SHA256.Create())key=BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(path.ToUpperInvariant()))).Replace("-","").ToLowerInvariant();
+        string key;using(var hash=SHA256.Create())key=BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(path.Normalize(NormalizationForm.FormC).ToUpperInvariant()))).Replace("-","").ToLowerInvariant();
         string lockFile=Full(root,".gameportal/desktop-locks/"+key+".lock");FileStream stream;
-        try{stream=new FileStream(lockFile,FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);}catch(IOException error){if((error.HResult&65535)==32||(error.HResult&65535)==33)throw new DesktopWriteBusyException();throw;}
+        stream=null;
+        try{
+            stream=new FileStream(lockFile,FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite);
+            // Coordinate with the macOS native helper using the same byte range.
+            stream.Lock(0,1);
+        }catch(IOException error){stream?.Dispose();if((error.HResult&65535)==32||(error.HResult&65535)==33)throw new DesktopWriteBusyException();throw;}
+        catch{stream?.Dispose();throw;}
         string token=Secret();lock(gate)leases[token]=new Lease {Root=root,Path=path,Stream=stream};return new {token=token};
     }
     internal void AbortWrite(Root root,string token){Lease lease;lock(gate){if(!leases.TryGetValue(token,out lease))return;if(lease.Root!=root)throw new IOException("保存の起動元が違います。");if(lease.Committing)return;leases.Remove(token);}lease.Stream.Dispose();}

@@ -34,6 +34,11 @@ internal static class DesktopSelfTest {
         File.SetLastWriteTimeUtc(Path.Combine(disk,binary),File.GetLastWriteTimeUtc(Path.Combine(disk,binary)).AddSeconds(2));Fails(()=>service.ReadPart(root,binary,left.Length,payload.Length,stamp),"part read timestamp change rejected",results);
         File.WriteAllBytes(Path.Combine(disk,"empty.bin"),new byte[0]);var empty=service.Parse(service.Serialize(service.ReadPart(root,"empty.bin",0,-1,"")));Assert(DesktopFiles.Text(empty,"data")=="","zero length read");File.Delete(Path.Combine(disk,"empty.bin"));File.Delete(Path.Combine(disk,binary));results.Add("native part reads release file handles");
         var lease=service.Parse(service.Serialize(service.BeginWrite(root,"game.html")));string writer=DesktopFiles.Text(lease,"token");var peer=new DesktopFiles(Path.Combine(directory,"peer-profile"));var peerRoot=peer.Register(disk);Fails(()=>peer.BeginWrite(peerRoot,"game.html"),"independent writers excluded",results);service.AbortWrite(root,writer);var nextLease=peer.Parse(peer.Serialize(peer.BeginWrite(peerRoot,"game.html")));peer.AbortWrite(peerRoot,DesktopFiles.Text(nextLease,"token"));results.Add("released writer can be reopened");
+        string gameLock=Directory.GetFiles(Path.Combine(disk,".gameportal","desktop-locks"),"*.lock")[0];
+        using(var otherProtocol=new FileStream(gameLock,FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite)){
+            otherProtocol.Lock(0,1);
+            Fails(()=>service.BeginWrite(root,"game.html"),"native save respects peer byte-range lock",results);
+        }
         foreach(string path in new[]{"../outside","/absolute","a/../b","a\\b","a:stream","CON","a/","a//b","a. ",""})Fails(()=>service.Write(root,path,new MemoryStream(new byte[0])),"reject path "+path,results);
         Fails(()=>service.Get(new String('0',64)),"unknown root capability",results);Fails(()=>service.Remove(root,"",true),"no root deletion",results);Fails(()=>service.Remove(root,".gameportal",true),"identity directory protected",results);
         Fails(()=>service.Write(root,".gameportal/library-id.json",new MemoryStream(Encoding.UTF8.GetBytes("{\"schema\":1,\"id\":\""+new String('b',32)+"\"}"))),"identity overwrite rejected",results);

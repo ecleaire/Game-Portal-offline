@@ -47,13 +47,56 @@ final class DesktopFiles {
         var id: String? { get { gate.lock(); defer { gate.unlock() }; return storedID } set { gate.lock(); storedID = newValue; gate.unlock() } }
         init(_ url: URL, _ id: String?) { self.url = url; storedID = id; work = DispatchQueue(label: "gameportal.folder." + UUID().uuidString) }
     }
+    final class WriteLock {
+        private static let gate = NSLock()
+        private static var heldPaths = Set<String>()
+        private let path: String, descriptor: Int32
+
+        init(_ path: String, posixError: () -> DesktopError) throws {
+            let busy = DesktopError("ほかのPCまたは画面で保存中です。", "NoModificationAllowedError")
+            // POSIX record locks are process-wide. Avoid opening another
+            // descriptor for a lock file that this process already holds.
+            Self.gate.lock()
+            let reserved = Self.heldPaths.insert(path).inserted
+            Self.gate.unlock()
+            guard reserved else { throw busy }
+            var fd: Int32 = -1
+            do {
+                fd = Darwin.open(path, O_RDWR | O_CREAT | O_NOFOLLOW | O_NONBLOCK, 0o666)
+                guard fd >= 0 else { throw posixError() }
+                var info = stat()
+                guard fstat(fd, &info) == 0, info.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else {
+                    throw DesktopError("保存用のロックファイルを確認してください。")
+                }
+                var range = flock()
+                range.l_type = Int16(F_WRLCK); range.l_whence = Int16(SEEK_SET); range.l_start = 0; range.l_len = 1
+                if fcntl(fd, F_SETLK, &range) != 0 {
+                    if errno == EACCES || errno == EAGAIN { throw busy }
+                    throw posixError()
+                }
+            } catch {
+                if fd >= 0 { Darwin.close(fd) }
+                Self.release(path)
+                throw error
+            }
+            self.path = path; descriptor = fd
+        }
+
+        private static func release(_ path: String) {
+            gate.lock()
+            heldPaths.remove(path)
+            gate.unlock()
+        }
+
+        deinit { Darwin.close(descriptor); Self.release(path) }
+    }
     final class Writer {
-        let root: Root, path: String, temporary: URL, descriptor: Int32, lock: Int32
+        let root: Root, path: String, temporary: URL, descriptor: Int32, lock: WriteLock
         var length = 0
-        init(_ root: Root, _ path: String, _ temporary: URL, _ descriptor: Int32, _ lock: Int32) {
+        init(_ root: Root, _ path: String, _ temporary: URL, _ descriptor: Int32, _ lock: WriteLock) {
             self.root = root; self.path = path; self.temporary = temporary; self.descriptor = descriptor; self.lock = lock
         }
-        deinit { Darwin.close(descriptor); Darwin.close(lock); try? FileManager.default.removeItem(at: temporary) }
+        deinit { Darwin.close(descriptor); try? FileManager.default.removeItem(at: temporary) }
     }
     let fm = FileManager.default, profile: URL, application: URL, player: Bool
     let selectionDirectory: URL?
@@ -363,17 +406,14 @@ final class DesktopFiles {
             let key = desktopSecret(); state { readers[key] = Reader(root, fd, info) }; return ["reader": key, "size": info.st_size] as [String: Any]
         case "beginWrite":
             try checkWrite(path)
-            guard !state({ writers.values.contains(where: { $0.root.url == root.url && $0.path == path }) }) else { throw DesktopError("ほかの画面で保存中です。", "NoModificationAllowedError") }
             let locks = try bound(root.url, ".gameportal/desktop-locks"); try fm.createDirectory(at: locks, withIntermediateDirectories: true)
-            let lockPath = locks.appendingPathComponent(desktopHash(path.uppercased()) + ".lock")
-            let lock = Darwin.open(lockPath.path, O_RDWR | O_CREAT | O_NOFOLLOW | O_NONBLOCK, 0o666); guard lock >= 0 else { throw posixError() }
-            var lockInfo = stat(); guard fstat(lock, &lockInfo) == 0, lockInfo.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else { Darwin.close(lock); throw DesktopError("保存用のロックファイルを確認してください。") }
-            guard flock(lock, LOCK_EX | LOCK_NB) == 0 else { Darwin.close(lock); throw DesktopError("ほかの画面で保存中です。", "NoModificationAllowedError") }
+            let lockPath = locks.appendingPathComponent(desktopHash(path.precomposedStringWithCanonicalMapping.uppercased()) + ".lock")
+            let lock = try WriteLock(lockPath.path, posixError: posixError)
             var existing = stat(); let exists = lstat(url.path, &existing) == 0
-            guard !exists || existing.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else { Darwin.close(lock); throw DesktopError("通常のファイルではありません。") }
+            guard !exists || existing.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else { throw DesktopError("通常のファイルではありません。") }
             let temp = url.deletingLastPathComponent().appendingPathComponent(".gameportal-" + desktopSecret() + ".tmp"), fd = Darwin.open(temp.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o666)
-            guard fd >= 0 else { Darwin.close(lock); throw posixError() }
-            if exists && fchmod(fd, existing.st_mode & mode_t(0o777)) != 0 { Darwin.close(fd); Darwin.close(lock); try? fm.removeItem(at: temp); throw posixError() }
+            guard fd >= 0 else { throw posixError() }
+            if exists && fchmod(fd, existing.st_mode & mode_t(0o777)) != 0 { Darwin.close(fd); try? fm.removeItem(at: temp); throw posixError() }
             let writer = desktopSecret(); state { writers[writer] = Writer(root, path, temp, fd, lock) }; return ["token": writer]
         case "writeChunk", "commitWrite":
             guard let key = data["writer"] as? String, let writer = state({ writers[key] }), writer.root === root, writer.path == path else { throw DesktopError("保存処理が一致しません。") }; try checkWrite(path)

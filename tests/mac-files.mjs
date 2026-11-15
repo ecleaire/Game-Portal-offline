@@ -16,9 +16,27 @@ import Darwin
    let directory = URL(fileURLWithPath: CommandLine.arguments[1])
    if CommandLine.arguments.count > 2 {
     let files = try DesktopFiles(profile: directory.appendingPathComponent("profile"), application: directory, player: false)
-    try files.withSharedLock {
-     try Data("ready".utf8).write(to: directory.appendingPathComponent(CommandLine.arguments[2]))
-     if CommandLine.arguments[2] == "held" { while true { sleep(1) } }
+    let marker = CommandLine.arguments[2]
+    let ready = { try Data("ready".utf8).write(to: directory.appendingPathComponent(marker)) }
+    if marker == "edit-held" {
+     let lock = try DesktopFiles.WriteLock(directory.appendingPathComponent("edit.lock").path, posixError: files.posixError)
+     withExtendedLifetime(lock) {
+      do { try ready() } catch { exit(2) }
+      while true { sleep(1) }
+     }
+    } else if marker.hasPrefix("edit-") {
+     let fd = Darwin.open(directory.appendingPathComponent("edit.lock").path, O_RDWR)
+     guard fd >= 0 else { exit(2) }
+     defer { Darwin.close(fd) }
+     var range = flock()
+     range.l_type = Int16(F_WRLCK); range.l_whence = Int16(SEEK_SET); range.l_start = 0; range.l_len = 1
+     if fcntl(fd, F_SETLK, &range) != 0 { exit(errno == EACCES || errno == EAGAIN ? 3 : 2) }
+     try ready()
+    } else {
+     try files.withSharedLock {
+      try ready()
+      if marker == "held" { while true { sleep(1) } }
+     }
     }
    } else { try desktopSelfTest(directory) }
   } catch { fputs(((error as? DesktopError)?.message ?? error.localizedDescription) + "\\n", stderr); exit(1) }
@@ -29,20 +47,22 @@ import Darwin
  execFileSync(binary,[disk],{timeout:30000,stdio:'pipe'});
  // Exercise an actual independent OS process, including SIGKILL. Record
  // locks must reject the live writer and recover without deleting the file.
- const holder=spawn(binary,[disk,'held'],{stdio:'pipe'});
+ for(const [marker,contender,after] of [['held','contender','after-crash'],['edit-held','edit-contender','edit-after-crash']]){
+ const holder=spawn(binary,[disk,marker],{stdio:'pipe'});
  try{
   let ready=false;
   for(let attempt=0;attempt<100;attempt++){
-   ready=await readFile(join(disk,'held'),'utf8').then(()=>true,()=>false);
+   ready=await readFile(join(disk,marker),'utf8').then(()=>true,()=>false);
    if(ready||holder.exitCode!==null)break;
    await new Promise(resolve=>setTimeout(resolve,25));
   }
   assert(ready,'independent lock holder started');
-  assert.throws(()=>execFileSync(binary,[disk,'contender'],{timeout:5000,stdio:'pipe'}));
+  assert.throws(()=>execFileSync(binary,[disk,contender],{timeout:5000,stdio:'pipe'}),error=>error.status===(marker==='edit-held'?3:1));
   const exited=new Promise(resolve=>holder.once('exit',resolve));holder.kill('SIGKILL');await exited;
-  execFileSync(binary,[disk,'after-crash'],{timeout:5000,stdio:'pipe'});
-  assert.equal(await readFile(join(disk,'after-crash'),'utf8'),'ready');
+  execFileSync(binary,[disk,after],{timeout:5000,stdio:'pipe'});
+  assert.equal(await readFile(join(disk,after),'utf8'),'ready');
  }finally{if(holder.exitCode===null&&holder.signalCode===null)holder.kill('SIGKILL');}
+ }
  assert.equal(JSON.parse(await readFile(join(disk,'result.json'),'utf8')).ok,true);
  console.log('Mac filesystem checks passed: shared defaults, fresh profiles, personal overrides, stale/concurrent writer rejection, Player denial and existing data protection.');
 }finally{await rm(temp,{recursive:true,force:true});}

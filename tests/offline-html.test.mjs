@@ -396,6 +396,20 @@ test('settings recheck after acquiring the exclusive writer and reject simultane
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
   assert.equal(results.filter(r=>r.status==='rejected').length,1);
 });
+test('an independent writer committing during staging is not overwritten by a stale edit',async()=>{
+  const name='one.html.gameportal.json';
+  let peerEdit;
+  const m=memoryFolder({write:async path=>{if(peerEdit&&path===name)m.files.set(name,peerEdit);}});
+  m.files.set('one.html','game');
+  const values={title:'Before',tags:[],developmentEnvironment:'',thumbnail:null};
+  let [game]=await scan(m.root,{games:{}});
+  await saveGameSettings(m.root,game,values);
+  [game]=await scan(m.root,{games:{}});
+  peerEdit=JSON.stringify({...JSON.parse(game.settingsText),title:'Saved on another PC'});
+  await assert.rejects(saveGameSettings(m.root,game,{...values,title:'Stale edit'}),/更新されています/);
+  assert.equal(m.files.get(name),peerEdit);
+});
+
 test('a corrupt settings file and duplicate IDs cannot break unrelated games', async () => {
   const {root,files}=memoryFolder();files.set('one.html','one');files.set('two.html','two');
   files.set('one.html.gameportal.json','{invalid');

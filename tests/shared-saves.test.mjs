@@ -34,7 +34,7 @@ test('concurrent publications create separate files and conflict without data lo
 });
 test('uncertain shared close persists one intent and verifies the same file on retry',async()=>{
   for(const committed of [false,true]){
-    const f=fixture(),a=client('1'.repeat(32),{v:'keep'});f.setHook(async(dir,name,text)=>{if(committed)dir.files.set(name,text);throw new DOMException('Disconnected','NetworkError');});
+    const f=fixture(),a=client('1'.repeat(32),{v:'keep'});f.setHook(async(dir,name,text)=>{dir.files.set(name,committed?text:'');throw new DOMException('Disconnected','NetworkError');});
     await assert.rejects(f.run(a),/共有結果/);const revision=a.peek().state.pending.revision;assert.deepEqual(a.peek().data,{v:'keep'});f.setHook(null);await f.run(a);assert.equal(a.peek().state.pending,null);assert(f.dir().files.has(revision+'.json'));assert.equal(f.dir().files.size,1);
   }
 });

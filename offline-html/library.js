@@ -182,10 +182,16 @@ export async function saveGameSettings(root, game, values, options={}) {
   }
   let closing=false;
   try {
-    const live = await handle.getFile(), actual = await live.text();
-    if ((initial ? actual !== '' : actual !== current.text)) throw new Error('このゲームの設定が更新されています。「再読み込み」してから編集してください。');
+    const checkBaseline=async()=>{
+      const live=await handle.getFile();
+      if(live.size>2*1024*1024||await live.text()!==(current.text??''))throw new Error('このゲームの設定が更新されています。「再読み込み」してから編集してください。');
+    };
+    await checkBaseline();
     if(!tracked)await track();
-    await writer.write(text);closing=true;await writer.close();
+    await writer.write(text);
+    // A client using a different locking mechanism may save during staging.
+    await checkBaseline();
+    closing=true;await writer.close();
   } catch (error) { await writer.abort().catch(() => {});if(closing||initial)throw unconfirmedSettingsSave(attempt,error);if(tracked)await settingsSaveObserver('cancelled',attempt).catch(()=>{});throw error; }
   try{if(await(await handle.getFile()).text()!==text)throw new Error('保存後の設定が一致しません。');}
   catch(error){throw unconfirmedSettingsSave(attempt,error);}

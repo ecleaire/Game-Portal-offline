@@ -1,6 +1,6 @@
 # 開発・配布の手順
 
-使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.27.14.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。配布ZIPから開発コード・テスト・Git用設定を除外しています。開発するときは `git clone https://github.com/ecleaire/Game-Portal-offline.git` で取得してください。以下はソースを変更する人向けの手順です。
+使うだけの場合は、[Code → Download ZIP](https://github.com/ecleaire/Game-Portal-offline/archive/refs/tags/v0.27.15.zip)を展開し、`HTML/プレイ用/GAME-PORTAL-PLAY.html` を開きます。配布ZIPから開発コード・テスト・Git用設定を除外しています。開発するときは `git clone https://github.com/ecleaire/Game-Portal-offline.git` で取得してください。以下はソースを変更する人向けの手順です。
 
 ## 準備・検証
 
@@ -86,9 +86,9 @@ HTMLビルドは `GAME-PORTAL.html`（クリエイター版）と `GAME-PORTAL-P
 
 1. 共有先設定から未設定PCが自動接続でき、個別設定済みPCは切り替わらないこと。
 2. 投稿・編集・本体更新が反映され、編集中・プレイ中の画面やIDを勝手に変更しないこと。
-3. 同時保存で競合した操作を拒否し、既存の作品・設定・履歴を保持すること。
+3. 同じ最新版のWindows・Macアプリで同じ作品の編集を開き、同時に保存します。一方が保存中または設定が更新済みと表示され、確定した設定と履歴が残ることを確認します。Windows同士・Mac同士・WindowsとMacの組み合わせで繰り返します。
 4. 読み取り中の切断で中止・別保存先への接続ができること。
-5. 保存中や読み戻し中の切断で結果未確認を表示し、再接続後に照合できること。書き込みを自動再実行しないこと。
+5. 保存確定時と読み戻し時に接続を切り、再接続後に「保存結果を確認」を押します。確定済みは再保存せず、未反映のときだけ再試行できることを確認します。結果を確認する前に別PCで編集した場合は、その設定を保持することも確認します。
 6. セーブ同期と競合選択、ゲーム本体更新・旧版復元、保管フォルダー全体の移行を確認すること。
 7. 共有設定の保存中に別PCから変更を拒否し、強制終了後に再保存できること。旧版ロックは全旧版終了の確認後だけ解除し、未知の内容は残すこと。
 
