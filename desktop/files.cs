@@ -83,8 +83,8 @@ internal sealed class DesktopFiles {
             stream=new FileStream(lockFile,FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite);
             // Coordinate with the macOS native helper using the same byte range.
             stream.Lock(0,1);
-        }catch(IOException error){stream?.Dispose();if((error.HResult&65535)==32||(error.HResult&65535)==33)throw new DesktopWriteBusyException();throw;}
-        catch{stream?.Dispose();throw;}
+        }catch(IOException error){if(stream!=null)stream.Dispose();if((error.HResult&65535)==32||(error.HResult&65535)==33)throw new DesktopWriteBusyException();throw;}
+        catch{if(stream!=null)stream.Dispose();throw;}
         string token=Secret();lock(gate)leases[token]=new Lease {Root=root,Path=path,Stream=stream};return new {token=token};
     }
     internal void AbortWrite(Root root,string token){Lease lease;lock(gate){if(!leases.TryGetValue(token,out lease))return;if(lease.Root!=root)throw new IOException("保存の起動元が違います。");if(lease.Committing)return;leases.Remove(token);}lease.Stream.Dispose();}
